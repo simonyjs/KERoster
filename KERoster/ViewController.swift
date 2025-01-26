@@ -70,36 +70,38 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     // 스케줄을 가져오는 함수 지정
     func importSchedule() {
-        guard let filePath = Bundle.main.path(forResource: "generateCwpRosterReport", ofType: "html"),
-              let htmlContent = try? String(contentsOfFile: filePath) else {
-            print("Error loading HTML file.")
-            return
-        }
+        webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { [weak self] (html: Any?, error: Error?) in
+            guard let self = self else { return }
+            if let htmlContent = html as? String {
+                do {
+                    let doc: Document = try SwiftSoup.parse(htmlContent)
+                    let rows: Elements = try doc.select("tr")
+                    self.schedules.removeAll() // Clear previous schedules if any
 
-        do {
-            let doc: Document = try SwiftSoup.parse(htmlContent)
-            let rows: Elements = try doc.select("tr")
-            schedules.removeAll() // Clear previous schedules if any
+                    for row in rows {
+                        let columns: Elements = try row.select("td")
+                        if columns.count > 1 {
+                            let date = try columns[1].text() // Adjust index as per column layout
+                            let activity = try columns[2].text()
+                            self.schedules[date] = ["activity": activity]
+                        }
+                    }
 
-            for row in rows {
-                let columns: Elements = try row.select("td")
-                if columns.count > 1 {
-                    let date = try columns[1].text() // Adjust index as per column layout
-                    let activity = try columns[2].text()
-                    schedules[date] = ["activity": activity]
+                    // Log the parsed schedules
+                    for (date, details) in self.schedules {
+                        print("\(date): \(details)")
+                    }
+                } catch Exception.Error(let type, let message) {
+                    print("Error: \(type) - \(message)")
+                } catch {
+                    print("Error: \(error.localizedDescription)")
                 }
+            } else {
+                print("Failed to retrieve HTML content: \(error?.localizedDescription ?? "Unknown error")")
             }
-
-            // Log the parsed schedules
-            for (date, details) in schedules {
-                print("\(date): \(details)")
-            }
-        } catch Exception.Error(let type, let message) {
-            print("Error: \(type) - \(message)")
-        } catch {
-            print("Error: \(error.localizedDescription)")
         }
     }
+
 }
 
 
