@@ -16,24 +16,43 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <wkWebView contentMode="scaleToFill" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
-                                <rect key="frame" x="16" y="59" width="361" height="691"/>
+                            <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
+                                <rect key="frame" x="10" y="64" width="373" height="703"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <wkWebViewConfiguration key="configuration">
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
                                     <wkPreferences key="preferences"/>
                                 </wkWebViewConfiguration>
                             </wkWebView>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="Gho-op-DnI">
+                                <rect key="frame" x="10" y="777" width="373" height="32"/>
+                                <segments>
+                                    <segment title="iflight"/>
+                                    <segment title="CrewLink"/>
+                                    <segment title="" image="square.and.arrow.down.fill" catalog="system"/>
+                                    <segment title="" image="calendar.badge.clock" catalog="system"/>
+                                    <segment title="" image="list.bullet.circle.fill" catalog="system"/>
+                                </segments>
+                            </segmentedControl>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leadingMargin" id="S3l-VD-GF5"/>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="lfJ-1S-fqZ"/>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="trailing" secondItem="8bC-Xf-vdC" secondAttribute="trailingMargin" id="nve-gy-n2K"/>
+                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="1Zr-aJ-sh9"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Edd-Om-C6I" secondAttribute="trailing" constant="10" id="2ef-pP-2OM"/>
+                            <constraint firstItem="Gho-op-DnI" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="JJ5-DN-xY7"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="Gho-op-DnI" secondAttribute="bottom" constant="10" id="MUU-TQ-m0Y"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Gho-op-DnI" secondAttribute="trailing" constant="10" id="Own-zw-XqW"/>
+                            <constraint firstItem="Gho-op-DnI" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="VgS-i9-CVk"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="Gho-op-DnI" secondAttribute="bottom" constant="10" id="XNh-Dn-hAV"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Gho-op-DnI" secondAttribute="trailing" constant="10" id="c9k-rq-j6L"/>
+                            <constraint firstItem="Edd-Om-C6I" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="fld-gJ-8zb"/>
+                            <constraint firstItem="Gho-op-DnI" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="mIC-lD-ef7"/>
+                            <constraint firstItem="Gho-op-DnI" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="yES-xc-jXw"/>
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="segmentedControl" destination="Gho-op-DnI" id="a7g-fH-ivF"/>
                         <outlet property="webView" destination="Edd-Om-C6I" id="PHc-k9-lj8"/>
                     </connections>
                 </viewController>
@@ -43,6 +62,9 @@
         </scene>
     </scenes>
     <resources>
+        <image name="calendar.badge.clock" catalog="system" width="128" height="109"/>
+        <image name="list.bullet.circle.fill" catalog="system" width="128" height="123"/>
+        <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
