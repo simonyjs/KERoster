@@ -7,11 +7,13 @@
 
 import UIKit
 import WebKit
+import SwiftSoup
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
-    var segmentedControl: UISegmentedControl!
-
+    @IBOutlet weak var segmentedControl: UISegmentedControl!
+    var schedules: [String: [String: String]] = [:]
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -22,66 +24,26 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         // 초기 URL 로드
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
         
-        // WebView에 Auto Layout 적용
-        setupWebViewConstraints()
-        
-        // 세그먼트 컨트롤 설정
-        setupSegmentedControl()
-    }
-    
-    // WebView Auto Layout 설정
-    func setupWebViewConstraints() {
-        webView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Safe Area 내에서 마진을 설정하여 웹뷰가 꽉 차도록 함
-        NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            webView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            webView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60) // 세그먼트 컨트롤을 위해 웹뷰 아래에 공간을 남김
-        ])
-    }
-
-    // 세그먼트 컨트롤 Auto Layout 설정
-    func setupSegmentedControl() {
-        // 세그먼트 컨트롤 초기화
-        segmentedControl = UISegmentedControl(items: ["iflight", "CrewLink", "Option 3", "Option 4"])
-        segmentedControl.selectedSegmentIndex = 0
-        segmentedControl.translatesAutoresizingMaskIntoConstraints = false
-        segmentedControl.backgroundColor = .white
-        segmentedControl.selectedSegmentTintColor = .systemBlue
+        // 세그먼트 컨트롤 초기 설정
         segmentedControl.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
-        view.addSubview(segmentedControl)
-        
-        // 세그먼트 컨트롤 Auto Layout 설정
-        NSLayoutConstraint.activate([
-            segmentedControl.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            segmentedControl.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            segmentedControl.heightAnchor.constraint(equalToConstant: 40)
-        ])
     }
 
-    // 세그먼트 변경 시 호출되는 메서드
+    // 세그먼트 변경 이벤트 처리
     @objc func segmentChanged(_ sender: UISegmentedControl) {
         switch sender.selectedSegmentIndex {
         case 0:
-            // "iflight" 버튼이 클릭된 경우
             loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/getMainPage")
         case 1:
-            // "Crewlink" 버튼이 클릭된 경우
             loadURL("https://crewlink.koreanair.com/")
-            // 필요에 따라 다른 URL 로 이동
-        case 2:
-            // "Option 3" 버튼이 클릭된 경우
-            print("Option 3 selected")
-            // 필요에 따라 다른 URL 로 이동
-        case 3:
-            // "Option 4" 버튼이 클릭된 경우
+        case 2:// Import schedule
+            importSchedule()
+            print(schedules)
+        case 3:// View schedule
             print("Option 4 selected")
-            // 필요에 따라 다른 URL 로 이동
+        case 4:// View Duty
+            print("Option 5 selected")
         default:
-            break
+            print("Invalid selection")
         }
     }
 
@@ -106,7 +68,40 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.load(navigationAction.request)
         return nil
     }
+    // 스케줄을 가져오는 함수 지정
+    func importSchedule() {
+        guard let filePath = Bundle.main.path(forResource: "generateCwpRosterReport", ofType: "html"),
+              let htmlContent = try? String(contentsOfFile: filePath) else {
+            print("Error loading HTML file.")
+            return
+        }
+
+        do {
+            let doc: Document = try SwiftSoup.parse(htmlContent)
+            let rows: Elements = try doc.select("tr")
+            schedules.removeAll() // Clear previous schedules if any
+
+            for row in rows {
+                let columns: Elements = try row.select("td")
+                if columns.count > 1 {
+                    let date = try columns[1].text() // Adjust index as per column layout
+                    let activity = try columns[2].text()
+                    schedules[date] = ["activity": activity]
+                }
+            }
+
+            // Log the parsed schedules
+            for (date, details) in schedules {
+                print("\(date): \(details)")
+            }
+        } catch Exception.Error(let type, let message) {
+            print("Error: \(type) - \(message)")
+        } catch {
+            print("Error: \(error.localizedDescription)")
+        }
+    }
 }
+
 
 
 
