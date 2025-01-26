@@ -13,6 +13,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
     @IBOutlet weak var segmentedControl: UISegmentedControl!
     var schedules: [String: [String: String]] = [:]
+    @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,8 +37,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         case 1:
             loadURL("https://crewlink.koreanair.com/")
         case 2:// Import schedule
-            importSchedule()
             print(schedules)
+            importSchedule()
         case 3:// View schedule
             print("Option 4 selected")
         case 4:// View Duty
@@ -87,8 +88,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         }
                     }
 
-                    // Log the parsed schedules
-                    for (date, details) in self.schedules {
+                    // Log the parsed schedules in date order
+                    let sortedSchedules = self.schedules.sorted { $0.key < $1.key }
+                    for (date, details) in sortedSchedules {
                         print("\(date): \(details)")
                     }
                 } catch Exception.Error(let type, let message) {
@@ -102,9 +104,37 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+
+
+    // 스케줄 추가 메서드
+    func addScheduleToStackView(date: String, activity: String) {
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+
+        let dateLabel = UILabel()
+        dateLabel.text = date
+        dateLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let activityLabel = UILabel()
+        activityLabel.text = activity
+        activityLabel.font = UIFont.systemFont(ofSize: 14)
+        activityLabel.textColor = .gray
+        activityLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        containerView.addSubview(dateLabel)
+        containerView.addSubview(activityLabel)
+
+        NSLayoutConstraint.activate([
+            dateLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            dateLabel.topAnchor.constraint(equalTo: containerView.topAnchor),
+
+            activityLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            activityLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 4),
+            activityLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+        ])
+
+        scheduleStackView.addArrangedSubview(containerView)
+    }
+
 }
-
-
-
-
-
