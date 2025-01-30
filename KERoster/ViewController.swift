@@ -11,64 +11,70 @@ import SwiftSoup
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
-    @IBOutlet weak var segmentedControl: UISegmentedControl!
     var schedules: [String: [String: String]] = [:]
+    var toolbar: UIToolbar!
     @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    // 첫 번째 UIBarButtonItem을 IBAction으로 연결
+    @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
+        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
+    }
+    // 두 번째 UIBarButtonItem을 IBAction으로 연결
+    @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
+        loadURL("https://crewlink.koreanair.com/")
+    }
+    // 세 번째 UIBarButtonItem을 IBAction으로 연결
+    @IBAction func ImportButtonTapped(_ sender: UIBarButtonItem) {
+        importSchedule()
+        print(schedules)
+    }
+    // 네 번째 UIBarButtonItem을 IBAction으로 연결
+    @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
+        print("ViewList")
+    }
+    // 다섯 번째 UIBarButtonItem을 IBAction으로 연결
+    @IBAction func PrintButtonTapped(_ sender: UIBarButtonItem) {
+        print("Print")
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
         
         // WebView delegate 설정
         webView.navigationDelegate = self
         webView.uiDelegate = self
         
-        // 초기 URL 로드
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
-        
-        // 세그먼트 컨트롤 초기 설정
-        segmentedControl.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
     }
-
-    // 세그먼트 변경 이벤트 처리
-    @objc func segmentChanged(_ sender: UISegmentedControl) {
-        switch sender.selectedSegmentIndex {
-        case 0:
-            loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/getMainPage")
-        case 1:
-            loadURL("https://crewlink.koreanair.com/")
-        case 2:// Import schedule
-            print(schedules)
-            importSchedule()
-        case 3:// View schedule
-            print("Option 4 selected")
-        case 4:// View Duty
-            print("Option 5 selected")
-        default:
-            print("Invalid selection")
+    // 링크 클릭 시 현재 WebView에서 열리도록 설정
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        if navigationAction.targetFrame == nil {
+            // 새 창을 열려고 하면 현재 웹뷰에서 로드
+            webView.load(navigationAction.request)
+            decisionHandler(.cancel)
+        } else {
+            decisionHandler(.allow)
         }
     }
 
-    // 주어진 URL을 웹뷰에 로드하는 함수
+    // 새 창 열기 방지 및 현재 WebView에서 열도록 설정
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if let url = navigationAction.request.url {
+            webView.load(URLRequest(url: url))
+        }
+        return nil
+    }
+
+    // URL을 WebView에 로드하는 함수
     func loadURL(_ urlString: String) {
+        print("loadURL 호출됨: \(urlString)") // 디버깅용 로그
         if let url = URL(string: urlString) {
             let request = URLRequest(url: url)
             webView.load(request)
+        } else {
+            print("잘못된 URL 형식: \(urlString)")
         }
     }
 
-    // 링크 클릭 시 현재 WebView에서 열리도록 설정
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if navigationAction.navigationType == .linkActivated {
-            print("클릭된 URL: \(navigationAction.request.url?.absoluteString ?? "알 수 없음")")
-        }
-        decisionHandler(.allow)
-    }
 
-    // 새 창 열기 방지
-    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        webView.load(navigationAction.request)
-        return nil
-    }
     // 스케줄을 가져오는 함수 지정
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { [weak self] (html: Any?, error: Error?) in

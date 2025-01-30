@@ -16,51 +16,64 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="zTe-uz-D8i">
-                                <rect key="frame" x="10" y="64" width="378" height="705"/>
-                            </stackView>
                             <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
-                                <rect key="frame" x="10" y="64" width="373" height="703"/>
+                                <rect key="frame" x="10" y="64" width="373" height="705"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <wkWebViewConfiguration key="configuration">
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
                                     <wkPreferences key="preferences"/>
                                 </wkWebViewConfiguration>
                             </wkWebView>
-                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="Gho-op-DnI">
-                                <rect key="frame" x="10" y="777" width="373" height="32"/>
-                                <segments>
-                                    <segment title="iflight"/>
-                                    <segment title="CrewLink"/>
-                                    <segment title="" image="square.and.arrow.down.fill" catalog="system"/>
-                                    <segment title="" image="calendar.badge.clock" catalog="system"/>
-                                    <segment title="" image="list.bullet.circle.fill" catalog="system"/>
-                                </segments>
-                            </segmentedControl>
+                            <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="dlZ-d4-AKS">
+                                <rect key="frame" x="10" y="779" width="393" height="49"/>
+                                <items>
+                                    <barButtonItem title="iflight" id="2qu-vK-mkf">
+                                        <connections>
+                                            <action selector="iflightButtonTapped:" destination="BYZ-38-t0r" id="ZBt-jB-oHe"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="TWB-gv-DJj"/>
+                                    <barButtonItem title="CrewLink" id="Kdo-a4-aLH">
+                                        <connections>
+                                            <action selector="CrewLinkButtonTapped:" destination="BYZ-38-t0r" id="7vT-16-OfR"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="EKF-Zo-JdT"/>
+                                    <barButtonItem title="Import" landscapeImage="square.and.arrow.down" catalog="system" id="jWD-ew-bUh">
+                                        <connections>
+                                            <action selector="ImportButtonTapped:" destination="BYZ-38-t0r" id="0t1-84-fpw"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="Jbr-a0-gyY"/>
+                                    <barButtonItem title="Schedule" image="calendar.badge.plus" catalog="system" id="JJm-mh-a0V">
+                                        <connections>
+                                            <action selector="ViewListButtonTapped:" destination="BYZ-38-t0r" id="SBt-sB-TJa"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="QlY-z6-P3R"/>
+                                    <barButtonItem title="Item" image="calendar" catalog="system" id="jz4-iE-fGf">
+                                        <connections>
+                                            <action selector="PrintButtonTapped:" destination="BYZ-38-t0r" id="CqG-l3-zSR"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="fQL-Fu-Uxb"/>
+                                </items>
+                            </toolbar>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="1Zr-aJ-sh9"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Edd-Om-C6I" secondAttribute="trailing" constant="10" id="2ef-pP-2OM"/>
-                            <constraint firstItem="Gho-op-DnI" firstAttribute="top" secondItem="zTe-uz-D8i" secondAttribute="bottom" constant="8" symbolic="YES" id="53y-o8-ISu"/>
-                            <constraint firstItem="Gho-op-DnI" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="JJ5-DN-xY7"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="Gho-op-DnI" secondAttribute="bottom" constant="10" id="MUU-TQ-m0Y"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Gho-op-DnI" secondAttribute="trailing" constant="10" id="Own-zw-XqW"/>
-                            <constraint firstItem="Gho-op-DnI" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="VgS-i9-CVk"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="Gho-op-DnI" secondAttribute="bottom" constant="10" id="XNh-Dn-hAV"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="zTe-uz-D8i" secondAttribute="trailing" constant="5" id="Ybn-S0-wq3"/>
-                            <constraint firstItem="zTe-uz-D8i" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="b8B-hM-OCI"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Gho-op-DnI" secondAttribute="trailing" constant="10" id="c9k-rq-j6L"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="EN8-4Y-cWa"/>
+                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="ODq-bt-F3c"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" constant="10" id="PgR-Xz-yKv"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="a7K-AA-OYt"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" constant="10" id="b4U-wT-Y0Y"/>
                             <constraint firstItem="Edd-Om-C6I" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="fld-gJ-8zb"/>
-                            <constraint firstItem="zTe-uz-D8i" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="gve-Nz-6co"/>
-                            <constraint firstItem="Gho-op-DnI" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="mIC-lD-ef7"/>
-                            <constraint firstItem="Gho-op-DnI" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="yES-xc-jXw"/>
                         </constraints>
                     </view>
                     <connections>
-                        <outlet property="scheduleStackView" destination="Edd-Om-C6I" id="e07-U0-s49"/>
-                        <outlet property="segmentedControl" destination="Gho-op-DnI" id="a7g-fH-ivF"/>
                         <outlet property="webView" destination="Edd-Om-C6I" id="PHc-k9-lj8"/>
                     </connections>
                 </viewController>
@@ -70,9 +83,9 @@
         </scene>
     </scenes>
     <resources>
-        <image name="calendar.badge.clock" catalog="system" width="128" height="109"/>
-        <image name="list.bullet.circle.fill" catalog="system" width="128" height="123"/>
-        <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
+        <image name="calendar" catalog="system" width="128" height="107"/>
+        <image name="calendar.badge.plus" catalog="system" width="128" height="109"/>
+        <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
