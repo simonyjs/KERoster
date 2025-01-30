@@ -137,13 +137,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 var lastDutyReport: String = ""
                 var lastWorkType: String = ""
 
-                // ✅ 스케줄 소유자 & 총 비행 시간 정보 추출
-                if rows.size() > 2 {
-                    let ownerColumns = try rows.get(2).select("td")
-                    schedulerOwner = ownerColumns.getOrNil(8)
-                    scheduleTotalTime = ownerColumns.getOrNil(11)
-                }
-
                 // ✅ 시간 및 옵션 값을 분리하는 함수 (예: "01:28(+1)" -> "01:28" / "(+1)")
                 func extractTimeAndOption(_ fullString: String) -> (String, String) {
                     let pattern = #"(\d{2}:\d{2})(\(\+\d+\))?"#
@@ -253,7 +246,48 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         scheduleEntry["DutyHours"] = dutyHours
 
                         extractedSchedules[date] = scheduleEntry
+                        
+                        // ✅ "FH :"과 "DH :"이 포함된 정확한 <td> 요소를 찾기
+                        for row in rows {
+                            let columns = try row.select("td")
 
+                            for column in columns {
+                                let text = try column.text().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                                // ✅ 스케줄 소유자 찾기 (이름 + 직원번호 + 직급 정보 포함)
+                                if text.contains("|") && text.contains("ICN") {  // "ICN"과 "|" 포함한 항목이 소유자 정보일 가능성 높음
+                                    schedulerOwner = text
+                                }
+
+                                // ✅ 비행 시간 및 근무 시간 추출 (정규식 사용)
+                                if text.contains("FH :") || text.contains("DH :") {
+                                    // ✅ 정규식 패턴 수정 (FH : XX:XX | DH : XX:XX 형식)
+                                    let regexPattern = #"FH\s*:\s*(\d{1,2}:\d{2})\s*\|\s*DH\s*:\s*(\d{1,2}:\d{2})"#
+
+                                    do {
+                                        let regex = try NSRegularExpression(pattern: regexPattern, options: [])
+                                        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
+
+                                        if let match = matches.first {
+                                            // ✅ 정규식 그룹에서 정확한 FH 및 DH 값을 추출
+                                            if let fhRange = Range(match.range(at: 1), in: text),
+                                               let dhRange = Range(match.range(at: 2), in: text) {
+                                                let flightHours = String(text[fhRange])
+                                                let dutyHours = String(text[dhRange])
+                                                scheduleTotalTime = "FH : \(flightHours) | DH : \(dutyHours)"  // ✅ 최종 값 설정
+                                                break  // ✅ 값을 찾으면 반복 종료
+                                            }
+                                        }
+                                    } catch {
+                                        print("❌ 정규식 오류: \(error)")
+                                    }
+                                }
+                            }
+                        }
+
+
+
+                        
                         // ✅ 디버깅용 로그 추가
                         print("📌 저장됨 - Date: \(date), Activity: \(activity), Item: \(item), WorkType: \(workType), DutyReport: \(dutyReport), DepAp: \(depAp), DepStnTime: \(depStnTime), DepStnTimeOpt: \(depStnTimeOpt),ArrAp: \(arrAp), ArrStnTime: \(arrStnTime), ArrStnTimeOpt: \(arrStnTimeOpt), DutyDebrief: \(dutyDebrief), FlyingHours: \(flyingHours), DutyHours: \(dutyHours)")
                     }
