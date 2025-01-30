@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Tbz-gH-Bwq">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
@@ -8,7 +8,7 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--View Controller-->
+        <!--KERoster-->
         <scene sceneID="tne-QT-ifu">
             <objects>
                 <viewController id="BYZ-38-t0r" customClass="ViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
-                                <rect key="frame" x="10" y="64" width="373" height="705"/>
+                                <rect key="frame" x="0.0" y="103" width="393" height="671"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <wkWebViewConfiguration key="configuration">
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
@@ -25,67 +25,125 @@
                                 </wkWebViewConfiguration>
                             </wkWebView>
                             <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="dlZ-d4-AKS">
-                                <rect key="frame" x="10" y="779" width="393" height="49"/>
+                                <rect key="frame" x="0.0" y="774" width="393" height="44"/>
                                 <items>
-                                    <barButtonItem title="iflight" id="2qu-vK-mkf">
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="Tx4-pg-Fii"/>
+                                    <barButtonItem title="iflight" image="airplane" catalog="system" id="2qu-vK-mkf">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="iflightButtonTapped:" destination="BYZ-38-t0r" id="ZBt-jB-oHe"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="TWB-gv-DJj"/>
-                                    <barButtonItem title="CrewLink" id="Kdo-a4-aLH">
+                                    <barButtonItem title="CrewLink" image="doc.text.fill" catalog="system" id="Kdo-a4-aLH">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="CrewLinkButtonTapped:" destination="BYZ-38-t0r" id="7vT-16-OfR"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="EKF-Zo-JdT"/>
-                                    <barButtonItem title="Import" landscapeImage="square.and.arrow.down" catalog="system" id="jWD-ew-bUh">
+                                    <barButtonItem title="Import" image="square.and.arrow.down.fill" catalog="system" landscapeImage="square.and.arrow.down" id="jWD-ew-bUh">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="ImportButtonTapped:" destination="BYZ-38-t0r" id="0t1-84-fpw"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Jbr-a0-gyY"/>
                                     <barButtonItem title="Schedule" image="calendar.badge.plus" catalog="system" id="JJm-mh-a0V">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="ViewListButtonTapped:" destination="BYZ-38-t0r" id="SBt-sB-TJa"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="QlY-z6-P3R"/>
                                     <barButtonItem title="Item" image="calendar" catalog="system" id="jz4-iE-fGf">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="PrintButtonTapped:" destination="BYZ-38-t0r" id="CqG-l3-zSR"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="fQL-Fu-Uxb"/>
                                 </items>
+                                <color key="barTintColor" red="0.0" green="0.32852089410000002" blue="0.57488495110000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                             </toolbar>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="1Zr-aJ-sh9"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Edd-Om-C6I" secondAttribute="trailing" constant="10" id="2ef-pP-2OM"/>
-                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" constant="10" id="EN8-4Y-cWa"/>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="5" id="ODq-bt-F3c"/>
-                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" constant="10" id="PgR-Xz-yKv"/>
-                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="a7K-AA-OYt"/>
-                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="bottom" secondItem="6Tk-OE-BBY" secondAttribute="bottom" constant="10" id="b4U-wT-Y0Y"/>
-                            <constraint firstItem="Edd-Om-C6I" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="10" id="fld-gJ-8zb"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="2a2-vo-gAC"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="dlZ-d4-AKS" secondAttribute="trailing" id="B7E-c5-QJs"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="Edd-Om-C6I" secondAttribute="trailing" id="Kk8-FL-2gL"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="dlZ-d4-AKS" secondAttribute="bottom" id="YVT-0q-6xK"/>
+                            <constraint firstItem="Edd-Om-C6I" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="d4W-1F-dcP"/>
+                            <constraint firstItem="dlZ-d4-AKS" firstAttribute="top" secondItem="Edd-Om-C6I" secondAttribute="bottom" id="hJi-ps-nPg"/>
+                            <constraint firstItem="Edd-Om-C6I" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="nPD-e4-FnX"/>
                         </constraints>
                     </view>
+                    <navigationItem key="navigationItem" title="KERoster" id="de2-gr-ZOX"/>
                     <connections>
                         <outlet property="webView" destination="Edd-Om-C6I" id="PHc-k9-lj8"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="17.557251908396946" y="-2.1126760563380285"/>
+            <point key="canvasLocation" x="944.27480916030527" y="-2.1126760563380285"/>
+        </scene>
+        <!--View List View Controller-->
+        <scene sceneID="ekY-ku-Pro">
+            <objects>
+                <viewController storyboardIdentifier="ViewListViewController" id="KlB-lz-WGm" customClass="ViewListViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="npz-Al-ZBx">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="03f-kr-d8m">
+                                <rect key="frame" x="10" y="59" width="373" height="769"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                            </tableView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="FJj-Fg-SLd"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="top" secondItem="FJj-Fg-SLd" secondAttribute="top" id="A9T-9b-jip"/>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="leading" secondItem="FJj-Fg-SLd" secondAttribute="leading" constant="10" id="Swj-qN-7H4"/>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="bottom" secondItem="FJj-Fg-SLd" secondAttribute="bottom" constant="10" id="mFN-tI-OEf"/>
+                            <constraint firstItem="FJj-Fg-SLd" firstAttribute="trailing" secondItem="03f-kr-d8m" secondAttribute="trailing" constant="10" id="uPi-pE-LTm"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="tableView" destination="03f-kr-d8m" id="13P-eA-siF"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Lkr-eG-n51" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1799.2366412213739" y="-1.4084507042253522"/>
+        </scene>
+        <!--Navigation Controller-->
+        <scene sceneID="QHP-GO-JEp">
+            <objects>
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="Tbz-gH-Bwq" sceneMemberID="viewController">
+                    <toolbarItems/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="HAP-wd-ZIi">
+                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <nil name="viewControllers"/>
+                    <connections>
+                        <segue destination="BYZ-38-t0r" kind="relationship" relationship="rootViewController" id="539-iB-Si4"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="o66-b1-P2C" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="135" y="-2"/>
         </scene>
     </scenes>
     <resources>
+        <image name="airplane" catalog="system" width="128" height="115"/>
         <image name="calendar" catalog="system" width="128" height="107"/>
         <image name="calendar.badge.plus" catalog="system" width="128" height="109"/>
+        <image name="doc.text.fill" catalog="system" width="115" height="128"/>
         <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
+        <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

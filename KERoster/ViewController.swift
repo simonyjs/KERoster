@@ -14,6 +14,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     var schedules: [String: [String: String]] = [:]
     var toolbar: UIToolbar!
     @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
+    
     // 첫 번째 UIBarButtonItem을 IBAction으로 연결
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
@@ -29,12 +30,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     // 네 번째 UIBarButtonItem을 IBAction으로 연결
     @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
-        print("ViewList")
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let viewListVC = storyboard.instantiateViewController(withIdentifier: "ViewListViewController") as? ViewListViewController {
+            viewListVC.schedules = schedules // 스케줄 데이터 전달
+            navigationController?.pushViewController(viewListVC, animated: true)
+        }
     }
+
     // 다섯 번째 UIBarButtonItem을 IBAction으로 연결
     @IBAction func PrintButtonTapped(_ sender: UIBarButtonItem) {
         print("Print")
     }
+    
+    
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
@@ -43,7 +52,32 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.uiDelegate = self
         
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
+        
     }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // 네비게이션 바 스타일 변경
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(named: "Ocean")// Ocean
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.white] // 타이틀 색상
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
+
+        // ✅ 특정 뷰 컨트롤러에서 네비게이션 바 스타일 직접 적용
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.compactAppearance = appearance
+        navigationController?.navigationBar.tintColor = .white // 백버튼 & 아이콘 색상
+
+        // ✅ 네비게이션 바가 투명해지는 것을 방지
+        navigationController?.navigationBar.isTranslucent = false
+    }
+
+
+    
+    
     // 링크 클릭 시 현재 WebView에서 열리도록 설정
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if navigationAction.targetFrame == nil {
