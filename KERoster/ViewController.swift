@@ -9,6 +9,13 @@ import UIKit
 import WebKit
 import SwiftSoup
 
+// ✅ SwiftSoup Elements 확장 (배열 인덱스 초과 방지)
+extension Elements {
+    func getOrNil(_ index: Int) -> String {
+        return (self.size() > index) ? (try? self.get(index).text().trimmingCharacters(in: .whitespacesAndNewlines)) ?? "N/A" : "N/A"
+    }
+}
+
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
     var schedules: [String: [String: String]] = [:]
@@ -111,38 +118,171 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
     // 스케줄을 가져오는 함수 지정
     func importSchedule() {
-        webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { [weak self] (html: Any?, error: Error?) in
-            guard let self = self else { return }
-            if let htmlContent = html as? String {
-                do {
-                    let doc: Document = try SwiftSoup.parse(htmlContent)
-                    let rows: Elements = try doc.select("tr")
-                    self.schedules.removeAll() // Clear previous schedules if any
+        webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
+            guard let htmlString = html as? String else {
+                print("HTML 가져오기 실패")
+                return
+            }
 
-                    for row in rows {
-                        let columns: Elements = try row.select("td")
-                        if columns.count > 1 {
-                            let date = try columns[1].text() // Adjust index as per column layout
-                            let activity = try columns[2].text()
-                            self.schedules[date] = ["activity": activity]
+            do {
+                // ✅ HTML 파싱
+                let doc: Document = try SwiftSoup.parse(htmlString)
+                let rows: Elements = try doc.select("tr") // 모든 tr 행 선택
+
+                var extractedSchedules: [String: [String: String]] = [:]
+                var schedulerOwner: String = "Unknown"
+                var scheduleTotalTime: String = "Unknown"
+                var lastDate: String = "Unknown"
+                var lastActivity: String = ""
+                var lastDutyReport: String = ""
+                var lastWorkType: String = ""
+
+                // ✅ 스케줄 소유자 & 총 비행 시간 정보 추출
+                if rows.size() > 2 {
+                    let ownerColumns = try rows.get(2).select("td")
+                    schedulerOwner = ownerColumns.getOrNil(8)
+                    scheduleTotalTime = ownerColumns.getOrNil(11)
+                }
+
+                // ✅ 시간 및 옵션 값을 분리하는 함수 (예: "01:28(+1)" -> "01:28" / "(+1)")
+                func extractTimeAndOption(_ fullString: String) -> (String, String) {
+                    let pattern = #"(\d{2}:\d{2})(\(\+\d+\))?"#
+                    if let regex = try? NSRegularExpression(pattern: pattern) {
+                        let range = NSRange(fullString.startIndex..., in: fullString)
+                        if let match = regex.firstMatch(in: fullString, options: [], range: range) {
+                            let time = match.range(at: 1).location != NSNotFound ?
+                                String(fullString[Range(match.range(at: 1), in: fullString)!]) : "N/A"
+                            let option = match.range(at: 2).location != NSNotFound ?
+                                String(fullString[Range(match.range(at: 2), in: fullString)!]) : ""
+                            return (time, option)
                         }
                     }
-
-                    // Log the parsed schedules in date order
-                    let sortedSchedules = self.schedules.sorted { $0.key < $1.key }
-                    for (date, details) in sortedSchedules {
-                        print("\(date): \(details)")
-                    }
-                } catch Exception.Error(let type, let message) {
-                    print("Error: \(type) - \(message)")
-                } catch {
-                    print("Error: \(error.localizedDescription)")
+                    return ("N/A", "")
                 }
-            } else {
-                print("Failed to retrieve HTML content: \(error?.localizedDescription ?? "Unknown error")")
+
+                // ✅ 공항 코드와 시간을 정확히 분리하는 함수
+                func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
+                    let parts = fullString.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+                    let airport = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+                    let fullTimeString = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                    let (time, option) = extractTimeAndOption(fullTimeString)
+
+                    if airport.count != 3 || !airport.allSatisfy({ $0.isLetter }) {
+                        return ("N/A", time, option)
+                    }
+                    return (airport, time, option)
+                }
+
+                // ✅ 스케줄 데이터 추출
+                for (_, row) in rows.enumerated() {
+                    let columns: Elements = try row.select("td")
+
+                    if columns.size() > 10, !(try columns[1].text().contains("Date")) {
+                        var date = columns.getOrNil(1)
+                        var activity = columns.getOrNil(2)
+                        var item = columns.getOrNil(4)
+                        var workType = columns.getOrNil(6)
+                        var dutyReport = columns.getOrNil(3)
+                        let depStationTimeFull = columns.getOrNil(8)
+                        let arrStationTimeFull = columns.getOrNil(9)
+                        let dutyDebrief = columns.getOrNil(11)
+                        let flyingHours = columns.getOrNil(12)
+                        let dutyHours = columns.getOrNil(13)
+
+                        // ✅ 날짜가 비어있으면 바로 위 행의 날짜 사용
+                        if date.isEmpty || date == "N/A" {
+                            if lastDate == "Unknown" { continue }
+                            date = lastDate
+                        } else {
+                            lastDate = date
+                            lastActivity = ""
+                            lastDutyReport = ""
+                            lastWorkType = ""
+                        }
+
+                        // ✅ Activity가 비어있으면 마지막 Activity 사용
+                        if activity.isEmpty || activity == "N/A" {
+                            activity = lastActivity
+                        } else {
+                            lastActivity = activity
+                        }
+
+                        // ✅ DutyReport가 비어있으면 마지막 DutyReport 사용
+                        if dutyReport.isEmpty || dutyReport == "N/A" {
+                            dutyReport = lastDutyReport
+                        } else {
+                            lastDutyReport = dutyReport
+                        }
+
+                        // ✅ WorkType이 비어있으면 마지막 WorkType 사용
+                        if workType.isEmpty || workType == "N/A" {
+                            workType = lastWorkType
+                        } else {
+                            lastWorkType = workType
+                        }
+
+                        // ✅ 출발/도착 공항 코드 및 시간 + 옵션 분리
+                        let (depAp, depStnTime, depStnTimeOpt) = extractAirportAndTime(depStationTimeFull)
+                        let (arrAp, arrStnTime, arrStnTimeOpt) = extractAirportAndTime(arrStationTimeFull)
+
+                        // ✅ DutyReport가 있어도 Item을 유지하도록 변경
+                        if item.isEmpty || item == "N/A" {
+                            item = ""
+                        }
+
+                        // ✅ 모든 값이 비어있는 경우 → 저장하지 않음
+                        let values = [activity, item, workType, dutyReport, depStnTime, arrStnTime, dutyDebrief, flyingHours, dutyHours]
+                        if values.allSatisfy({ $0.isEmpty || $0 == "N/A" }) {
+                            continue
+                        }
+
+                        // ✅ 기존 값과 병합하여 저장 (같은 날짜가 있으면 덮어쓰지 않고 추가)
+                        var scheduleEntry = extractedSchedules[date] ?? [:]
+                        scheduleEntry["Activity"] = activity
+                        scheduleEntry["Item"] = item
+                        scheduleEntry["WorkType"] = workType
+                        scheduleEntry["DutyReport"] = dutyReport
+                        scheduleEntry["DepAp"] = depAp
+                        scheduleEntry["DepStnTime"] = depStnTime.isEmpty ? "N/A" : depStnTime
+                        scheduleEntry["DepStnTimeOpt"] = depStnTimeOpt
+                        scheduleEntry["ArrAp"] = arrAp
+                        scheduleEntry["ArrStnTime"] = arrStnTime.isEmpty ? "N/A" : arrStnTime
+                        scheduleEntry["ArrStnTimeOpt"] = arrStnTimeOpt
+                        scheduleEntry["DutyDebrief"] = dutyDebrief
+                        scheduleEntry["FlyingHours"] = flyingHours
+                        scheduleEntry["DutyHours"] = dutyHours
+
+                        extractedSchedules[date] = scheduleEntry
+
+                        // ✅ 디버깅용 로그 추가
+                        print("📌 저장됨 - Date: \(date), Activity: \(activity), Item: \(item), WorkType: \(workType), DutyReport: \(dutyReport), DepAp: \(depAp), DepStnTime: \(depStnTime), DepStnTimeOpt: \(depStnTimeOpt),ArrAp: \(arrAp), ArrStnTime: \(arrStnTime), ArrStnTimeOpt: \(arrStnTimeOpt), DutyDebrief: \(dutyDebrief), FlyingHours: \(flyingHours), DutyHours: \(dutyHours)")
+                    }
+                }
+
+                // ✅ 메인 스레드에서 UI 업데이트
+                DispatchQueue.main.async {
+                    self.schedules = extractedSchedules
+                    let schedulerOwnerVariable = schedulerOwner
+                    let scheduleTotalTimeVariable = scheduleTotalTime
+                    print("📌 스케줄 소유자: \(schedulerOwnerVariable)")
+                    print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTimeVariable)")
+                }
+
+            } catch {
+                print("HTML 파싱 오류: \(error)")
             }
         }
     }
+
+
+
+
+
+
+
+
+
+
 
 
 

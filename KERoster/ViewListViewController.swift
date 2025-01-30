@@ -16,16 +16,25 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
         self.title = "Schedule List"
         view.backgroundColor = .white
         
-        // 날짜 정렬
+        // ✅ 데이터 확인용 로그 출력
+        print("📌 전달된 schedules 데이터: \(schedules)")
+
+        // ✅ 날짜 정렬 (데이터가 비어있으면 테이블 뷰 업데이트 안 됨)
         sortedDates = schedules.keys.sorted()
         
-        // 테이블뷰 설정
+        // ✅ 테이블뷰 설정
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        tableView.reloadData() // ✅ 화면 갱신 시 테이블 뷰 업데이트
     }
     
     // MARK: - UITableViewDataSource
@@ -36,8 +45,23 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let date = sortedDates[indexPath.row]
-        let activity = schedules[date]?["activity"] ?? "정보 없음"
-        cell.textLabel?.text = "\(date): \(activity)"
+        
+        // ✅ Activity 가져오기 (없으면 "정보 없음")
+        let activity = schedules[date]?["Activity"] ?? "정보 없음"
+
+        // ✅ WorkType 가져오기
+        let workType = schedules[date]?["WorkType"] ?? ""
+        
+        // ✅ Item 가져오기 (WorkType이 "FLY" 또는 "TVL"인 경우만 표시)
+        let item = (workType == "FLY" || workType == "TVL") ? (schedules[date]?["Item"] ?? "") : ""
+
+        // ✅ 셀 텍스트 설정
+        if item.isEmpty {
+            cell.textLabel?.text = "\(date): \(activity)"
+        } else {
+            cell.textLabel?.text = "\(date): \(item)"
+        }
+
         return cell
     }
     
