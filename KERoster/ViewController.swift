@@ -116,7 +116,32 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+  /*
+    // ✅ HTML에서 스케줄 소유자 및 총 비행 시간(FH/DH)을 추출하는 함수 (위치 기반)
+    func findCrewTime(htmlString: String) -> (String, String) {
+        do {
+            let document = try SwiftSoup.parse(htmlString)
+            let allTdElements = try document.select("td") // 모든 <td> 요소 선택
 
+            // ✅ 위치 기반 인덱스 설정 (HTML 구조에 따라 조정 가능)
+            let schedulerOwnerIndex = 17 // (스케줄 소유자 위치)
+            let scheduleTotalTimeIndex = 20 // (총 비행 시간 및 근무 시간 위치)
+
+            let schedulerOwner = schedulerOwnerIndex < allTdElements.count ?
+                try allTdElements[schedulerOwnerIndex].text().trimmingCharacters(in: .whitespacesAndNewlines) : "N/A"
+
+            let scheduleTotalTime = scheduleTotalTimeIndex < allTdElements.count ?
+                try allTdElements[scheduleTotalTimeIndex].text().trimmingCharacters(in: .whitespacesAndNewlines) : "N/A"
+
+            print (schedulerOwner, scheduleTotalTime)
+            return (schedulerOwner, scheduleTotalTime)
+
+        } catch {
+            print("HTML 파싱 오류: \(error)")
+            return ("N/A", "N/A")
+        }
+    }
+*/
     // 스케줄을 가져오는 함수 지정
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
@@ -144,7 +169,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 var lastActivity: String = ""
                 var lastDutyReport: String = ""
                 var lastWorkType: String = ""
-
+                
+                // ✅ 스케줄 소유자 & 총 비행 시간 정보 추출
+                if rows.size() > 2 {
+                    if let ownerColumns = try? rows.get(2).select("td") {
+                        schedulerOwner = ownerColumns.getOrNil(8)
+                        scheduleTotalTime = ownerColumns.getOrNil(11)
+                        print ((schedulerOwner), (scheduleTotalTime))
+                    } else {
+                        print("⚠️ Failed to retrieve ownerColumns from rows")
+                    }
+                }
                 // ✅ 시간 및 옵션 값을 분리하는 함수 (예: "01:28(+1)" -> "01:28" / "(+1)")
                 func extractTimeAndOption(_ fullString: String) -> (String, String) {
                     let pattern = #"(\d{2}:\d{2})(\(\+\d+\))?"#
@@ -254,7 +289,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         scheduleEntry["DutyHours"] = dutyHours
 
                         extractedSchedules[date] = scheduleEntry
-                        
+
                         // ✅ "FH :"과 "DH :"이 포함된 정확한 <td> 요소를 찾기
                         for row in rows {
                             let columns = try row.select("td")
@@ -278,6 +313,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                                             let fh = match.range(at: 1).location != NSNotFound ? String(text[Range(match.range(at: 1), in: text)!]) : "00:00"
                                             let dh = match.range(at: 2).location != NSNotFound ? String(text[Range(match.range(at: 2), in: text)!]) : "00:00"
                                             scheduleTotalTime = "FH : \(fh) | DH : \(dh)"
+                                            print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTime)")
                                         }
                                     } catch {
                                         print("정규식 오류: \(error)")
@@ -306,10 +342,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 // ✅ 메인 스레드에서 UI 업데이트
                 DispatchQueue.main.async {
                     self.schedules = extractedSchedules
-                    let schedulerOwnerVariable = schedulerOwner
-                    let scheduleTotalTimeVariable = scheduleTotalTime
-                    print("📌 스케줄 소유자: \(schedulerOwnerVariable)")
-                    print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTimeVariable)")
+                    //let (schedulerOwner, scheduleTotalTime) = self.findCrewTime(htmlString: htmlString)
+                    print("📌 스케줄 소유자: \(schedulerOwner)")
+                    print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTime)")
                     self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
                 }
 
