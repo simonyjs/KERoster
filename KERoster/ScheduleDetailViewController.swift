@@ -9,9 +9,9 @@ import UIKit
 
 class ScheduleDetailViewController: UIViewController {
     
-    var scheduleDetails: [String: String] = [:] // 선택된 날짜의 스케줄 정보
+    var scheduleDetailsList: [[String: String]] = [] // ✅ 여러 개의 스케줄을 저장하도록 변경
     var selectedDate: String = ""
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -23,15 +23,35 @@ class ScheduleDetailViewController: UIViewController {
     
     func setupUI() {
         let dateLabel = createLabel(text: "📅 날짜: \(selectedDate)", fontSize: 20, isBold: true)
-        let activityLabel = createLabel(text: "✈️ 활동: \(scheduleDetails["Activity"] ?? "없음")")
-        let workTypeLabel = createLabel(text: "💼 근무 유형: \(scheduleDetails["WorkType"] ?? "없음")")
-        let itemLabel = createLabel(text: "🛫 항공편: \(scheduleDetails["Item"] ?? "없음")")
-        let depLabel = createLabel(text: "📍 출발지: \(scheduleDetails["DepAp"] ?? "없음") | \(scheduleDetails["DepStnTime"] ?? "없음")")
-        let arrLabel = createLabel(text: "📍 도착지: \(scheduleDetails["ArrAp"] ?? "없음") | \(scheduleDetails["ArrStnTime"] ?? "없음")")
-        let flyingHoursLabel = createLabel(text: "⏳ 비행 시간: \(scheduleDetails["FlyingHours"] ?? "없음")")
-        let dutyHoursLabel = createLabel(text: "⌛ 근무 시간: \(scheduleDetails["DutyHours"] ?? "없음")")
         
-        let stackView = UIStackView(arrangedSubviews: [dateLabel, activityLabel, workTypeLabel, itemLabel, depLabel, arrLabel, flyingHoursLabel, dutyHoursLabel])
+        // ✅ 여러 개의 스케줄을 순차적으로 출력
+        let scheduleTexts = scheduleDetailsList.map { details in
+            let seq = details["Seq"] ?? "1"
+            let activity = details["Activity"] ?? "없음"
+            let workType = details["WorkType"] ?? "없음"
+            let item = details["Item"] ?? "없음"
+            let depAp = details["DepAp"] ?? "없음"
+            let depTime = details["DepStnTime"] ?? "없음"
+            let arrAp = details["ArrAp"] ?? "없음"
+            let arrTime = details["ArrStnTime"] ?? "없음"
+            let flyingHours = details["FlyingHours"] ?? "없음"
+            let dutyHours = details["DutyHours"] ?? "없음"
+            
+            return """
+            🔢 순번: \(seq)
+            ✈️ 활동: \(activity)
+            💼 근무 유형: \(workType)
+            🛫 항공편: \(item)
+            📍 출발지: \(depAp) | \(depTime)
+            📍 도착지: \(arrAp) | \(arrTime)
+            ⏳ 비행 시간: \(flyingHours)
+            ⌛ 근무 시간: \(dutyHours)
+            """
+        }.joined(separator: "\n\n")
+
+        let scheduleLabel = createLabel(text: scheduleTexts, fontSize: 16, isBold: false)
+
+        let stackView = UIStackView(arrangedSubviews: [dateLabel, scheduleLabel])
         stackView.axis = .vertical
         stackView.alignment = .leading
         stackView.spacing = 10

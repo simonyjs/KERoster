@@ -11,7 +11,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     
     @IBOutlet weak var tableView: UITableView! // 스토리보드에서 연결한 테이블뷰
     
-    var schedules: [String: [String: String]] = [:] // 스케줄 데이터
+    var schedules: [String: [[String: String]]] = [:] // ✅ 날짜별 여러 개의 스케줄을 저장하도록 수정
     var sortedDates: [String] = [] // 정렬된 날짜 리스트
 
     override func viewDidLoad() {
@@ -49,6 +49,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     // MARK: - UITableViewDataSource
+    
+    // ✅ 각 날짜별 스케줄 개수만큼 행(Row) 개수를 설정
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return sortedDates.count
     }
@@ -57,37 +59,45 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let date = sortedDates[indexPath.row]
         
-        // ✅ Activity 가져오기 (없으면 "스케줄 없음")
-        let activity = schedules[date]?["Activity"] ?? "스케줄 없음"
-        
-        // ✅ WorkType 가져오기
-        let workType = schedules[date]?["WorkType"] ?? ""
-        
-        // ✅ Item 가져오기 (WorkType이 "FLY" 또는 "TVL"인 경우만 표시)
-        let item = (workType == "FLY" || workType == "TVL") ? (schedules[date]?["Item"] ?? "") : ""
-        
-        // ✅ 셀 텍스트 설정
-        if item.isEmpty {
-            cell.textLabel?.text = "📅 \(date) - 🏢 \(activity)"
+        // ✅ 여러 개의 스케줄이 있을 경우, 순번을 포함해 출력
+        if let scheduleList = schedules[date] {
+            let scheduleText = scheduleList.map { schedule in
+                let seq = schedule["Seq"] ?? "1"
+                let activity = schedule["Activity"] ?? "스케줄 없음"
+                let workType = schedule["WorkType"] ?? "" // ✅ 오류 원인: 이 변수가 사용되지 않음
+                let item = schedule["Item"] ?? ""
+
+                // ✅ workType이 "FLY" 또는 "TVL"인 경우에만 표시하도록 수정
+                if workType == "FLY" || workType == "TVL" {
+                    return "🔢 \(seq) | 📅 \(date) - ✈️ \(item) (\(workType))"
+                } else {
+                    return "🔢 \(seq) | 📅 \(date) - 🏢 \(activity)"
+                }
+            }.joined(separator: "\n")
+
+            cell.textLabel?.text = scheduleText
+            cell.textLabel?.numberOfLines = 0 // ✅ 여러 줄 출력 가능하도록 설정
         } else {
-            cell.textLabel?.text = "📅 \(date) - ✈️ \(item)"
+            cell.textLabel?.text = "📅 \(date) - 스케줄 없음"
         }
-        
+
         cell.accessoryType = .disclosureIndicator // 상세 페이지 이동을 위한 표시
         
         return cell
     }
+
     
     // MARK: - UITableViewDelegate
+    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
         let selectedDate = sortedDates[indexPath.row]
-        let details = schedules[selectedDate] ?? [:]
+        let details = schedules[selectedDate] ?? []
         
         // ✅ 상세 정보를 보여줄 새로운 ViewController로 이동
         let detailVC = ScheduleDetailViewController()
-        detailVC.scheduleDetails = details
+        detailVC.scheduleDetailsList = details // ✅ 배열 형태로 전달
         detailVC.selectedDate = selectedDate
         navigationController?.pushViewController(detailVC, animated: true)
     }

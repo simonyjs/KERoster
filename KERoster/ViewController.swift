@@ -19,7 +19,7 @@ extension Elements {
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
-    var schedules: [String: [String: String]] = [:]
+    var schedules: [String: [[String: String]]] = [:] // ✅ 변경된 스케줄 타입 (배열 포함)
     var toolbar: UIToolbar!
     @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
     
@@ -142,14 +142,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 */
-    // 스케줄을 가져오는 함수 지정
+    // ✅ importSchedule 수정 (기존 기능 유지 + 스케줄 순번 추가)
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
                 print("❌ HTML 가져오기 실패")
-                            DispatchQueue.main.async {
-                                self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
-                            }
+                DispatchQueue.main.async {
+                    self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
+                }
                 return
             }
 
@@ -158,56 +158,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 let doc: Document = try SwiftSoup.parse(htmlString)
                 let rows: Elements = try doc.select("tr") // 모든 tr 행 선택
 
-                var extractedSchedules: [String: [String: String]] = [:]
-                
+                var extractedSchedules: [String: [[String: String]]] = [:] // ✅ 날짜별 여러 개의 스케줄 저장
+
                 let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd" // 날짜 형식에 맞게 변경 필요
-                
-                var schedulerOwner: String = "Unknown"
-                var scheduleTotalTime: String = "Unknown"
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+
                 var lastDate: String = "Unknown"
                 var lastActivity: String = ""
                 var lastDutyReport: String = ""
                 var lastWorkType: String = ""
-                
-                // ✅ 스케줄 소유자 & 총 비행 시간 정보 추출
-                if rows.size() > 2 {
-                    if let ownerColumns = try? rows.get(2).select("td") {
-                        schedulerOwner = ownerColumns.getOrNil(8)
-                        scheduleTotalTime = ownerColumns.getOrNil(11)
-                        print ((schedulerOwner), (scheduleTotalTime))
-                    } else {
-                        print("⚠️ Failed to retrieve ownerColumns from rows")
-                    }
-                }
-                // ✅ 시간 및 옵션 값을 분리하는 함수 (예: "01:28(+1)" -> "01:28" / "(+1)")
-                func extractTimeAndOption(_ fullString: String) -> (String, String) {
-                    let pattern = #"(\d{2}:\d{2})(\(\+\d+\))?"#
-                    if let regex = try? NSRegularExpression(pattern: pattern) {
-                        let range = NSRange(fullString.startIndex..., in: fullString)
-                        if let match = regex.firstMatch(in: fullString, options: [], range: range) {
-                            let time = match.range(at: 1).location != NSNotFound ?
-                                String(fullString[Range(match.range(at: 1), in: fullString)!]) : "N/A"
-                            let option = match.range(at: 2).location != NSNotFound ?
-                                String(fullString[Range(match.range(at: 2), in: fullString)!]) : ""
-                            return (time, option)
-                        }
-                    }
-                    return ("N/A", "")
-                }
-
-                // ✅ 공항 코드와 시간을 정확히 분리하는 함수
-                func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
-                    let parts = fullString.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
-                    let airport = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
-                    let fullTimeString = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespacesAndNewlines) : ""
-                    let (time, option) = extractTimeAndOption(fullTimeString)
-
-                    if airport.count != 3 || !airport.allSatisfy({ $0.isLetter }) {
-                        return ("N/A", time, option)
-                    }
-                    return (airport, time, option)
-                }
+                var sequenceCounter: [String: Int] = [:] // ✅ 날짜별 순번 저장
 
                 // ✅ 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
@@ -257,6 +217,27 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             lastWorkType = workType
                         }
 
+                        // ✅ 공항 코드와 시간을 정확히 분리하는 함수
+                        func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
+                            let pattern = #"([A-Z]{3})\s+(\d{2}:\d{2})(\(\+\d+\))?"#
+                            let regex = try? NSRegularExpression(pattern: pattern)
+
+                            if let regex = regex {
+                                let range = NSRange(fullString.startIndex..., in: fullString)
+                                if let match = regex.firstMatch(in: fullString, options: [], range: range) {
+                                    let airport = match.range(at: 1).location != NSNotFound ?
+                                        String(fullString[Range(match.range(at: 1), in: fullString)!]) : "N/A"
+                                    let time = match.range(at: 2).location != NSNotFound ?
+                                        String(fullString[Range(match.range(at: 2), in: fullString)!]) : "N/A"
+                                    let option = match.range(at: 3).location != NSNotFound ?
+                                        String(fullString[Range(match.range(at: 3), in: fullString)!]) : ""
+
+                                    return (airport, time, option)
+                                }
+                            }
+                            return ("N/A", "N/A", "")
+                        }
+
                         // ✅ 출발/도착 공항 코드 및 시간 + 옵션 분리
                         let (depAp, depStnTime, depStnTimeOpt) = extractAirportAndTime(depStationTimeFull)
                         let (arrAp, arrStnTime, arrStnTimeOpt) = extractAirportAndTime(arrStationTimeFull)
@@ -272,79 +253,39 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             continue
                         }
 
-                        // ✅ 기존 값과 병합하여 저장 (같은 날짜가 있으면 덮어쓰지 않고 추가)
-                        var scheduleEntry = extractedSchedules[date] ?? [:]
-                        scheduleEntry["Activity"] = activity
-                        scheduleEntry["Item"] = item
-                        scheduleEntry["WorkType"] = workType
-                        scheduleEntry["DutyReport"] = dutyReport
-                        scheduleEntry["DepAp"] = depAp
-                        scheduleEntry["DepStnTime"] = depStnTime.isEmpty ? "N/A" : depStnTime
-                        scheduleEntry["DepStnTimeOpt"] = depStnTimeOpt
-                        scheduleEntry["ArrAp"] = arrAp
-                        scheduleEntry["ArrStnTime"] = arrStnTime.isEmpty ? "N/A" : arrStnTime
-                        scheduleEntry["ArrStnTimeOpt"] = arrStnTimeOpt
-                        scheduleEntry["DutyDebrief"] = dutyDebrief
-                        scheduleEntry["FlyingHours"] = flyingHours
-                        scheduleEntry["DutyHours"] = dutyHours
+                        // ✅ 날짜별로 순번 증가
+                        let seq = (sequenceCounter[date] ?? 0) + 1
+                        sequenceCounter[date] = seq
 
-                        extractedSchedules[date] = scheduleEntry
+                        // ✅ 스케줄 객체 생성 (순번 포함)
+                        let scheduleEntry: [String: String] = [
+                            "Seq": "\(seq)",  // ✅ 순번 추가
+                            "Activity": activity,
+                            "Item": item,
+                            "WorkType": workType,
+                            "DutyReport": dutyReport,
+                            "DepAp": depAp,
+                            "DepStnTime": depStnTime.isEmpty ? "N/A" : depStnTime,
+                            "DepStnTimeOpt": depStnTimeOpt,
+                            "ArrAp": arrAp,
+                            "ArrStnTime": arrStnTime.isEmpty ? "N/A" : arrStnTime,
+                            "ArrStnTimeOpt": arrStnTimeOpt,
+                            "DutyDebrief": dutyDebrief,
+                            "FlyingHours": flyingHours,
+                            "DutyHours": dutyHours
+                        ]
 
-                        // ✅ "FH :"과 "DH :"이 포함된 정확한 <td> 요소를 찾기
-                        for row in rows {
-                            let columns = try row.select("td")
+                        // ✅ 같은 날짜에 여러 개 추가 가능하도록 배열로 저장
+                        extractedSchedules[date, default: []].append(scheduleEntry)
 
-                            for column in columns {
-                                let text = try column.text().trimmingCharacters(in: .whitespacesAndNewlines)
-
-                                // ✅ 스케줄 소유자 찾기 (이름 + 직원번호 + 직급 정보 포함)
-                                if text.contains("|") && text.contains("ICN") {  // "ICN"과 "|" 포함한 항목이 소유자 정보일 가능성 높음
-                                    schedulerOwner = text
-                                }
-
-                                // ✅ 비행 시간 및 근무 시간 추출 (정규식 사용)
-                                if text.contains("FH :") || text.contains("DH :") {
-                                    // ✅ 정규식 패턴 수정 (FH : XX:XX | DH : XX:XX 형식)
-                                    let regexPattern = #"FH\s*:\s*(\d{1,2}:\d{2})\s*\|\s*DH\s*:\s*(\d{1,2}:\d{2})"#
-
-                                    do {
-                                        let regex = try NSRegularExpression(pattern: regexPattern)
-                                        if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
-                                            let fh = match.range(at: 1).location != NSNotFound ? String(text[Range(match.range(at: 1), in: text)!]) : "00:00"
-                                            let dh = match.range(at: 2).location != NSNotFound ? String(text[Range(match.range(at: 2), in: text)!]) : "00:00"
-                                            scheduleTotalTime = "FH : \(fh) | DH : \(dh)"
-                                            print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTime)")
-                                        }
-                                    } catch {
-                                        print("정규식 오류: \(error)")
-                                    }
-                                }
-                            }
-                        }
-
-                        // ✅ 날짜순 정렬
-                        let sortedSchedules = extractedSchedules.sorted { (first, second) -> Bool in
-                            guard let date1 = dateFormatter.date(from: first.key),
-                                  let date2 = dateFormatter.date(from: second.key) else {
-                                return first.key < second.key
-                            }
-                            return date1 < date2
-                        }
-                        
-                        _ = Dictionary(uniqueKeysWithValues: sortedSchedules)
-
-                        
                         // ✅ 디버깅용 로그 추가
-                        print("📌 저장됨 - Date: \(date), Activity: \(activity), Item: \(item), WorkType: \(workType), DutyReport: \(dutyReport), DepAp: \(depAp), DepStnTime: \(depStnTime), DepStnTimeOpt: \(depStnTimeOpt),ArrAp: \(arrAp), ArrStnTime: \(arrStnTime), ArrStnTimeOpt: \(arrStnTimeOpt), DutyDebrief: \(dutyDebrief), FlyingHours: \(flyingHours), DutyHours: \(dutyHours)")
+                        print("📌 저장됨 - Date: \(date), Seq: \(seq), Activity: \(activity), Item: \(item), WorkType: \(workType), DutyReport: \(dutyReport), DepAp: \(depAp), DepStnTime: \(depStnTime), DepStnTimeOpt: \(depStnTimeOpt), ArrAp: \(arrAp), ArrStnTime: \(arrStnTime), ArrStnTimeOpt: \(arrStnTimeOpt), DutyDebrief: \(dutyDebrief), FlyingHours: \(flyingHours), DutyHours: \(dutyHours)")
                     }
                 }
 
-                // ✅ 메인 스레드에서 UI 업데이트
+                // ✅ UI 업데이트
                 DispatchQueue.main.async {
                     self.schedules = extractedSchedules
-                    //let (schedulerOwner, scheduleTotalTime) = self.findCrewTime(htmlString: htmlString)
-                    print("📌 스케줄 소유자: \(schedulerOwner)")
-                    print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTime)")
                     self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
                 }
 
