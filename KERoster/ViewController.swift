@@ -142,7 +142,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 */
-    // ✅ importSchedule 수정 (기존 기능 유지 + 스케줄 순번 추가)
+    // ✅ importSchedule 수정 (기존 기능 유지 + DepDate/ArrDate 업데이트)
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
@@ -161,13 +161,34 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 var extractedSchedules: [String: [[String: String]]] = [:] // ✅ 날짜별 여러 개의 스케줄 저장
 
                 let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd"
+                dateFormatter.dateFormat = "dd-MMM-yyyy"
+                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
                 var lastDate: String = "Unknown"
-                var lastActivity: String = ""
-                var lastDutyReport: String = ""
-                var lastWorkType: String = ""
                 var sequenceCounter: [String: Int] = [:] // ✅ 날짜별 순번 저장
+
+                let calendar = Calendar.current // ✅ 날짜 연산을 위한 Calendar 객체
+
+                // ✅ 날짜 계산 함수 (DepDate, ArrDate 계산)
+                func calculateDate(baseDate: String, option: String) -> String {
+                    guard let baseDateObj = dateFormatter.date(from: baseDate) else { return baseDate }
+
+                    // ✅ 정규식으로 `(+1)`, `(+2)` 형태의 값을 추출
+                    let pattern = #"(\+\d+)"#
+                    if let regex = try? NSRegularExpression(pattern: pattern),
+                       let match = regex.firstMatch(in: option, range: NSRange(option.startIndex..., in: option)) {
+                        let matchRange = Range(match.range, in: option)!
+                        let offsetString = String(option[matchRange]).replacingOccurrences(of: "+", with: "")
+                        
+                        if let offset = Int(offsetString) {
+                            if let newDate = calendar.date(byAdding: .day, value: offset, to: baseDateObj) {
+                                return dateFormatter.string(from: newDate)
+                            }
+                        }
+                    }
+
+                    return baseDate
+                }
 
                 // ✅ 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
@@ -175,10 +196,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
                     if columns.size() > 10, !(try columns[1].text().contains("Date")) {
                         var date = columns.getOrNil(1)
-                        var activity = columns.getOrNil(2)
-                        var item = columns.getOrNil(4)
-                        var workType = columns.getOrNil(6)
-                        var dutyReport = columns.getOrNil(3)
+                        let activity = columns.getOrNil(2)
+                        let item = columns.getOrNil(4)
+                        let workType = columns.getOrNil(6)
+                        let dutyReport = columns.getOrNil(3)
                         let depStationTimeFull = columns.getOrNil(8)
                         let arrStationTimeFull = columns.getOrNil(9)
                         let dutyDebrief = columns.getOrNil(11)
@@ -191,30 +212,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             date = lastDate
                         } else {
                             lastDate = date
-                            lastActivity = ""
-                            lastDutyReport = ""
-                            lastWorkType = ""
-                        }
-
-                        // ✅ Activity가 비어있으면 마지막 Activity 사용
-                        if activity.isEmpty || activity == "N/A" {
-                            activity = lastActivity
-                        } else {
-                            lastActivity = activity
-                        }
-
-                        // ✅ DutyReport가 비어있으면 마지막 DutyReport 사용
-                        if dutyReport.isEmpty || dutyReport == "N/A" {
-                            dutyReport = lastDutyReport
-                        } else {
-                            lastDutyReport = dutyReport
-                        }
-
-                        // ✅ WorkType이 비어있으면 마지막 WorkType 사용
-                        if workType.isEmpty || workType == "N/A" {
-                            workType = lastWorkType
-                        } else {
-                            lastWorkType = workType
                         }
 
                         // ✅ 공항 코드와 시간을 정확히 분리하는 함수
@@ -242,16 +239,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let (depAp, depStnTime, depStnTimeOpt) = extractAirportAndTime(depStationTimeFull)
                         let (arrAp, arrStnTime, arrStnTimeOpt) = extractAirportAndTime(arrStationTimeFull)
 
-                        // ✅ DutyReport가 있어도 Item을 유지하도록 변경
-                        if item.isEmpty || item == "N/A" {
-                            item = ""
-                        }
-
-                        // ✅ 모든 값이 비어있는 경우 → 저장하지 않음
-                        let values = [activity, item, workType, dutyReport, depStnTime, arrStnTime, dutyDebrief, flyingHours, dutyHours]
-                        if values.allSatisfy({ $0.isEmpty || $0 == "N/A" }) {
-                            continue
-                        }
+                        // ✅ DepDate, ArrDate 업데이트
+                        let depDate = calculateDate(baseDate: date, option: depStnTimeOpt)
+                        let arrDate = calculateDate(baseDate: date, option: arrStnTimeOpt)
 
                         // ✅ 날짜별로 순번 증가
                         let seq = (sequenceCounter[date] ?? 0) + 1
@@ -267,9 +257,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "DepAp": depAp,
                             "DepStnTime": depStnTime.isEmpty ? "N/A" : depStnTime,
                             "DepStnTimeOpt": depStnTimeOpt,
+                            "DepDate": depDate,  // ✅ DepDate 추가
                             "ArrAp": arrAp,
                             "ArrStnTime": arrStnTime.isEmpty ? "N/A" : arrStnTime,
                             "ArrStnTimeOpt": arrStnTimeOpt,
+                            "ArrDate": arrDate,  // ✅ ArrDate 추가
                             "DutyDebrief": dutyDebrief,
                             "FlyingHours": flyingHours,
                             "DutyHours": dutyHours
@@ -277,9 +269,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
                         // ✅ 같은 날짜에 여러 개 추가 가능하도록 배열로 저장
                         extractedSchedules[date, default: []].append(scheduleEntry)
-
-                        // ✅ 디버깅용 로그 추가
-                        print("📌 저장됨 - Date: \(date), Seq: \(seq), Activity: \(activity), Item: \(item), WorkType: \(workType), DutyReport: \(dutyReport), DepAp: \(depAp), DepStnTime: \(depStnTime), DepStnTimeOpt: \(depStnTimeOpt), ArrAp: \(arrAp), ArrStnTime: \(arrStnTime), ArrStnTimeOpt: \(arrStnTimeOpt), DutyDebrief: \(dutyDebrief), FlyingHours: \(flyingHours), DutyHours: \(dutyHours)")
                     }
                 }
 
@@ -297,6 +286,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
         }
     }
+
 
 
 

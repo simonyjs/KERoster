@@ -12,7 +12,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     @IBOutlet weak var tableView: UITableView! // 스토리보드에서 연결한 테이블뷰
     
     var schedules: [String: [[String: String]]] = [:] // ✅ 날짜별 여러 개의 스케줄을 저장하도록 수정
-    var sortedDates: [String] = [] // 정렬된 날짜 리스트
+    var sortedDates: [String] = [] // ✅ DepDate 기준으로 정렬된 날짜 리스트
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,20 +23,22 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         // ✅ 데이터 확인용 로그 출력
         print("📌 전달된 schedules 데이터: \(schedules)")
 
-        // ✅ 날짜 형식 맞춤 (현재 "19-Jan-2025" 같은 형식 사용 중)
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy"
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
-        // ✅ 날짜를 변환하여 정렬 (변환 실패 시 기본 문자열 정렬)
+        // ✅ DepDate 기준으로 날짜 정렬
         sortedDates = schedules.keys.sorted {
-            guard let date1 = dateFormatter.date(from: $0),
-                  let date2 = dateFormatter.date(from: $1) else {
-                return $0 < $1 // 변환 실패 시 문자열 정렬 적용
+            let depDate1 = schedules[$0]?.first?["DepDate"] ?? $0
+            let depDate2 = schedules[$1]?.first?["DepDate"] ?? $1
+            
+            guard let date1 = dateFormatter.date(from: depDate1),
+                  let date2 = dateFormatter.date(from: depDate2) else {
+                return depDate1 < depDate2 // 날짜 변환 실패 시 문자열 비교
             }
             return date1 < date2 // 날짜 객체를 비교하여 정렬
         }
-        
+
         // ✅ 테이블 뷰 설정
         tableView.dataSource = self
         tableView.delegate = self
@@ -50,7 +52,6 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     
     // MARK: - UITableViewDataSource
     
-    // ✅ 각 날짜별 스케줄 개수만큼 행(Row) 개수를 설정
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return sortedDates.count
     }
@@ -63,29 +64,52 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         if let scheduleList = schedules[date] {
             let scheduleText = scheduleList.map { schedule in
                 let seq = schedule["Seq"] ?? "1"
-                let activity = schedule["Activity"] ?? "스케줄 없음"
-                let workType = schedule["WorkType"] ?? "" // ✅ 오류 원인: 이 변수가 사용되지 않음
+                let depDate = schedule["DepDate"] ?? date // ✅ DepDate 사용
+                let activity = schedule["Activity"] ?? "NONE"
+                let workType = schedule["WorkType"] ?? ""
                 let item = schedule["Item"] ?? ""
+                let depStnTime = schedule["DepStnTime"] ?? ""
+                let arrStnTime = schedule["ArrStnTime"] ?? ""
+                let depAp = schedule["DepAp"] ?? ""
+                let arrAp = schedule["ArrAp"] ?? ""
+                let dutyReport = schedule["DutyReport"] ?? ""
+                let dutyDebrief = schedule["DutyDebrief"] ?? ""
 
                 // ✅ workType이 "FLY" 또는 "TVL"인 경우에만 표시하도록 수정
                 if workType == "FLY" || workType == "TVL" {
-                    return "🔢 \(seq) | 📅 \(date) - ✈️ \(item) (\(workType))"
-                } else {
-                    return "🔢 \(seq) | 📅 \(date) - 🏢 \(activity)"
+                    var modifiedItem = item
+                    var transportIcon = "✈️" // 기본값: FLY → ✈️
+
+                    if workType == "TVL" {
+                        transportIcon = "💺" // ✅ TVL → 💺 아이콘 변경
+                        if !item.isEmpty {
+                            modifiedItem = "DH" + item.dropFirst(2) // ✅ 앞 두 글자를 "DH"로 변경
+                        }
+                    }
+
+                    return "🔢 \(seq) | 📅 \(depDate) - \(transportIcon) \(modifiedItem) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime) (\(workType))"
                 }
+                // ✅ DO(휴식)인 경우 HOME 이모지로 변경
+                else if activity == "DO" {
+                    return "🔢 \(seq) | 📅 \(depDate) - 🏠 \(activity) \(dutyReport) - \(dutyDebrief)"
+                }
+                // ✅ 기본값 (그 외 모든 활동)
+                else {
+                    return "🔢 \(seq) | 📅 \(depDate) - 🏢 \(activity) \(dutyReport) - \(dutyDebrief)"
+                }
+
             }.joined(separator: "\n")
 
             cell.textLabel?.text = scheduleText
             cell.textLabel?.numberOfLines = 0 // ✅ 여러 줄 출력 가능하도록 설정
         } else {
-            cell.textLabel?.text = "📅 \(date) - 스케줄 없음"
+            cell.textLabel?.text = "📅 \(date) - NONE"
         }
 
         cell.accessoryType = .disclosureIndicator // 상세 페이지 이동을 위한 표시
         
         return cell
     }
-
     
     // MARK: - UITableViewDelegate
     
@@ -102,3 +126,5 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         navigationController?.pushViewController(detailVC, animated: true)
     }
 }
+
+

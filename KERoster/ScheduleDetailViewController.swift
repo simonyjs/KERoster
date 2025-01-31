@@ -22,39 +22,56 @@ class ScheduleDetailViewController: UIViewController {
     }
     
     func setupUI() {
-        let dateLabel = createLabel(text: "📅 날짜: \(selectedDate)", fontSize: 20, isBold: true)
-        
+        let dateLabel = createLabel(text: "📅 DATE: \(selectedDate)", fontSize: 20, isBold: true)
+
         // ✅ 여러 개의 스케줄을 순차적으로 출력
         let scheduleTexts = scheduleDetailsList.map { details in
-            let seq = details["Seq"] ?? "1"
-            let activity = details["Activity"] ?? "없음"
-            let workType = details["WorkType"] ?? "없음"
-            let item = details["Item"] ?? "없음"
-            let depAp = details["DepAp"] ?? "없음"
-            let depTime = details["DepStnTime"] ?? "없음"
-            let arrAp = details["ArrAp"] ?? "없음"
-            let arrTime = details["ArrStnTime"] ?? "없음"
-            let flyingHours = details["FlyingHours"] ?? "없음"
-            let dutyHours = details["DutyHours"] ?? "없음"
-            
+            let seq = details["Seq"] ?? "N/A"
+            let activity = details["Activity"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let workType = details["WorkType"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let item = details["Item"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let depAp = details["DepAp"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let depDate = details["DepDate"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? selectedDate
+            let depTime = details["DepStnTime"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let arrAp = details["ArrAp"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let arrDate = details["ArrDate"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? selectedDate
+            let arrTime = details["ArrStnTime"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let flyingHours = details["FlyingHours"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+            let dutyHours = details["DutyHours"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "N/A"
+
             return """
-            🔢 순번: \(seq)
-            ✈️ 활동: \(activity)
-            💼 근무 유형: \(workType)
-            🛫 항공편: \(item)
-            📍 출발지: \(depAp) | \(depTime)
-            📍 도착지: \(arrAp) | \(arrTime)
-            ⏳ 비행 시간: \(flyingHours)
-            ⌛ 근무 시간: \(dutyHours)
+            🔢 NO.: \(seq)
+            ✈️ ACTIVITY: \(activity)
+            💼 WORK TYPE: \(workType)
+            🛫 C/S: \(item)
+            📍 DEP: \(depAp) (\(depDate)) - 🕒 STD: \(depTime)
+            📍 ARR: \(arrAp) (\(arrDate)) - 🕒 STA: \(arrTime)
+            ⏳ FLT TIME: \(flyingHours) ⌛ DUTY HOURS: \(dutyHours)
             """
-        }.joined(separator: "\n\n")
+        }.joined(separator: "\n\n────────────────────────\n\n") // ✅ 가독성을 높이기 위해 구분선 추가
+
+        // ✅ 디버깅: scheduleTexts가 정상적으로 생성되는지 확인
+        print("📌 스케줄 상세 내용:\n\(scheduleTexts)")
 
         let scheduleLabel = createLabel(text: scheduleTexts, fontSize: 16, isBold: false)
 
-        let stackView = UIStackView(arrangedSubviews: [dateLabel, scheduleLabel])
+        // ✅ UILabel이 들어갈 컨테이너 뷰 추가 (배경색 확인을 위해)
+        let containerView = UIView()
+        containerView.backgroundColor = .white
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(scheduleLabel)
+
+        NSLayoutConstraint.activate([
+            scheduleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            scheduleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            scheduleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            scheduleLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10)
+        ])
+
+        let stackView = UIStackView(arrangedSubviews: [dateLabel, containerView])
         stackView.axis = .vertical
-        stackView.alignment = .leading
-        stackView.spacing = 10
+        stackView.alignment = .fill // ✅ 변경: 텍스트가 잘리는 문제 해결
+        stackView.spacing = 15
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
         view.addSubview(stackView)
@@ -70,7 +87,9 @@ class ScheduleDetailViewController: UIViewController {
         let label = UILabel()
         label.text = text
         label.font = isBold ? UIFont.boldSystemFont(ofSize: fontSize) : UIFont.systemFont(ofSize: fontSize)
-        label.numberOfLines = 0
+        label.textColor = .black // ✅ 텍스트 색상 추가 (보이지 않는 문제 해결)
+        label.numberOfLines = 0 // ✅ 여러 줄 출력 가능하도록 설정
+        label.lineBreakMode = .byWordWrapping // ✅ 긴 텍스트가 잘리지 않고 자동 줄바꿈
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }
