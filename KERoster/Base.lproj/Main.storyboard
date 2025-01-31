@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
-                                <rect key="frame" x="0.0" y="103" width="393" height="671"/>
+                                <rect key="frame" x="0.0" y="103" width="393" height="666"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <wkWebViewConfiguration key="configuration">
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
@@ -25,17 +25,17 @@
                                 </wkWebViewConfiguration>
                             </wkWebView>
                             <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="dlZ-d4-AKS">
-                                <rect key="frame" x="0.0" y="774" width="393" height="44"/>
+                                <rect key="frame" x="0.0" y="769" width="393" height="49"/>
                                 <items>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Tx4-pg-Fii"/>
-                                    <barButtonItem title="iflight" image="airplane" catalog="system" id="2qu-vK-mkf">
+                                    <barButtonItem title="iflight" image="house.fill" catalog="system" id="2qu-vK-mkf">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="iflightButtonTapped:" destination="BYZ-38-t0r" id="ZBt-jB-oHe"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="TWB-gv-DJj"/>
-                                    <barButtonItem title="CrewLink" image="doc.text.fill" catalog="system" id="Kdo-a4-aLH">
+                                    <barButtonItem title="CrewLink" image="airplane" catalog="system" id="Kdo-a4-aLH">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="CrewLinkButtonTapped:" destination="BYZ-38-t0r" id="7vT-16-OfR"/>
@@ -141,7 +141,7 @@
         <image name="airplane" catalog="system" width="128" height="115"/>
         <image name="calendar" catalog="system" width="128" height="107"/>
         <image name="calendar.badge.plus" catalog="system" width="128" height="109"/>
-        <image name="doc.text.fill" catalog="system" width="115" height="128"/>
+        <image name="house.fill" catalog="system" width="128" height="104"/>
         <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
         <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
         <systemColor name="systemBackgroundColor">

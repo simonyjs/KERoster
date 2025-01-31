@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */; };
+		38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */; };
 		38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192B82D4109B3006BDDDF /* AppDelegate.swift */; };
 		38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */; };
 		38E192BD2D4109B3006BDDDF /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192BC2D4109B3006BDDDF /* ViewController.swift */; };
@@ -41,6 +42,7 @@
 
 /* Begin PBXFileReference section */
 		384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewListViewController.swift; sourceTree = "<group>"; };
+		38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailViewController.swift; sourceTree = "<group>"; };
 		38E192B52D4109B2006BDDDF /* KERoster.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KERoster.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38E192B82D4109B3006BDDDF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 				38E192B82D4109B3006BDDDF /* AppDelegate.swift */,
 				38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */,
 				38E192BC2D4109B3006BDDDF /* ViewController.swift */,
+				38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */,
 				38E192BE2D4109B3006BDDDF /* Main.storyboard */,
 				384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */,
 				38E192C42D4109B5006BDDDF /* Assets.xcassets */,
@@ -277,6 +280,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */,
 				38E192C32D4109B3006BDDDF /* KERoster.xcdatamodeld in Sources */,
 				38E192BD2D4109B3006BDDDF /* ViewController.swift in Sources */,
 				38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */,

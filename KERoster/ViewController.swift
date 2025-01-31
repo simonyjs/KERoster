@@ -8,6 +8,7 @@
 import UIKit
 import WebKit
 import SwiftSoup
+import Foundation
 
 // ✅ SwiftSoup Elements 확장 (배열 인덱스 초과 방지)
 extension Elements {
@@ -300,10 +301,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     let scheduleTotalTimeVariable = scheduleTotalTime
                     print("📌 스케줄 소유자: \(schedulerOwnerVariable)")
                     print("📌 총 비행 시간 및 근무 시간: \(scheduleTotalTimeVariable)")
+                    self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
                 }
 
             } catch {
                 print("HTML 파싱 오류: \(error)")
+                DispatchQueue.main.async {
+                    self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
+                }
             }
         }
     }
@@ -311,6 +316,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
 
 
+    // ✅ 알림창을 띄우는 함수
+    func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
 
 
 
