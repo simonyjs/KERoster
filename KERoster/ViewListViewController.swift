@@ -22,19 +22,22 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         
         // ✅ 데이터 확인용 로그 출력
         print("📌 전달된 schedules 데이터: \(schedules)")
-        
-        // ✅ 날짜 정렬 개선 (올바른 날짜 형식으로 정렬)
+
+        // ✅ 날짜 형식 맞춤 (현재 "19-Jan-2025" 같은 형식 사용 중)
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.dateFormat = "dd-MMM-yyyy"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
+
+        // ✅ 날짜를 변환하여 정렬 (변환 실패 시 기본 문자열 정렬)
         sortedDates = schedules.keys.sorted {
             guard let date1 = dateFormatter.date(from: $0),
-                  let date2 = dateFormatter.date(from: $1) else { return false }
-            return date1 < date2
+                  let date2 = dateFormatter.date(from: $1) else {
+                return $0 < $1 // 변환 실패 시 문자열 정렬 적용
+            }
+            return date1 < date2 // 날짜 객체를 비교하여 정렬
         }
         
-        // ✅ 테이블뷰 설정
+        // ✅ 테이블 뷰 설정
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")

@@ -121,7 +121,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
-                print("HTML 가져오기 실패")
+                print("❌ HTML 가져오기 실패")
+                            DispatchQueue.main.async {
+                                self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
+                            }
                 return
             }
 
@@ -131,6 +134,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 let rows: Elements = try doc.select("tr") // 모든 tr 행 선택
 
                 var extractedSchedules: [String: [String: String]] = [:]
+                
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd" // 날짜 형식에 맞게 변경 필요
+                
                 var schedulerOwner: String = "Unknown"
                 var scheduleTotalTime: String = "Unknown"
                 var lastDate: String = "Unknown"
@@ -266,27 +273,29 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                                     let regexPattern = #"FH\s*:\s*(\d{1,2}:\d{2})\s*\|\s*DH\s*:\s*(\d{1,2}:\d{2})"#
 
                                     do {
-                                        let regex = try NSRegularExpression(pattern: regexPattern, options: [])
-                                        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
-
-                                        if let match = matches.first {
-                                            // ✅ 정규식 그룹에서 정확한 FH 및 DH 값을 추출
-                                            if let fhRange = Range(match.range(at: 1), in: text),
-                                               let dhRange = Range(match.range(at: 2), in: text) {
-                                                let flightHours = String(text[fhRange])
-                                                let dutyHours = String(text[dhRange])
-                                                scheduleTotalTime = "FH : \(flightHours) | DH : \(dutyHours)"  // ✅ 최종 값 설정
-                                                break  // ✅ 값을 찾으면 반복 종료
-                                            }
+                                        let regex = try NSRegularExpression(pattern: regexPattern)
+                                        if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
+                                            let fh = match.range(at: 1).location != NSNotFound ? String(text[Range(match.range(at: 1), in: text)!]) : "00:00"
+                                            let dh = match.range(at: 2).location != NSNotFound ? String(text[Range(match.range(at: 2), in: text)!]) : "00:00"
+                                            scheduleTotalTime = "FH : \(fh) | DH : \(dh)"
                                         }
                                     } catch {
-                                        print("❌ 정규식 오류: \(error)")
+                                        print("정규식 오류: \(error)")
                                     }
                                 }
                             }
                         }
 
-
+                        // ✅ 날짜순 정렬
+                        let sortedSchedules = extractedSchedules.sorted { (first, second) -> Bool in
+                            guard let date1 = dateFormatter.date(from: first.key),
+                                  let date2 = dateFormatter.date(from: second.key) else {
+                                return first.key < second.key
+                            }
+                            return date1 < date2
+                        }
+                        
+                        _ = Dictionary(uniqueKeysWithValues: sortedSchedules)
 
                         
                         // ✅ 디버깅용 로그 추가
