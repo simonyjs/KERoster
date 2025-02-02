@@ -19,7 +19,7 @@ extension Elements {
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBOutlet weak var webView: WKWebView!
-    var schedules: [String: [[String: String]]] = [:] // ✅ 변경된 스케줄 타입 (배열 포함)
+    var schedules: [String: [[String: String]]] = [:] // 날짜별 여러 개의 스케줄 저장
     var toolbar: UIToolbar!
     @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
     
@@ -31,12 +31,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://crewlink.koreanair.com/")
     }
-    // 세 번째 UIBarButtonItem을 IBAction으로 연결
+    // 세 번째 UIBarButtonItem을 IBAction으로 연결 (스케줄 가져오기)
     @IBAction func ImportButtonTapped(_ sender: UIBarButtonItem) {
         importSchedule()
         print(schedules)
     }
-    // 네 번째 UIBarButtonItem을 IBAction으로 연결
+    // 네 번째 UIBarButtonItem을 IBAction으로 연결 (리스트 보기)
     @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let viewListVC = storyboard.instantiateViewController(withIdentifier: "ViewListViewController") as? ViewListViewController {
@@ -44,13 +44,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             navigationController?.pushViewController(viewListVC, animated: true)
         }
     }
-
     // 다섯 번째 UIBarButtonItem을 IBAction으로 연결
     @IBAction func PrintButtonTapped(_ sender: UIBarButtonItem) {
         print("Print")
     }
-    
-    
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -60,7 +57,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.uiDelegate = self
         
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
-        
     }
     
     override func viewDidLoad() {
@@ -69,7 +65,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         // 네비게이션 바 스타일 변경
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(named: "Ocean")// Ocean
+        appearance.backgroundColor = UIColor(named: "Ocean") // Ocean
         appearance.titleTextAttributes = [.foregroundColor: UIColor.white] // 타이틀 색상
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
 
@@ -82,9 +78,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         // ✅ 네비게이션 바가 투명해지는 것을 방지
         navigationController?.navigationBar.isTranslucent = false
     }
-
-
-    
     
     // 링크 클릭 시 현재 WebView에서 열리도록 설정
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -96,7 +89,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             decisionHandler(.allow)
         }
     }
-
+    
     // 새 창 열기 방지 및 현재 WebView에서 열도록 설정
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url {
@@ -104,7 +97,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
         return nil
     }
-
+    
     // URL을 WebView에 로드하는 함수
     func loadURL(_ urlString: String) {
         print("loadURL 호출됨: \(urlString)") // 디버깅용 로그
@@ -115,34 +108,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             print("잘못된 URL 형식: \(urlString)")
         }
     }
-
-  /*
-    // ✅ HTML에서 스케줄 소유자 및 총 비행 시간(FH/DH)을 추출하는 함수 (위치 기반)
-    func findCrewTime(htmlString: String) -> (String, String) {
-        do {
-            let document = try SwiftSoup.parse(htmlString)
-            let allTdElements = try document.select("td") // 모든 <td> 요소 선택
-
-            // ✅ 위치 기반 인덱스 설정 (HTML 구조에 따라 조정 가능)
-            let schedulerOwnerIndex = 17 // (스케줄 소유자 위치)
-            let scheduleTotalTimeIndex = 20 // (총 비행 시간 및 근무 시간 위치)
-
-            let schedulerOwner = schedulerOwnerIndex < allTdElements.count ?
-                try allTdElements[schedulerOwnerIndex].text().trimmingCharacters(in: .whitespacesAndNewlines) : "N/A"
-
-            let scheduleTotalTime = scheduleTotalTimeIndex < allTdElements.count ?
-                try allTdElements[scheduleTotalTimeIndex].text().trimmingCharacters(in: .whitespacesAndNewlines) : "N/A"
-
-            print (schedulerOwner, scheduleTotalTime)
-            return (schedulerOwner, scheduleTotalTime)
-
-        } catch {
-            print("HTML 파싱 오류: \(error)")
-            return ("N/A", "N/A")
-        }
-    }
-*/
-    // ✅ importSchedule 수정 (기존 기능 유지 + DepDate/ArrDate 업데이트)
+    
+    // ✅ importSchedule 함수 수정
+    // - 기존 파싱 오류뿐 아니라, 날짜에 스케줄이 전혀 없는 경우에도 "가져오기 실패" 알림창을 띄웁니다.
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
@@ -158,16 +126,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 let doc: Document = try SwiftSoup.parse(htmlString)
                 let rows: Elements = try doc.select("tr") // 모든 tr 행 선택
 
-                var extractedSchedules: [String: [[String: String]]] = [:] // ✅ 날짜별 여러 개의 스케줄 저장
+                var extractedSchedules: [String: [[String: String]]] = [:] // 날짜별 스케줄 저장
 
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "dd-MMM-yyyy"
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
                 var lastDate: String = "Unknown"
-                var sequenceCounter: [String: Int] = [:] // ✅ 날짜별 순번 저장
+                var sequenceCounter: [String: Int] = [:] // 날짜별 순번 저장
 
-                let calendar = Calendar.current // ✅ 날짜 연산을 위한 Calendar 객체
+                let calendar = Calendar.current // 날짜 연산을 위한 Calendar 객체
 
                 // ✅ 날짜 계산 함수 (DepDate, ArrDate 계산)
                 func calculateDate(baseDate: String, option: String) -> String {
@@ -186,7 +154,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             }
                         }
                     }
-
                     return baseDate
                 }
 
@@ -228,7 +195,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                                         String(fullString[Range(match.range(at: 2), in: fullString)!]) : "N/A"
                                     let option = match.range(at: 3).location != NSNotFound ?
                                         String(fullString[Range(match.range(at: 3), in: fullString)!]) : ""
-
                                     return (airport, time, option)
                                 }
                             }
@@ -271,13 +237,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         extractedSchedules[date, default: []].append(scheduleEntry)
                     }
                 }
-
-                // ✅ UI 업데이트
+                
+                // ✅ 스케줄 데이터가 전혀 없으면 "가져오기 실패" 메시지 출력
+                if extractedSchedules.isEmpty {
+                    DispatchQueue.main.async {
+                        self.showAlert(title: "가져오기 실패", message: "해당 웹뷰에 스케줄이 없습니다.")
+                    }
+                    return
+                }
+                
+                // ✅ 기존 스케줄은 그대로 두고, 동일 날짜의 스케줄은 새로 가져온 스케줄로 덮어쓰기
                 DispatchQueue.main.async {
-                    self.schedules = extractedSchedules
+                    self.schedules.merge(extractedSchedules) { (_, new) in new }
                     self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
                 }
-
+                
             } catch {
                 print("HTML 파싱 오류: \(error)")
                 DispatchQueue.main.async {
@@ -286,27 +260,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
         }
     }
-
-
-
-
-
+    
     // ✅ 알림창을 띄우는 함수
     func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
-
-
-
-
-
-
-
-
-
-    // 스케줄 추가 메서드
+    
+    // 스케줄 추가 메서드 (예시)
     func addScheduleToStackView(date: String, activity: String) {
         let containerView = UIView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
@@ -336,5 +298,4 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
         scheduleStackView.addArrangedSubview(containerView)
     }
-
 }

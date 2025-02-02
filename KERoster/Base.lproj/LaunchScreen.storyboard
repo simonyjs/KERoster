@@ -28,11 +28,17 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Copyright 2025. Jungsub Yoon All Rights Reserved." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="40m-pg-N5P">
-                                <rect key="frame" x="59.666666666666657" y="753" width="274" height="15"/>
+                                <rect key="frame" x="59.666666666666629" y="753" width="274" height="15"/>
                                 <fontDescription key="fontDescription" name="AppleSDGothicNeo-Bold" family="Apple SD Gothic Neo" pointSize="12"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="KERoster_transparency" translatesAutoresizingMaskIntoConstraints="NO" id="wXN-uK-gUK">
+                                <rect key="frame" x="46.666666666666629" y="-86" width="300" height="1024"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="300" id="tJs-qD-IbS"/>
+                                </constraints>
+                            </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" red="0.0" green="0.32852089410000002" blue="0.57488495110000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -41,8 +47,10 @@
                             <constraint firstItem="oPf-aZ-a3c" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="A27-LX-J2h"/>
                             <constraint firstItem="40m-pg-N5P" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Jcb-AY-7fw"/>
                             <constraint firstItem="gn4-H5-hwy" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="100" id="Spe-yf-UVa"/>
+                            <constraint firstItem="wXN-uK-gUK" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="cN0-co-j9b"/>
                             <constraint firstItem="gn4-H5-hwy" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="fYW-AH-2TB"/>
                             <constraint firstItem="oPf-aZ-a3c" firstAttribute="top" secondItem="gn4-H5-hwy" secondAttribute="bottom" constant="5" id="gf8-Y6-9lJ"/>
+                            <constraint firstItem="wXN-uK-gUK" firstAttribute="centerX" secondItem="40m-pg-N5P" secondAttribute="centerX" id="lkm-7a-xgy"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -51,4 +59,7 @@
             <point key="canvasLocation" x="52.671755725190835" y="374.64788732394368"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="KERoster_transparency" width="1024" height="1024"/>
+    </resources>
 </document>
