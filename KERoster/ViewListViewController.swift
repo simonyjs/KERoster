@@ -20,12 +20,39 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+               
         self.title = "Schedule List by Month"
         view.backgroundColor = .white
         
         // 전달된 schedules 데이터 확인 (디버깅용)
         print("📌 전달된 schedules 데이터: \(schedules)")
+        
+        // refresh control 추가 (pull-to-refresh)
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
+        tableView.refreshControl = refreshControl
+        
+        // 그룹화 및 정렬 초기화
+        updateMonthSchedules()
+        
+        // 테이블 뷰 설정
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+    }
+    
+    @objc func refreshData(_ sender: UIRefreshControl) {
+        // 필요에 따라 외부 데이터를 다시 불러오는 로직을 추가할 수 있습니다.
+        // 여기서는 schedules 데이터를 기반으로 그룹화와 정렬을 다시 수행합니다.
+        updateMonthSchedules()
+        tableView.reloadData()
+        sender.endRefreshing()
+    }
+    
+    func updateMonthSchedules() {
+        // 월별 스케줄과 정렬된 월 배열 초기화
+        monthSchedules.removeAll()
+        sortedMonths.removeAll()
         
         // 날짜 파싱 및 그룹화를 위한 포맷터 설정
         let inputFormatter = DateFormatter()
@@ -55,11 +82,6 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
             }
         }
         sortedMonths = parsedMonths.sorted { $0.date < $1.date }.map { $0.month }
-        
-        // 테이블 뷰 설정
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
     }
     
     // MARK: - UITableViewDataSource
@@ -108,18 +130,30 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         let totalFlyingHoursStr = formatHoursToHHmm(totalFlyingHours)
         let totalDutyHoursStr = formatHoursToHHmm(totalDutyHours)
         
-        // 셀에 표시할 텍스트 구성
-        cell.textLabel?.text = """
-        \(month)
+        // ✅ NSAttributedString을 사용하여 월을 굵게 표시
+        let boldFont = UIFont.boldSystemFont(ofSize: 20)
+        let regularFont = UIFont.systemFont(ofSize: 14)
+        
+        let attributedText = NSMutableAttributedString(
+            string: "🗓️ \(month)\n",
+            attributes: [.font: boldFont]
+        )
+        
+        let detailsText = """
         \(totalFLYCount) Flight(s)
-        Total Flying Hours = \(totalFlyingHoursStr), Total Duty Hours = \(totalDutyHoursStr)
+        Total Flying Hours = \(totalFlyingHoursStr)
+        Total Duty Hours = \(totalDutyHoursStr)
         """
+        
+        attributedText.append(NSAttributedString(string: detailsText, attributes: [.font: regularFont]))
+        
+        cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
         cell.accessoryType = .disclosureIndicator
         
         return cell
     }
-    
+
     // MARK: - UITableViewDelegate
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
