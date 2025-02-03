@@ -97,62 +97,17 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="03f-kr-d8m">
-                                <rect key="frame" x="0.0" y="59" width="393" height="714"/>
+                                <rect key="frame" x="0.0" y="59" width="393" height="793"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </tableView>
-                            <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="rNp-9x-PxC">
-                                <rect key="frame" x="0.0" y="803" width="393" height="49"/>
-                                <items>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="MYX-CZ-s0j"/>
-                                    <barButtonItem title="iflight" image="house.fill" catalog="system" id="5FB-HK-pW9">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="iflightButtonTapped:" destination="BYZ-38-t0r" id="OwB-9e-PmS"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="2rG-UT-t8a"/>
-                                    <barButtonItem title="CrewLink" image="airplane" catalog="system" id="hr5-dE-ouO">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="CrewLinkButtonTapped:" destination="BYZ-38-t0r" id="PxA-HO-dI2"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="3Om-ul-ViD"/>
-                                    <barButtonItem title="Import" image="square.and.arrow.down.fill" catalog="system" landscapeImage="square.and.arrow.down" id="cXi-dV-oUf">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="ImportButtonTapped:" destination="BYZ-38-t0r" id="9cb-2R-thN"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="Y4P-Xp-NQr"/>
-                                    <barButtonItem title="Schedule" image="calendar.badge.plus" catalog="system" id="WRg-8Z-Hdn">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="ViewListButtonTapped:" destination="BYZ-38-t0r" id="Ktg-pi-0xZ"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="s3U-0J-jnw"/>
-                                    <barButtonItem title="Item" image="calendar" catalog="system" id="t2r-gj-vIF">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="PrintButtonTapped:" destination="BYZ-38-t0r" id="QIa-Pv-ZZI"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="hZ2-Yg-2TP"/>
-                                </items>
-                                <color key="barTintColor" red="0.0" green="0.32852089410000002" blue="0.57488495110000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                            </toolbar>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="FJj-Fg-SLd"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="rNp-9x-PxC" firstAttribute="leading" secondItem="FJj-Fg-SLd" secondAttribute="leading" id="04O-6R-WE4"/>
-                            <constraint firstItem="03f-kr-d8m" firstAttribute="top" secondItem="FJj-Fg-SLd" secondAttribute="top" id="A9T-9b-jip"/>
-                            <constraint firstItem="rNp-9x-PxC" firstAttribute="top" secondItem="03f-kr-d8m" secondAttribute="bottom" id="OYw-AY-ngg"/>
-                            <constraint firstItem="rNp-9x-PxC" firstAttribute="trailing" secondItem="FJj-Fg-SLd" secondAttribute="trailing" id="S3l-DW-gCu"/>
-                            <constraint firstItem="03f-kr-d8m" firstAttribute="leading" secondItem="FJj-Fg-SLd" secondAttribute="leading" id="Swj-qN-7H4"/>
-                            <constraint firstItem="FJj-Fg-SLd" firstAttribute="bottom" secondItem="rNp-9x-PxC" secondAttribute="bottom" id="h9I-o4-7hP"/>
-                            <constraint firstItem="FJj-Fg-SLd" firstAttribute="trailing" secondItem="03f-kr-d8m" secondAttribute="trailing" id="uPi-pE-LTm"/>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="leading" secondItem="FJj-Fg-SLd" secondAttribute="leading" id="3WR-H0-eGM"/>
+                            <constraint firstAttribute="bottom" secondItem="03f-kr-d8m" secondAttribute="bottom" id="3om-dN-ywu"/>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="trailing" secondItem="FJj-Fg-SLd" secondAttribute="trailing" id="Ltk-IL-PR4"/>
+                            <constraint firstItem="03f-kr-d8m" firstAttribute="top" secondItem="FJj-Fg-SLd" secondAttribute="top" id="oZW-Jd-dD9"/>
                         </constraints>
                     </view>
                     <connections>
