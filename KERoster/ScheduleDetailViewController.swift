@@ -41,6 +41,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         
+        // 빈 FooterView 설정하여 불필요한 빈 셀 제거
+        tableView.tableFooterView = UIView()
+        
         // UIRefreshControl 추가 (당겨서 리로드)
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
@@ -51,7 +54,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            // 하단 제약조건을 view.bottomAnchor로 하여 전체 화면에 꽉 채움
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
     
@@ -127,7 +131,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             if workType == "FLY" {
                 transportIcon = "✈️"
             } else if workType == "TVL" {
-                transportIcon = "💺"
+                transportIcon = "📌"
                 if !item.isEmpty {
                     item = "DH" + item.dropFirst(2)
                 }
@@ -164,8 +168,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
-        // 셀 전체를 탭하면 수정 페이지로 푸시하기 때문에 액세서리 버튼은 필요하지 않을 수 있습니다.
-        // cell.accessoryType = .detailDisclosureButton
         
         return cell
     }
@@ -183,18 +185,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         editVC.delegate = self
         navigationController?.pushViewController(editVC, animated: true)
     }
-    
-    // 기존의 액세서리 버튼 탭 시 수정 페이지 푸시 코드는 필요없으므로 제거하거나 주석 처리합니다.
-    /*
-    func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
-        let schedule = scheduleDetailsList[indexPath.row]
-        let editVC = ScheduleEditViewController()
-        editVC.schedule = schedule
-        editVC.scheduleIndex = indexPath.row
-        editVC.delegate = self
-        navigationController?.pushViewController(editVC, animated: true)
-    }
-    */
     
     // 스와이프 삭제 기능
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
@@ -214,7 +204,13 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
     }
     
-    // 왼쪽에 표시할 설명 레이블 생성 함수
+    // 누락된 삭제 메서드 구현 추가
+    func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int) {
+        scheduleDetailsList.remove(at: index)
+        tableView.reloadData()
+    }
+    
+    // 왼쪽에 표시할 설명 레이블 생성 함수 (필요시 사용)
     func createLeftLabel(text: String) -> UIView {
         let label = UILabel()
         label.text = text
