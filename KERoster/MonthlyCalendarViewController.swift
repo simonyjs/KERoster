@@ -61,7 +61,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         layout.minimumLineSpacing = 1       // 행 간격
         layout.minimumInteritemSpacing = 1   // 열 간격
         // 좌우 여백을 2로 줄여서 전체 가로폭 확보
-        layout.sectionInset = UIEdgeInsets(top: 5, left: 2, bottom: 5, right: 2)
+        layout.sectionInset = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
         layout.scrollDirection = .vertical
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.translatesAutoresizingMaskIntoConstraints = false
