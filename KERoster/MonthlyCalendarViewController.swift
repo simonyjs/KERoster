@@ -1,5 +1,5 @@
 //
-//  MonthlyCalendarView.swift
+//  MonthlyCalendarViewController.swift
 //  KERoster
 //
 //  Created by 윤정섭 on 2025/02/04.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-class MonthlyCalendarView: UIViewController {
+class MonthlyCalendarViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
