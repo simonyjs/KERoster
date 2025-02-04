@@ -56,10 +56,10 @@
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="QlY-z6-P3R"/>
-                                    <barButtonItem title="Item" image="calendar" catalog="system" id="jz4-iE-fGf">
+                                    <barButtonItem title="Calendar" image="calendar" catalog="system" id="jz4-iE-fGf">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
-                                            <action selector="PrintButtonTapped:" destination="BYZ-38-t0r" id="CqG-l3-zSR"/>
+                                            <action selector="CalendarButtonTapped:" destination="BYZ-38-t0r" id="fXu-va-BQj"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="fQL-Fu-Uxb"/>
@@ -117,6 +117,21 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Lkr-eG-n51" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1799.2366412213739" y="-1.4084507042253522"/>
+        </scene>
+        <!--Monthly Calendar View Controller-->
+        <scene sceneID="yBz-oP-4Zk">
+            <objects>
+                <viewController storyboardIdentifier="MonthlyCalendarViewController" id="o9f-vk-Zfp" customClass="MonthlyCalendarViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="wRP-4w-AxE">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="zUh-Ox-9Cs"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="FtH-ed-IJN" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2682" y="-2"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">

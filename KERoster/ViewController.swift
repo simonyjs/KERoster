@@ -44,9 +44,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             navigationController?.pushViewController(viewListVC, animated: true)
         }
     }
-    // 다섯 번째 UIBarButtonItem을 IBAction으로 연결
-    @IBAction func PrintButtonTapped(_ sender: UIBarButtonItem) {
-        print("Print")
+    // 다섯 번째 UIBarButtonItem을 IBAction으로 연결 (달력 보기)
+    @IBAction func CalendarButtonTapped(_ sender: UIBarButtonItem) {
+        print("CalendarButtonTapped")
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+/*
+        //디버깅용
+        let calendarVC = MonthlyCalendarViewController()
+        calendarVC.schedules = schedules // ✅ 데이터 전달 확인
+        print(calendarVC.schedules)      // ✅ 디버깅: 전달된 데이터 출력
+        navigationController?.pushViewController(calendarVC, animated: true)
+*/
+        //기존 코드
+        if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
+            calendarVC.schedules = schedules
+            navigationController?.pushViewController(calendarVC, animated: true)
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {

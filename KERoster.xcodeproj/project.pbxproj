@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		381C5CA12D4FA95D00D92F8D /* ScheduleEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */; };
 		384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */; };
+		3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */; };
 		38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */; };
 		38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192B82D4109B3006BDDDF /* AppDelegate.swift */; };
 		38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */; };
@@ -44,6 +45,7 @@
 /* Begin PBXFileReference section */
 		381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEditViewController.swift; sourceTree = "<group>"; };
 		384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewListViewController.swift; sourceTree = "<group>"; };
+		3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthlyCalendarViewController.swift; sourceTree = "<group>"; };
 		38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailViewController.swift; sourceTree = "<group>"; };
 		38E192B52D4109B2006BDDDF /* KERoster.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KERoster.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38E192B82D4109B3006BDDDF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -53,7 +55,7 @@
 		38E192C22D4109B3006BDDDF /* KERoster.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = KERoster.xcdatamodel; sourceTree = "<group>"; };
 		38E192C42D4109B5006BDDDF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		38E192C72D4109B5006BDDDF /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		38E192C92D4109B5006BDDDF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		38E192C92D4109B5006BDDDF /* Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = Info.plist; sourceTree = "<group>"; };
 		38E192CE2D4109B5006BDDDF /* KERosterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KERosterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38E192D22D4109B5006BDDDF /* KERosterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterTests.swift; sourceTree = "<group>"; };
 		38E192D82D4109B5006BDDDF /* KERosterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KERosterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,6 +120,7 @@
 				381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */,
 				38E192BE2D4109B3006BDDDF /* Main.storyboard */,
 				384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */,
+				3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */,
 				38E192C42D4109B5006BDDDF /* Assets.xcassets */,
 				38E192C62D4109B5006BDDDF /* LaunchScreen.storyboard */,
 				38E192C92D4109B5006BDDDF /* Info.plist */,
@@ -290,6 +293,7 @@
 				38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */,
 				384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */,
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
+				3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
