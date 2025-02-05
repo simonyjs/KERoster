@@ -9,17 +9,20 @@ import UIKit
 
 class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    // 날짜별 일정 정보를 저장하는 딕셔너리 (필요시 사용)
+    // 날짜별 일정 정보를 저장하는 딕셔너리 (ViewListViewController와 동일하게 "dd-MMM-yyyy" 형식의 키 사용)
     var schedules: [String: [[String: String]]] = [:]
+    
     // 날짜별 휴일 정보를 저장하는 딕셔너리
+    // 공휴일 데이터는 "yyyy-MM-dd" 형식으로 저장되어 있다고 가정
     var holidays: [String: String] = [:]
+    
     // 현재 보여지는 날짜 (월 단위)
     var currentDate = Date()
     
     // 현재 사용 중인 Calendar 객체
     let calendar = Calendar.current
     
-    // 상단의 월 컨트롤 뷰 (이전, 다음 버튼과 월 라벨)
+    // 상단의 월 컨트롤 뷰 (이전 버튼, 월 라벨, 다음 버튼)
     let monthControlView: UIView = {
         let view = UIView()
         // 디버깅용 배경색 (필요시 제거)
@@ -44,12 +47,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // monthLabel은 "MMMM yyyy" 형식으로 표시 (예: February 2025)
+    // monthLabel은 "MMMM yyyy" 형식 (예: February 2025)
     let monthLabel: UILabel = {
         let label = UILabel()
+        // monthLabel은 그대로 20포인트로 유지
         label.font = UIFont.boldSystemFont(ofSize: 20)
         label.textAlignment = .center
-        // 글씨 색상을 검은색으로 지정
         label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -60,7 +63,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let layout = UICollectionViewFlowLayout()
         layout.minimumLineSpacing = 1       // 행 간격
         layout.minimumInteritemSpacing = 1   // 열 간격
-        // 좌우 여백을 2로 줄여서 전체 가로폭 확보
+        // 좌우 여백을 5포인트로 설정 (상하도 동일)
         layout.sectionInset = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
         layout.scrollDirection = .vertical
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
@@ -80,10 +83,10 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         super.viewDidLoad()
         view.backgroundColor = .white
         
-        // 내비게이션 바 중앙에 "ROSTER SUMMARY" 제목 설정
+        // 내비게이션 바 제목 설정
         navigationItem.title = "ROSTER SUMMARY"
         
-        // monthControlView를 뷰에 추가하고, 그 안에 이전 버튼, 월 라벨, 다음 버튼 추가
+        // 상단 컨트롤 뷰에 이전 버튼, 월 라벨, 다음 버튼 추가
         view.addSubview(monthControlView)
         monthControlView.addSubview(prevButton)
         monthControlView.addSubview(monthLabel)
@@ -93,6 +96,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         prevButton.addTarget(self, action: #selector(prevMonth), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMonth), for: .touchUpInside)
         
+        // 컬렉션 뷰 추가 및 delegate/dataSource 설정
         view.addSubview(collectionView)
         collectionView.delegate = self
         collectionView.dataSource = self
@@ -100,6 +104,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         setupConstraints()
         updateMonthLabel()
         fetchHolidays(for: currentDate)
+        
+        // 디버깅용 임시 스케줄 데이터 (실제 데이터가 있다면 제거 가능)
+        // schedules["22-Jan-2025"] = [
+        //     ["Activity": "회의", "WorkType": "MEETING", "DutyReport": "09:00", "DutyDebrief": "10:00"],
+        //     ["WorkType": "FLY", "Item": "Flight 101", "DepAp": "ICN", "ArrAp": "LAX", "DepStnTime": "11:00", "ArrStnTime": "16:00"]
+        // ]
     }
     
     // 화면 회전 또는 레이아웃 변경 시 레이아웃 무효화
@@ -108,31 +118,31 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.collectionViewLayout.invalidateLayout()
     }
     
-    // Auto Layout 제약조건 설정
+    // MARK: - Auto Layout 제약조건 설정
     func setupConstraints() {
         NSLayoutConstraint.activate([
-            // monthControlView: 상단 safeArea에서 10포인트, 좌우 10포인트, 높이 40 (필요시 높이를 조정)
+            // 상단 월 컨트롤 뷰
             monthControlView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             monthControlView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             monthControlView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             monthControlView.heightAnchor.constraint(equalToConstant: 40),
             
-            // prevButton: monthControlView 왼쪽, 너비 80
+            // 이전 버튼
             prevButton.leadingAnchor.constraint(equalTo: monthControlView.leadingAnchor),
             prevButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             prevButton.widthAnchor.constraint(equalToConstant: 80),
             
-            // nextButton: monthControlView 오른쪽, 너비 80
+            // 다음 버튼
             nextButton.trailingAnchor.constraint(equalTo: monthControlView.trailingAnchor),
             nextButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             nextButton.widthAnchor.constraint(equalToConstant: 80),
             
-            // monthLabel: prevButton와 nextButton 사이, 중앙 정렬
+            // 월 라벨
             monthLabel.leadingAnchor.constraint(equalTo: prevButton.trailingAnchor, constant: 10),
             monthLabel.trailingAnchor.constraint(equalTo: nextButton.leadingAnchor, constant: -10),
             monthLabel.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             
-            // collectionView: monthControlView 아래 10포인트, 좌우 및 하단 전체 사용
+            // 컬렉션 뷰
             collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -140,108 +150,25 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         ])
     }
     
-/*    // MARK: - API 호출 및 JSON 파싱
-    // 천문연구원 API
-    func fetchHolidays(for date: Date) {
-        // 월이 바뀔 때마다 기존 휴일 데이터 삭제
-        holidays.removeAll()
-        
-        let year = calendar.component(.year, from: date)
-        let month = calendar.component(.month, from: date)
-        
-        // 서비스키 및 엔드포인트 URL (JSON 응답 받으려면 _type=json 추가)
-        let serviceKey = "%2FzXNtT10h%2BAjsYrujOeurHWvrtKP%2BGlxSKwjtq58%2BA%2BXmw5D8uAGiS3Z%2Bq3AjZY3Wont29%2Bm4bLy2S88KzYw4A%3D%3D"
-        let urlString = "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?serviceKey=\(serviceKey)&solYear=\(year)&solMonth=\(String(format: "%02d", month))&_type=json"
-  
-        guard let url = URL(string: urlString) else {
-            print("URL 생성 실패")
-            return
-        }
-        
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self else { return }
-            if let error = error {
-                print("API 요청 오류: \(error.localizedDescription)")
-                return
-            }
-            guard let data = data else {
-                print("데이터 없음")
-                return
-            }
-            do {
-                if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    print("전체 JSON 응답: \(jsonObject)")
-                    if let response = jsonObject["response"] as? [String: Any],
-                       let body = response["body"] as? [String: Any],
-                       let items = body["items"] as? [String: Any],
-                       let itemArray = items["item"] as? [[String: Any]] {
-                        for item in itemArray {
-                            if let locdate = item["locdate"] as? Int,
-                               let dateName = item["dateName"] as? String {
-                                let locdateStr = String(locdate)  // 예: "20250101"
-                                if locdateStr.count == 8 {
-                                    let yearStr = locdateStr.prefix(4)
-                                    let monthStr = locdateStr.dropFirst(4).prefix(2)
-                                    let dayStr = locdateStr.suffix(2)
-                                    let formattedDate = "\(yearStr)-\(monthStr)-\(dayStr)"
-                                    print("휴일: \(formattedDate) - \(dateName)")
-                                    self.holidays[formattedDate] = dateName
-                                }
-                            }
-                        }
-                    } else {
-                        print("JSON 파싱 실패: 'items' 또는 'item' 키가 없습니다.")
-                    }
-                    DispatchQueue.main.async {
-                        self.collectionView.reloadData()
-                    }
-                } else {
-                    print("JSON 응답이 [String: Any] 형식이 아님")
-                }
-            } catch {
-                print("JSON 파싱 오류: \(error.localizedDescription)")
-            }
-        }
-        task.resume()
-    }
- */
-    
     // MARK: - API 호출 및 JSON 파싱 (구글 캘린더 API 사용)
     func fetchHolidays(for date: Date) {
-        // 월이 바뀔 때마다 기존 휴일 데이터 삭제
         holidays.removeAll()
-        
-        // 해당 월의 시작일과 종료일을 계산합니다.
-        guard let monthRange = calendar.range(of: .day, in: .month, for: date),
-              let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else {
-            return
-        }
-        
-        // 시작일: 현재 월의 1일
+        guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else { return }
         let startDate = firstDayOfMonth
-        // 종료일: 현재 월의 마지막 날의 23:59:59 (UTC 기준으로 설정하거나 원하는 타임존 적용)
+        
         var components = DateComponents()
         components.month = 1
         components.second = -1
         guard let endDate = calendar.date(byAdding: components, to: firstDayOfMonth) else { return }
         
-        // ISO8601 형식의 문자열로 변환 (구글 API는 RFC3339 형식을 사용)
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime]
         let timeMin = isoFormatter.string(from: startDate)
         let timeMax = isoFormatter.string(from: endDate)
         
-        
-        //https://www.googleapis.com/calendar/v3/calendars/ko.south_korea.official%23holiday%40group.v.calendar.google.com/events?key=AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY&orderBy=startTime&singleEvents=true&timeMin=2022-01-01T00:00:00Z&timeMax=2023-01-01T00:00:00Z
-        // 구글 캘린더 API 설정
-        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"  
-        let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com" // URL 인코딩된 캘린더 ID (예: 한국 휴일 캘린더)
-
-        
-        // 구글 캘린더 이벤트 리스트 URL
-        //let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&timeMin=\(timeMin)&timeMax=\(timeMax)&singleEvents=true&orderBy=startTime"
+        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"
+        let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com"
         let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
-        //               https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${apiKey}&orderBy=startTime&singleEvents=true&timeMin=${startDate}&timeMax=${endDate}
         
         guard let url = URL(string: urlString) else {
             print("URL 생성 실패")
@@ -260,22 +187,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             }
             
             do {
-                if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    // 구글 캘린더 API 응답은 "items" 배열에 이벤트가 들어있습니다.
-                    if let items = jsonObject["items"] as? [[String: Any]] {
-                        for item in items {
-                            // 휴일은 보통 all-day 이벤트로 제공되며, start에 "date" 필드가 있습니다.
-                            if let startInfo = item["start"] as? [String: Any],
-                               let startDateStr = startInfo["date"] as? String,
-                               let summary = item["summary"] as? String {
-                                // startDateStr의 형식은 "yyyy-MM-dd"입니다.
-                                // 필요에 따라 날짜 포맷을 변환할 수 있습니다.
-                                print("휴일: \(startDateStr) - \(summary)")
-                                self.holidays[startDateStr] = summary
-                            }
+                if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let items = jsonObject["items"] as? [[String: Any]] {
+                    for item in items {
+                        if let startInfo = item["start"] as? [String: Any],
+                           let startDateStr = startInfo["date"] as? String,
+                           let summary = item["summary"] as? String {
+                            print("휴일: \(startDateStr) - \(summary)")
+                            self.holidays[startDateStr] = summary
                         }
-                    } else {
-                        print("JSON 파싱 실패: 'items' 키가 없습니다.")
                     }
                     DispatchQueue.main.async {
                         self.collectionView.reloadData()
@@ -289,7 +209,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
         task.resume()
     }
-
     
     // MARK: - 월 이동 액션
     @objc func prevMonth() {
@@ -306,7 +225,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.reloadData()
     }
     
-    // monthLabel은 "MMMM yyyy" 형식으로 표시 (예: February 2025)
+    // monthLabel 업데이트 ("MMMM yyyy" 형식)
     func updateMonthLabel() {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US")
@@ -316,32 +235,32 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     // MARK: - UICollectionViewDataSource
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // 요일 헤더 7개 + 날짜 42개 = 49개
         return 49
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "dayCell", for: indexPath) as! CalendarDayCell
         
         if indexPath.item < 7 {
-            // 첫 번째 행: 요일 헤더
+            // 헤더 셀: 요일 표시
+            cell.isHeader = true
             cell.dateLabel.text = daysOfWeek[indexPath.item]
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: 14)
-            cell.dateLabel.textColor = (indexPath.item == 0 ? .red : (indexPath.item == 6 ? .blue : .black))
+            cell.dateLabel.textColor = .black  // 항상 검은색으로 표시
+            // 헤더 모드에서는 스케줄 뷰를 숨김
             cell.scheduleStackView.isHidden = true
         } else {
-            cell.scheduleStackView.isHidden = false
-            // 현재 월의 1일 계산 (년도, 월)
+            // 날짜 셀: 일반 모드
+            cell.isHeader = false
+            
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             guard let firstDayOfMonth = calendar.date(from: components) else { return cell }
             
-            // 1일의 요일 및 오프셋 계산 (캘린더의 firstWeekday를 고려)
             let weekday = calendar.component(.weekday, from: firstDayOfMonth)
             var offset = weekday - calendar.firstWeekday
             if offset < 0 { offset += 7 }
             
-            let index = indexPath.item - 7  // 날짜 셀의 인덱스 (0 ~ 41)
+            let index = indexPath.item - 7
             let dayNumber = index - offset + 1
             
             let currentMonthRange = calendar.range(of: .day, in: .month, for: currentDate)!
@@ -351,7 +270,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             var textColor: UIColor = .black
             
             if dayNumber < 1 {
-                // 이전 달 처리
                 if let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate),
                    let previousMonthRange = calendar.range(of: .day, in: .month, for: previousMonth) {
                     let previousMonthDays = previousMonthRange.count
@@ -362,7 +280,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     displayDate = calendar.date(from: prevComponents)
                 }
             } else if dayNumber > currentMonthDays {
-                // 다음 달 처리
                 let day = dayNumber - currentMonthDays
                 textColor = .lightGray
                 if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
@@ -371,54 +288,66 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     displayDate = calendar.date(from: nextComponents)
                 }
             } else {
-                // 현재 달 처리
                 textColor = .black
                 var currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
                 currentComponents.day = dayNumber
                 displayDate = calendar.date(from: currentComponents)
             }
             
-            // displayDate가 유효하면 "MMM dd" 형식으로 날짜 표시 (예: Feb 04)
+            var dateText = ""
             if let displayDate = displayDate {
                 let dateFormatter = DateFormatter()
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
                 dateFormatter.dateFormat = "MMM dd"
-                cell.dateLabel.text = dateFormatter.string(from: displayDate)
+                dateText = dateFormatter.string(from: displayDate)
+                cell.dateLabel.text = dateText
             } else {
                 cell.dateLabel.text = ""
             }
+            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: 12)
             cell.dateLabel.textColor = textColor
             
-            // 기존 스케줄/휴일 레이블 제거
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
-            // 휴일 조회 – displayDate에서 하루(-1일) 오프셋 적용 후 lookup
-            if let displayDate = displayDate,
-               let holidayDate = calendar.date(byAdding: .day, value: +1, to: displayDate) {
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-                dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-                dateFormatter.dateFormat = "yyyy-MM-dd"
-                let holidayKey = dateFormatter.string(from: holidayDate)
+            if let displayDate = displayDate {
+                let holidayFormatter = DateFormatter()
+                holidayFormatter.locale = Locale(identifier: "en_US_POSIX")
+                holidayFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+                holidayFormatter.dateFormat = "yyyy-MM-dd"
+                let holidayKey = holidayFormatter.string(from: calendar.date(byAdding: .day, value: +1, to: displayDate)!)
+                
                 if let holiday = holidays[holidayKey] {
-                    let holidayLabel = UILabel()
-                    holidayLabel.font = UIFont.systemFont(ofSize: 10)
-                    holidayLabel.textColor = .red
-                    holidayLabel.text = "🎉 \(holiday)"
-                    cell.scheduleStackView.addArrangedSubview(holidayLabel)
+                    cell.dateLabel.text = "[\(holiday)] " + dateText
+                    cell.contentView.backgroundColor = UIColor.systemPink.withAlphaComponent(0.3)
+                } else {
+                    cell.contentView.backgroundColor = .white
                 }
                 
-                // 스케줄 정보가 있다면 (추가 스케줄 데이터가 있을 경우)
-                let originalDateKey = dateFormatter.string(from: displayDate)
+                let scheduleFormatter = DateFormatter()
+                scheduleFormatter.locale = Locale(identifier: "en_US_POSIX")
+                scheduleFormatter.dateFormat = "dd-MMM-yyyy"
+                let originalDateKey = scheduleFormatter.string(from: displayDate)
+                
                 if let dailySchedules = schedules[originalDateKey] {
                     for schedule in dailySchedules {
                         let scheduleLabel = UILabel()
-                        scheduleLabel.font = UIFont.systemFont(ofSize: 10)
+                        scheduleLabel.font = UIFont.boldSystemFont(ofSize: 10)
+                        scheduleLabel.textColor = .black
+                        scheduleLabel.textAlignment = .left
                         scheduleLabel.numberOfLines = 0
-                        if let workType = schedule["WorkType"], workType == "FLY" {
-                            scheduleLabel.text = "✈️ \(schedule["Item"] ?? "") \n\(schedule["DepAp"] ?? "")-\(schedule["ArrAp"] ?? "")"
+                        
+                        if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
+                            let item = schedule["Item"] ?? ""
+                            let depTime = schedule["DepStnTime"] ?? ""
+                            let depAp = schedule["DepAp"] ?? ""
+                            let arrAp = schedule["ArrAp"] ?? ""
+                            let arrTime = schedule["ArrStnTime"] ?? ""
+                            scheduleLabel.text = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                         } else {
-                            scheduleLabel.text = "📌 \(schedule["Activity"] ?? "")"
+                            let activity = schedule["Activity"] ?? ""
+                            let dutyReport = schedule["DutyReport"] ?? ""
+                            let dutyDebrief = schedule["DutyDebrief"] ?? ""
+                            scheduleLabel.text = "\(activity) \(dutyReport) - \(dutyDebrief)"
                         }
                         cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                     }
@@ -428,7 +357,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cell
     }
     
-    // MARK: - UICollectionViewDelegateFlowLayout
     func collectionView(_ collectionView: UICollectionView,
                         layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -438,18 +366,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         let sectionInset = flowLayout.sectionInset
         let interItemSpacing = flowLayout.minimumInteritemSpacing
-        // 좌우 여백과 6개의 셀 간격을 반영하여 7열의 셀 너비 계산
         let totalHorizontalSpacing = sectionInset.left + sectionInset.right + interItemSpacing * 6
         let cellWidth = (collectionView.frame.width - totalHorizontalSpacing) / 7
         
-        // 첫 번째 행(요일 헤더)의 높이를 30으로 고정
         let headerRowHeight: CGFloat = 30
         if indexPath.item < 7 {
             return CGSize(width: cellWidth, height: headerRowHeight)
         } else {
             let lineSpacing = flowLayout.minimumLineSpacing
-            // 나머지 42셀은 6행으로 배치:
-            // 전체 컬렉션 높이에서 (sectionInset.top + sectionInset.bottom + 헤더 높이 + 5 * 행간)을 뺀 값을 6으로 나눔.
             let totalVerticalSpacing = flowLayout.sectionInset.top + flowLayout.sectionInset.bottom + headerRowHeight + lineSpacing * 5
             let availableHeight = collectionView.frame.height - totalVerticalSpacing
             let cellHeight = availableHeight / 6
@@ -464,8 +388,6 @@ class CalendarDayCell: UICollectionViewCell {
     // 날짜 또는 요일을 표시할 레이블
     let dateLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.boldSystemFont(ofSize: 14)
-        label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -475,11 +397,22 @@ class CalendarDayCell: UICollectionViewCell {
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 2
-        stackView.alignment = .fill
+        // 내부 뷰들을 왼쪽 정렬
+        stackView.alignment = .leading
         stackView.distribution = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
+    
+    // isHeader: true이면 요일 셀, false이면 날짜 셀로 레이아웃 변경
+    var isHeader: Bool = false {
+        didSet {
+            updateLayoutForHeader()
+        }
+    }
+    
+    private var headerConstraints: [NSLayoutConstraint] = []
+    private var normalConstraints: [NSLayoutConstraint] = []
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -489,16 +422,45 @@ class CalendarDayCell: UICollectionViewCell {
         contentView.addSubview(dateLabel)
         contentView.addSubview(scheduleStackView)
         
-        NSLayoutConstraint.activate([
-            dateLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
-            dateLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            dateLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+        setupNormalConstraints()
+        setupHeaderConstraints()
+        updateLayoutForHeader()
+    }
+    
+    private func setupNormalConstraints() {
+        // 날짜 셀: 날짜는 왼쪽 위에 위치, 스케줄은 날짜 바로 아래에 왼쪽 정렬
+        normalConstraints = [
+            dateLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
+            dateLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 2),
             
-            scheduleStackView.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 4),
+            scheduleStackView.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 2),
             scheduleStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 2),
             scheduleStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -2),
-            scheduleStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -2)
-        ])
+            scheduleStackView.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -2)
+        ]
+    }
+    
+    private func setupHeaderConstraints() {
+        // 요일 셀: 날짜 레이블을 셀의 중앙에 배치
+        headerConstraints = [
+            dateLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            dateLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+        ]
+    }
+    
+    private func updateLayoutForHeader() {
+        if isHeader {
+            NSLayoutConstraint.deactivate(normalConstraints)
+            NSLayoutConstraint.activate(headerConstraints)
+            scheduleStackView.isHidden = true
+            dateLabel.textAlignment = .center
+        } else {
+            NSLayoutConstraint.deactivate(headerConstraints)
+            NSLayoutConstraint.activate(normalConstraints)
+            scheduleStackView.isHidden = false
+            dateLabel.textAlignment = .left
+        }
+        setNeedsLayout()
     }
     
     required init?(coder: NSCoder) {
