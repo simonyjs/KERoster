@@ -140,7 +140,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         ])
     }
     
-    // MARK: - API 호출 및 JSON 파싱
+/*    // MARK: - API 호출 및 JSON 파싱
+    // 천문연구원 API
     func fetchHolidays(for date: Date) {
         // 월이 바뀔 때마다 기존 휴일 데이터 삭제
         holidays.removeAll()
@@ -203,6 +204,92 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
         task.resume()
     }
+ */
+    
+    // MARK: - API 호출 및 JSON 파싱 (구글 캘린더 API 사용)
+    func fetchHolidays(for date: Date) {
+        // 월이 바뀔 때마다 기존 휴일 데이터 삭제
+        holidays.removeAll()
+        
+        // 해당 월의 시작일과 종료일을 계산합니다.
+        guard let monthRange = calendar.range(of: .day, in: .month, for: date),
+              let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else {
+            return
+        }
+        
+        // 시작일: 현재 월의 1일
+        let startDate = firstDayOfMonth
+        // 종료일: 현재 월의 마지막 날의 23:59:59 (UTC 기준으로 설정하거나 원하는 타임존 적용)
+        var components = DateComponents()
+        components.month = 1
+        components.second = -1
+        guard let endDate = calendar.date(byAdding: components, to: firstDayOfMonth) else { return }
+        
+        // ISO8601 형식의 문자열로 변환 (구글 API는 RFC3339 형식을 사용)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        let timeMin = isoFormatter.string(from: startDate)
+        let timeMax = isoFormatter.string(from: endDate)
+        
+        
+        //https://www.googleapis.com/calendar/v3/calendars/ko.south_korea.official%23holiday%40group.v.calendar.google.com/events?key=AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY&orderBy=startTime&singleEvents=true&timeMin=2022-01-01T00:00:00Z&timeMax=2023-01-01T00:00:00Z
+        // 구글 캘린더 API 설정
+        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"  
+        let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com" // URL 인코딩된 캘린더 ID (예: 한국 휴일 캘린더)
+
+        
+        // 구글 캘린더 이벤트 리스트 URL
+        //let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&timeMin=\(timeMin)&timeMax=\(timeMax)&singleEvents=true&orderBy=startTime"
+        let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
+        //               https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${apiKey}&orderBy=startTime&singleEvents=true&timeMin=${startDate}&timeMax=${endDate}
+        
+        guard let url = URL(string: urlString) else {
+            print("URL 생성 실패")
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self else { return }
+            if let error = error {
+                print("API 요청 오류: \(error.localizedDescription)")
+                return
+            }
+            guard let data = data else {
+                print("데이터 없음")
+                return
+            }
+            
+            do {
+                if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    // 구글 캘린더 API 응답은 "items" 배열에 이벤트가 들어있습니다.
+                    if let items = jsonObject["items"] as? [[String: Any]] {
+                        for item in items {
+                            // 휴일은 보통 all-day 이벤트로 제공되며, start에 "date" 필드가 있습니다.
+                            if let startInfo = item["start"] as? [String: Any],
+                               let startDateStr = startInfo["date"] as? String,
+                               let summary = item["summary"] as? String {
+                                // startDateStr의 형식은 "yyyy-MM-dd"입니다.
+                                // 필요에 따라 날짜 포맷을 변환할 수 있습니다.
+                                print("휴일: \(startDateStr) - \(summary)")
+                                self.holidays[startDateStr] = summary
+                            }
+                        }
+                    } else {
+                        print("JSON 파싱 실패: 'items' 키가 없습니다.")
+                    }
+                    DispatchQueue.main.async {
+                        self.collectionView.reloadData()
+                    }
+                } else {
+                    print("JSON 응답이 [String: Any] 형식이 아님")
+                }
+            } catch {
+                print("JSON 파싱 오류: \(error.localizedDescription)")
+            }
+        }
+        task.resume()
+    }
+
     
     // MARK: - 월 이동 액션
     @objc func prevMonth() {
