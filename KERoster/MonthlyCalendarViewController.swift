@@ -30,18 +30,20 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return view
     }()
     
-    // 이전 버튼
+    // 이전 버튼: SF Symbol "arrowshape.backward.circle.fill" 사용
     let prevButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("⬅️", for: .normal)
+        let image = UIImage(systemName: "arrowshape.backward.circle.fill")
+        button.setImage(image, for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
     
-    // 다음 버튼
+    // 다음 버튼: SF Symbol "arrowshape.forward.circle.fill" 사용 (기존 "➡️" 대신)
     let nextButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("➡️", for: .normal)
+        let image = UIImage(systemName: "arrowshape.forward.circle.fill")
+        button.setImage(image, for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -410,7 +412,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         let depDate = schedule["DepDate"] ?? ""
                         let arrDate = schedule["ArrDate"] ?? ""
                         
-                        // displayDate를 "dd-MMM-yyyy" 형식의 문자열로 변환 (scheduleDateFormatter는 이미 선언되어 있다고 가정)
+                        // displayDate를 "dd-MMM-yyyy" 형식의 문자열로 변환
                         let cellDateString = scheduleDateFormatter.string(from: displayDate)
 
                         if !depDate.isEmpty && !arrDate.isEmpty && depDate != arrDate {

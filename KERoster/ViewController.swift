@@ -166,13 +166,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 let calendar = Calendar.current // 날짜 연산을 위한 Calendar 객체
 
                 // DepDate와 ArrDate 계산을 위한 함수
-                // baseDate: 기본 날짜 (HTML에서 추출한 날짜)
-                // option: 옵션 문자열 (예: "(+1)" 또는 "(-1)")가 포함되어 있을 수 있음
+                // baseDate: HTML에서 추출한 기본 날짜
+                // option: 옵션 문자열 (예: "(+1)" 또는 "(-1)")가 포함될 수 있음
                 func calculateDate(baseDate: String, option: String) -> String {
                     // baseDate를 Date 객체로 변환
                     guard let baseDateObj = dateFormatter.date(from: baseDate) else { return baseDate }
                     
-                    // 정규식 패턴 수정: 양수, 음수 모두 지원 (예: "+1", "-1")
+                    // 정규식 패턴: 양수, 음수 모두 지원 (예: "+1", "-1")
                     let pattern = #"([-+]\d+)"#
                     if let regex = try? NSRegularExpression(pattern: pattern),
                        let match = regex.firstMatch(in: option, range: NSRange(option.startIndex..., in: option)) {
@@ -180,7 +180,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         // "+" 기호는 제거하고 "-"는 그대로 유지 (예: "+1" -> "1", "-1" -> "-1")
                         let offsetString = String(option[matchRange]).replacingOccurrences(of: "+", with: "")
                         if let offset = Int(offsetString) {
-                            // Calendar를 사용해 baseDate에 offset(일수)를 더함 (음수면 빼게 됨)
                             if let newDate = calendar.date(byAdding: .day, value: offset, to: baseDateObj) {
                                 return dateFormatter.string(from: newDate)
                             }
@@ -207,12 +206,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let flyingHours = columns.getOrNil(12)
                         let dutyHours = columns.getOrNil(13)
                         
-                        // 날짜가 비어있다면 바로 위 행의 날짜 사용
+                        // 날짜가 비어있으면 바로 위 행의 날짜 사용
                         if date.isEmpty || date == "N/A" {
                             if lastDate == "Unknown" { continue }
                             date = lastDate
                         } else {
                             lastDate = date
+                        }
+                        
+                        // 만약 Activity와 WorkType가 모두 비어 있으면 해당 스케줄은 저장하지 않고 건너뜁니다.
+                        if activity.isEmpty && workType.isEmpty {
+                            continue
                         }
                         
                         // 공항 코드와 시간을 정확히 분리하는 함수
