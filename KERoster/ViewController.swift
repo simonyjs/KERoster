@@ -10,33 +10,47 @@ import WebKit
 import SwiftSoup
 import Foundation
 
-// ✅ SwiftSoup Elements 확장 (배열 인덱스 초과 방지)
+// SwiftSoup의 Elements 배열에 안전하게 접근할 수 있도록 확장 (인덱스 초과 방지)
 extension Elements {
     func getOrNil(_ index: Int) -> String {
+        // 배열의 크기가 index보다 크면 해당 요소의 텍스트를 반환하고, 그렇지 않으면 "N/A" 반환
         return (self.size() > index) ? (try? self.get(index).text().trimmingCharacters(in: .whitespacesAndNewlines)) ?? "N/A" : "N/A"
     }
 }
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
-    @IBOutlet weak var webView: WKWebView!
-    var schedules: [String: [[String: String]]] = [:] // 날짜별 여러 개의 스케줄 저장
-    var toolbar: UIToolbar!
-    @IBOutlet weak var scheduleStackView: UIStackView! // 스택 뷰 연결
     
-    // 첫 번째 UIBarButtonItem을 IBAction으로 연결
+    // 스토리보드에서 연결된 WebView
+    @IBOutlet weak var webView: WKWebView!
+    
+    // 날짜별로 여러 스케줄을 저장하는 딕셔너리
+    var schedules: [String: [[String: String]]] = [:]
+    
+    // 툴바 (필요 시 사용)
+    var toolbar: UIToolbar!
+    
+    // 스토리보드에서 연결된 스케줄을 보여주는 스택뷰
+    @IBOutlet weak var scheduleStackView: UIStackView!
+    
+    // MARK: - UIBarButtonItem 액션들
+    
+    // 1. iFlight 버튼: iFlight URL을 로드
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
     }
-    // 두 번째 UIBarButtonItem을 IBAction으로 연결
+    
+    // 2. CrewLink 버튼: CrewLink URL을 로드
     @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://crewlink.koreanair.com/")
     }
-    // 세 번째 UIBarButtonItem을 IBAction으로 연결 (스케줄 가져오기)
+    
+    // 3. Import 버튼: 스케줄 파싱 및 가져오기
     @IBAction func ImportButtonTapped(_ sender: UIBarButtonItem) {
         importSchedule()
-        print(schedules)
+        print(schedules) // 디버깅용: 가져온 스케줄 출력
     }
-    // 네 번째 UIBarButtonItem을 IBAction으로 연결 (리스트 보기)
+    
+    // 4. View List 버튼: 스케줄 목록 화면으로 이동
     @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let viewListVC = storyboard.instantiateViewController(withIdentifier: "ViewListViewController") as? ViewListViewController {
@@ -44,58 +58,57 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             navigationController?.pushViewController(viewListVC, animated: true)
         }
     }
-    // 다섯 번째 UIBarButtonItem을 IBAction으로 연결 (달력 보기)
+    
+    // 5. Calendar 버튼: 달력 보기 화면으로 이동
     @IBAction func CalendarButtonTapped(_ sender: UIBarButtonItem) {
         print("CalendarButtonTapped")
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-/*
-        //디버깅용
-        let calendarVC = MonthlyCalendarViewController()
-        calendarVC.schedules = schedules // ✅ 데이터 전달 확인
-        print(calendarVC.schedules)      // ✅ 디버깅: 전달된 데이터 출력
-        navigationController?.pushViewController(calendarVC, animated: true)
-*/
-        //기존 코드
+        
+        // 스토리보드에서 MonthlyCalendarViewController 인스턴스 생성 및 스케줄 데이터 전달
         if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
             calendarVC.schedules = schedules
             navigationController?.pushViewController(calendarVC, animated: true)
         }
     }
     
+    // MARK: - View LifeCycle
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        // WebView delegate 설정
+        // WebView의 delegate 설정
         webView.navigationDelegate = self
         webView.uiDelegate = self
         
+        // 초기 URL 로드 (로그인 페이지)
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // 네비게이션 바 스타일 변경
+        // 네비게이션 바 스타일 설정 (배경색, 타이틀 색상 등)
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(named: "Ocean") // Ocean
-        appearance.titleTextAttributes = [.foregroundColor: UIColor.white] // 타이틀 색상
+        appearance.backgroundColor = UIColor(named: "Ocean") // 사용자 정의 색상
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
-
-        // ✅ 특정 뷰 컨트롤러에서 네비게이션 바 스타일 직접 적용
+        
+        // 네비게이션 바에 적용 (표준, 스크롤 시, 압축 모드 모두)
         navigationController?.navigationBar.standardAppearance = appearance
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
         navigationController?.navigationBar.compactAppearance = appearance
-        navigationController?.navigationBar.tintColor = .white // 백버튼 & 아이콘 색상
-
-        // ✅ 네비게이션 바가 투명해지는 것을 방지
+        navigationController?.navigationBar.tintColor = .white // 백 버튼 및 아이콘 색상
+        
+        // 네비게이션 바의 투명도 비활성화
         navigationController?.navigationBar.isTranslucent = false
     }
     
-    // 링크 클릭 시 현재 WebView에서 열리도록 설정
+    // MARK: - WebView Delegate Methods
+    
+    // 링크 클릭 시 새 창 대신 현재 WebView에서 열도록 설정
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if navigationAction.targetFrame == nil {
-            // 새 창을 열려고 하면 현재 웹뷰에서 로드
             webView.load(navigationAction.request)
             decisionHandler(.cancel)
         } else {
@@ -103,7 +116,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // 새 창 열기 방지 및 현재 WebView에서 열도록 설정
+    // 새 창 열기 방지: 새 창 대신 현재 웹뷰에서 열기
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url {
             webView.load(URLRequest(url: url))
@@ -111,7 +124,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         return nil
     }
     
-    // URL을 WebView에 로드하는 함수
+    // URL 문자열을 받아 WebView에서 로드하는 함수
     func loadURL(_ urlString: String) {
         print("loadURL 호출됨: \(urlString)") // 디버깅용 로그
         if let url = URL(string: urlString) {
@@ -122,8 +135,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // ✅ importSchedule 함수 수정
-    // - 기존 파싱 오류뿐 아니라, 날짜에 스케줄이 전혀 없는 경우에도 "가져오기 실패" 알림창을 띄웁니다.
+    // MARK: - 스케줄 가져오기 (Import) 기능
+    
+    /// 웹뷰의 HTML 소스를 파싱하여 스케줄 데이터를 추출하는 함수
     func importSchedule() {
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
@@ -135,45 +149,52 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
 
             do {
-                // ✅ HTML 파싱
+                // HTML 파싱
                 let doc: Document = try SwiftSoup.parse(htmlString)
                 let rows: Elements = try doc.select("tr") // 모든 tr 행 선택
 
                 var extractedSchedules: [String: [[String: String]]] = [:] // 날짜별 스케줄 저장
 
+                // 날짜 포맷터 설정 ("dd-MMM-yyyy" 형식, 영어 로케일)
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "dd-MMM-yyyy"
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
 
                 var lastDate: String = "Unknown"
-                var sequenceCounter: [String: Int] = [:] // 날짜별 순번 저장
+                var sequenceCounter: [String: Int] = [:] // 동일 날짜의 순번 저장
 
                 let calendar = Calendar.current // 날짜 연산을 위한 Calendar 객체
 
-                // ✅ 날짜 계산 함수 (DepDate, ArrDate 계산)
+                // DepDate와 ArrDate 계산을 위한 함수
+                // baseDate: 기본 날짜 (HTML에서 추출한 날짜)
+                // option: 옵션 문자열 (예: "(+1)" 또는 "(-1)")가 포함되어 있을 수 있음
                 func calculateDate(baseDate: String, option: String) -> String {
+                    // baseDate를 Date 객체로 변환
                     guard let baseDateObj = dateFormatter.date(from: baseDate) else { return baseDate }
-
-                    // ✅ 정규식으로 `(+1)`, `(+2)` 형태의 값을 추출
-                    let pattern = #"(\+\d+)"#
+                    
+                    // 정규식 패턴 수정: 양수, 음수 모두 지원 (예: "+1", "-1")
+                    let pattern = #"([-+]\d+)"#
                     if let regex = try? NSRegularExpression(pattern: pattern),
                        let match = regex.firstMatch(in: option, range: NSRange(option.startIndex..., in: option)) {
                         let matchRange = Range(match.range, in: option)!
+                        // "+" 기호는 제거하고 "-"는 그대로 유지 (예: "+1" -> "1", "-1" -> "-1")
                         let offsetString = String(option[matchRange]).replacingOccurrences(of: "+", with: "")
-                        
                         if let offset = Int(offsetString) {
+                            // Calendar를 사용해 baseDate에 offset(일수)를 더함 (음수면 빼게 됨)
                             if let newDate = calendar.date(byAdding: .day, value: offset, to: baseDateObj) {
                                 return dateFormatter.string(from: newDate)
                             }
                         }
                     }
+                    // 옵션에서 오프셋을 찾지 못하면 기본 날짜를 그대로 반환
                     return baseDate
                 }
 
-                // ✅ 스케줄 데이터 추출
+                // 각 tr 행을 순회하며 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
                     let columns: Elements = try row.select("td")
-
+                    
+                    // 최소 11개 이상의 열이 있고, 제목 행("Date" 포함)이 아닌 경우에만 처리
                     if columns.size() > 10, !(try columns[1].text().contains("Date")) {
                         var date = columns.getOrNil(1)
                         let activity = columns.getOrNil(2)
@@ -185,20 +206,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let dutyDebrief = columns.getOrNil(11)
                         let flyingHours = columns.getOrNil(12)
                         let dutyHours = columns.getOrNil(13)
-
-                        // ✅ 날짜가 비어있으면 바로 위 행의 날짜 사용
+                        
+                        // 날짜가 비어있다면 바로 위 행의 날짜 사용
                         if date.isEmpty || date == "N/A" {
                             if lastDate == "Unknown" { continue }
                             date = lastDate
                         } else {
                             lastDate = date
                         }
-
-                        // ✅ 공항 코드와 시간을 정확히 분리하는 함수
+                        
+                        // 공항 코드와 시간을 정확히 분리하는 함수
                         func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
-                            let pattern = #"([A-Z]{3})\s+(\d{2}:\d{2})(\(\+\d+\))?"#
+                            let pattern = #"([A-Z]{3})\s+(\d{2}:\d{2})(\([-+]\d+\))?"#
                             let regex = try? NSRegularExpression(pattern: pattern)
-
+                            
                             if let regex = regex {
                                 let range = NSRange(fullString.startIndex..., in: fullString)
                                 if let match = regex.firstMatch(in: fullString, options: [], range: range) {
@@ -213,22 +234,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             }
                             return ("N/A", "N/A", "")
                         }
-
-                        // ✅ 출발/도착 공항 코드 및 시간 + 옵션 분리
+                        
+                        // 출발/도착 공항 및 시간, 옵션 분리
                         let (depAp, depStnTime, depStnTimeOpt) = extractAirportAndTime(depStationTimeFull)
                         let (arrAp, arrStnTime, arrStnTimeOpt) = extractAirportAndTime(arrStationTimeFull)
-
-                        // ✅ DepDate, ArrDate 업데이트
+                        
+                        // DepDate와 ArrDate 계산 (옵션에 따라 날짜 오프셋 적용)
                         let depDate = calculateDate(baseDate: date, option: depStnTimeOpt)
                         let arrDate = calculateDate(baseDate: date, option: arrStnTimeOpt)
-
-                        // ✅ 날짜별로 순번 증가
+                        
+                        // 동일 날짜에 대해 순번 증가
                         let seq = (sequenceCounter[date] ?? 0) + 1
                         sequenceCounter[date] = seq
-
-                        // ✅ 스케줄 객체 생성 (순번 포함)
+                        
+                        // 스케줄 항목 객체 생성 (각 항목은 딕셔너리로 저장)
                         let scheduleEntry: [String: String] = [
-                            "Seq": "\(seq)",  // ✅ 순번 추가
+                            "Seq": "\(seq)",  // 순번 추가
                             "Activity": activity,
                             "Item": item,
                             "WorkType": workType,
@@ -236,22 +257,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "DepAp": depAp,
                             "DepStnTime": depStnTime.isEmpty ? "N/A" : depStnTime,
                             "DepStnTimeOpt": depStnTimeOpt,
-                            "DepDate": depDate,  // ✅ DepDate 추가
+                            "DepDate": depDate,  // DepDate 저장
                             "ArrAp": arrAp,
                             "ArrStnTime": arrStnTime.isEmpty ? "N/A" : arrStnTime,
                             "ArrStnTimeOpt": arrStnTimeOpt,
-                            "ArrDate": arrDate,  // ✅ ArrDate 추가
+                            "ArrDate": arrDate,  // ArrDate 저장
                             "DutyDebrief": dutyDebrief,
                             "FlyingHours": flyingHours,
                             "DutyHours": dutyHours
                         ]
-
-                        // ✅ 같은 날짜에 여러 개 추가 가능하도록 배열로 저장
+                        
+                        // 같은 날짜의 스케줄은 배열에 추가
                         extractedSchedules[date, default: []].append(scheduleEntry)
                     }
                 }
                 
-                // ✅ 스케줄 데이터가 전혀 없으면 "가져오기 실패" 메시지 출력
+                // 스케줄 데이터가 전혀 없는 경우 알림창 표시
                 if extractedSchedules.isEmpty {
                     DispatchQueue.main.async {
                         self.showAlert(title: "가져오기 실패", message: "해당 웹뷰에 스케줄이 없습니다.")
@@ -259,7 +280,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     return
                 }
                 
-                // ✅ 기존 스케줄은 그대로 두고, 동일 날짜의 스케줄은 새로 가져온 스케줄로 덮어쓰기
+                // 기존 스케줄과 병합 (동일 날짜의 스케줄은 새로 가져온 데이터로 덮어쓰기)
                 DispatchQueue.main.async {
                     self.schedules.merge(extractedSchedules) { (_, new) in new }
                     self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
@@ -274,14 +295,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // ✅ 알림창을 띄우는 함수
+    // MARK: - 알림창 표시 함수
+    
+    /// 주어진 제목과 메시지로 알림창을 띄우는 함수
     func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
     
-    // 스케줄 추가 메서드 (예시)
+    // MARK: - 스케줄 추가 (예시)
+    
+    /// 스케줄 정보를 받아 scheduleStackView에 추가하는 함수 (예시)
     func addScheduleToStackView(date: String, activity: String) {
         let containerView = UIView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
