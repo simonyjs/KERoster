@@ -335,7 +335,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 dateText = dateFormatter.string(from: displayDate)
                 cell.dateLabel.text = dateText
             } else {
-                cell.dateLabel.text = ""
+                // 날짜가 비어 있으면 "LAYOVER"로 표시
+                cell.dateLabel.text = "LAYOVER"
             }
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: 10)
             cell.dateLabel.textColor = textColor
@@ -360,7 +361,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
                     isHolidayCell = true
                 } else {
-                    // 휴일이 아닌 경우, 위에서 이미 설정한 값 사용 (이번 달이면 기본 white/black, 이번 달이 아니면 LightGreen / DarkGreen)
+                    // 휴일이 아닌 경우, 위에서 이미 설정한 값 사용
                 }
                 
                 // --- 달력 셀에 스케줄 표시 (날짜 범위 체크) ---
@@ -480,7 +481,7 @@ class CalendarDayCell: UICollectionViewCell {
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 2
-        stackView.alignment = .leading // 왼쪽 정렬
+        stackView.alignment = .leading  // 왼쪽 정렬
         stackView.distribution = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
