@@ -38,12 +38,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
     }
-    
+    /*
     // 2. CrewLink 버튼: CrewLink URL을 로드
     @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://crewlink.koreanair.com/")
     }
-    
+    */
     // 3. Import 버튼: 스케줄 파싱 및 가져오기
     @IBAction func ImportButtonTapped(_ sender: UIBarButtonItem) {
         importSchedule()

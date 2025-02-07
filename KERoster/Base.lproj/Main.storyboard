@@ -35,13 +35,6 @@
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="TWB-gv-DJj"/>
-                                    <barButtonItem title="CrewLink" image="airplane" catalog="system" id="Kdo-a4-aLH">
-                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        <connections>
-                                            <action selector="CrewLinkButtonTapped:" destination="BYZ-38-t0r" id="7vT-16-OfR"/>
-                                        </connections>
-                                    </barButtonItem>
-                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="EKF-Zo-JdT"/>
                                     <barButtonItem title="Import" image="square.and.arrow.down.fill" catalog="system" landscapeImage="square.and.arrow.down" id="jWD-ew-bUh">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
@@ -49,7 +42,7 @@
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Jbr-a0-gyY"/>
-                                    <barButtonItem title="Schedule" image="calendar.badge.plus" catalog="system" id="JJm-mh-a0V">
+                                    <barButtonItem title="Schedule" image="airplane.departure" catalog="system" id="JJm-mh-a0V">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="ViewListButtonTapped:" destination="BYZ-38-t0r" id="SBt-sB-TJa"/>
@@ -156,9 +149,8 @@
         </scene>
     </scenes>
     <resources>
-        <image name="airplane" catalog="system" width="128" height="115"/>
+        <image name="airplane.departure" catalog="system" width="128" height="84"/>
         <image name="calendar" catalog="system" width="128" height="107"/>
-        <image name="calendar.badge.plus" catalog="system" width="128" height="109"/>
         <image name="house.fill" catalog="system" width="128" height="104"/>
         <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
         <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
