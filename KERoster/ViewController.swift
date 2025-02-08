@@ -188,6 +188,29 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     // 옵션에서 오프셋을 찾지 못하면 기본 날짜를 그대로 반환
                     return baseDate
                 }
+                
+                // dutyDebrief 옵션을 추출하는 함수
+                // dutyDebrief 문자열 끝에 공백과 함께 "(+1)" 또는 "(-1)"과 같은 형식이 있으면 그 숫자만 추출
+                func extractDutyDebriefOption(_ dutyDebrief: String) -> String {
+                    let pattern = #"\s*\(([-+]\d+)\)\s*$"#
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: dutyDebrief, range: NSRange(dutyDebrief.startIndex..., in: dutyDebrief)) {
+                        if let range = Range(match.range(at: 1), in: dutyDebrief) {
+                            return String(dutyDebrief[range])
+                        }
+                    }
+                    return ""
+                }
+                
+                // dutyDebriefTime를 추출하는 함수
+                // 예: "00:00"이면 그대로, "00:00(+1)"이면 "00:00"만 반환
+                func extractDutyDebriefTime(_ dutyDebrief: String) -> String {
+                    if let parenIndex = dutyDebrief.firstIndex(of: "(") {
+                        let timePart = dutyDebrief[..<parenIndex]
+                        return timePart.trimmingCharacters(in: .whitespaces)
+                    }
+                    return dutyDebrief.trimmingCharacters(in: .whitespaces)
+                }
 
                 // 각 tr 행을 순회하며 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
@@ -197,14 +220,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     if columns.size() > 10, !(try columns[1].text().contains("Date")) {
                         var date = columns.getOrNil(1)
                         let activity = columns.getOrNil(2)
+                        let dutyReport = columns.getOrNil(3)
                         let item = columns.getOrNil(4)
                         let workType = columns.getOrNil(6)
-                        let dutyReport = columns.getOrNil(3)
                         let depStationTimeFull = columns.getOrNil(8)
                         let arrStationTimeFull = columns.getOrNil(9)
                         let dutyDebrief = columns.getOrNil(11)
                         let flyingHours = columns.getOrNil(12)
                         let dutyHours = columns.getOrNil(13)
+                        let hotel = columns.getOrNil(16)
                         
                         // 날짜가 비어있으면 바로 위 행의 날짜 사용
                         if date.isEmpty || date == "N/A" {
@@ -247,6 +271,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let depDate = calculateDate(baseDate: date, option: depStnTimeOpt)
                         let arrDate = calculateDate(baseDate: date, option: arrStnTimeOpt)
                         
+                        // dutyDebriefTime 추출: 괄호 부분이 있으면 제거한 시간만, 없으면 그대로 사용
+                        let dutyDebriefTime = extractDutyDebriefTime(dutyDebrief)
+                        
+                        // dutyDebrief 옵션 추출 및 dutyDebriefDate 계산
+                        let dutyDebriefOption = extractDutyDebriefOption(dutyDebrief)
+                        let dutyDebriefDate = calculateDate(baseDate: date, option: dutyDebriefOption.isEmpty ? "" : "(\(dutyDebriefOption))")
+                        
                         // 동일 날짜에 대해 순번 증가
                         let seq = (sequenceCounter[date] ?? 0) + 1
                         sequenceCounter[date] = seq
@@ -267,8 +298,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "ArrStnTimeOpt": arrStnTimeOpt,
                             "ArrDate": arrDate,  // ArrDate 저장
                             "DutyDebrief": dutyDebrief,
+                            "DutyDebriefTime": dutyDebriefTime, // 분리된 시간 값
+                            "DutyDebriefDate": dutyDebriefDate, // 계산된 날짜 값
                             "FlyingHours": flyingHours,
-                            "DutyHours": dutyHours
+                            "DutyHours": dutyHours,
+                            "Hotel": hotel
                         ]
                         
                         // 같은 날짜의 스케줄은 배열에 추가

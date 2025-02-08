@@ -29,7 +29,7 @@ extension UIFont {
 class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     // 스케줄 데이터:
-    // 원래 키는 "dd-MMM-yyyy" 형식이지만, 실제 각 스케줄 항목 내에 "DepDate"와 "ArrDate"가 포함됨.
+    // 원래 키는 "dd-MMM-yyyy" 형식이지만, 실제 각 스케줄 항목 내에 "DepDate", "ArrDate", "DutyDebriefDate" 등 여러 항목이 포함됨.
     var schedules: [String: [[String: String]]] = [:]
     
     // 날짜별 휴일 정보를 저장 (키: "yyyy-MM-dd")
@@ -360,8 +360,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     cell.contentView.backgroundColor = UIColor(named: "LightYellow")
                     cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
                     isHolidayCell = true
-                } else {
-                    // 휴일이 아닌 경우, 위에서 이미 설정한 값 사용
                 }
                 
                 // --- 달력 셀에 스케줄 표시 (날짜 범위 체크) ---
@@ -389,10 +387,18 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 }
                 
                 // 스케줄 텍스트 색상 결정:
-                // 공휴일 셀이면 DarkYellow, 내부 셀는 black, 외부 셀는 DarkGreen (요청)
+                // 공휴일 셀이면 DarkYellow, 내부 셀은 black, 외부 셀은 DarkGreen (요청)
                 let scheduleTextColor: UIColor = isHolidayCell ? (UIColor(named: "DarkYellow") ?? .yellow) : (isOutsideMonth ? (UIColor(named: "DarkGreen") ?? .green) : .black)
                 
-                for schedule in schedulesForCell {
+                // 정렬: DepDate 기준으로 오름차순 정렬 (날짜 형식은 "dd-MMM-yyyy")
+                schedulesForCell.sort { (s1, s2) -> Bool in
+                    let depDate1 = scheduleDateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
+                    let depDate2 = scheduleDateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
+                    return depDate1 < depDate2
+                }
+                
+                // 스케줄 목록 순회 (인덱스 사용)
+                for (index, schedule) in schedulesForCell.enumerated() {
                     let scheduleLabel = UILabel()
                     scheduleLabel.font = UIFont.boldSystemFont(ofSize: 9)
                     scheduleLabel.textAlignment = .left
@@ -419,17 +425,48 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         
                         let cellDateString = scheduleDateFormatter.string(from: displayDate)
                         
+                        var scheduleText = ""
                         if !depDate.isEmpty && !arrDate.isEmpty && depDate != arrDate {
                             if cellDateString == depDate {
-                                scheduleLabel.text = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
+                                scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
                             } else if cellDateString == arrDate {
-                                scheduleLabel.text = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
+                                scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
                                 continue
                             }
                         } else {
-                            scheduleLabel.text = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
+                            scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                         }
+                        
+                        // Hotel 항목이 있을 경우 LAYOVER 처리
+                        if let hotel = schedule["Hotel"], !hotel.isEmpty {
+                            // 호텔 정보가 있으면 현재 스케줄의 DutyDebriefDate와 바로 다음 스케줄의 DepDate를 비교
+                            if index < schedulesForCell.count - 1 {
+                                let nextSchedule = schedulesForCell[index + 1]
+                                if let currentDutyDebriefDate = schedule["DutyDebriefDate"],
+                                   let nextDepDate = nextSchedule["DepDate"] {
+                                    if currentDutyDebriefDate == nextDepDate {
+                                        scheduleText += "\nLAYOVER"
+                                    } else {
+                                        // 다음 스케줄 DepDate의 하루 전 날짜 계산
+                                        if let nextDepDateObj = scheduleDateFormatter.date(from: nextDepDate),
+                                           let dayBeforeNext = calendar.date(byAdding: .day, value: -1, to: nextDepDateObj) {
+                                            let dayBeforeNextStr = scheduleDateFormatter.string(from: dayBeforeNext)
+                                            scheduleText += "\nLAYOVER: \(currentDutyDebriefDate) ~ \(dayBeforeNextStr)"
+                                        } else {
+                                            scheduleText += "\nLAYOVER"
+                                        }
+                                    }
+                                } else {
+                                    scheduleText += "\nLAYOVER"
+                                }
+                            } else {
+                                // 다음 스케줄이 없는 경우
+                                scheduleText += "\nLAYOVER"
+                            }
+                        }
+                        
+                        scheduleLabel.text = scheduleText
                     } else {
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""

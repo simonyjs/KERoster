@@ -149,7 +149,11 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             attributedText.append(NSAttributedString(string: flightLine, attributes: [.font: defaultFont]))
             attributedText.append(NSAttributedString(string: item, attributes: [.font: boldFont]))
             
-            let detailsLine = "\n📍 \(depTime) \(depAp) - \(arrAp) \(arrTime)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
+            var detailsLine = "\n📍 \(depTime) \(depAp) - \(arrAp) \(arrTime)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
+            // workType이 FLY 또는 TVL일 때 Hotel 항목값이 있다면 dutyHours 다음 줄에 호텔 정보 추가
+            if let hotel = details["Hotel"], !hotel.isEmpty {
+                detailsLine += "\n🏨 Hotel: \(hotel)"
+            }
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
         } else {
