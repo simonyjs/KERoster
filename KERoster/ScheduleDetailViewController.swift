@@ -54,7 +54,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            // 하단 제약조건을 view.bottomAnchor로 하여 전체 화면에 꽉 채움
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
@@ -111,11 +110,11 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         let workType = details["WorkType"] ?? "N/A"
         
-        // 기본 글꼴과 굵은 글꼴 (폰트 크기 조절 가능)
+        // 기본 글꼴과 굵은 글꼴
         let defaultFont = UIFont.systemFont(ofSize: 14)
         let boldFont = UIFont.boldSystemFont(ofSize: 20)
         
-        // NSAttributedString을 구성할 mutable 객체 생성
+        // NSAttributedString 구성
         let attributedText = NSMutableAttributedString()
         
         if workType == "FLY" || workType == "TVL" {
@@ -150,18 +149,25 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             attributedText.append(NSAttributedString(string: item, attributes: [.font: boldFont]))
             
             var detailsLine = "\n📍 \(depTime) \(depAp) - \(arrAp) \(arrTime)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
-            // workType이 FLY 또는 TVL일 때 Hotel 항목값이 있다면 dutyHours 다음 줄에 호텔 정보 추가
             if let hotel = details["Hotel"], !hotel.isEmpty {
                 detailsLine += "\n🏨 Hotel: \(hotel)"
             }
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
         } else {
+            // workType이 "FLY" 또는 "TVL"이 아닐 때
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
             
-            attributedText.append(NSAttributedString(string: "📅 \(depDateFormatted)\n", attributes: [.font: defaultFont]))
+            // 만약 DutyDebriefDate가 존재하고, DepDate와 다르다면 "DepDate ~ DutyDebriefDate" 형태로 표시
+            if let dutyDebriefDateStr = details["DutyDebriefDate"],
+               dutyDebriefDateStr != (details["DepDate"] ?? "") {
+                let dutyDebriefFormatted = inputFormatter.date(from: dutyDebriefDateStr).flatMap { outputFormatter.string(from: $0) } ?? dutyDebriefDateStr
+                attributedText.append(NSAttributedString(string: "📅 \(depDateFormatted) ~ \(dutyDebriefFormatted)\n", attributes: [.font: defaultFont]))
+            } else {
+                attributedText.append(NSAttributedString(string: "📅 \(depDateFormatted)\n", attributes: [.font: defaultFont]))
+            }
             
             let icon = (activity == "DO") ? "🏠" : "🏢"
             let activityPrefix = "\(icon) "
@@ -178,7 +184,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     // MARK: - UITableViewDelegate
     
-    // 셀 전체를 탭했을 때 수정 페이지로 푸시합니다.
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -190,7 +195,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         navigationController?.pushViewController(editVC, animated: true)
     }
     
-    // 스와이프 삭제 기능
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { (_, _, completionHandler) in
             print("삭제 액션 호출 - index: \(indexPath.row)")
@@ -208,7 +212,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
     }
     
-    // 누락된 삭제 메서드 구현 추가
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int) {
         scheduleDetailsList.remove(at: index)
         tableView.reloadData()
