@@ -486,13 +486,13 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                                 continue
                             }
                         } else {
-                            // 일반 스케줄: DepDate와 ArrDate 사이의 날짜에 모두 포함시키는 경우
-                            if cellDateString == depDateStr {
+                            // 일반 스케줄: DepDate와 ArrDate가 다른 경우에만 첫 번째, 두 번째 분기 적용
+                            if cellDateString == depDateStr && depDateStr != arrDateStr {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
-                            } else if cellDateString == arrDateStr {
+                            } else if cellDateString == arrDateStr && depDateStr != arrDateStr {
                                 scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
-                                // 만약 DepDate와 ArrDate가 같은 경우 또는 중간 날짜의 경우 기본 포맷 적용
+                                // DepDate와 ArrDate가 같거나 중간 날짜의 경우 기본 포맷 적용
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                             }
                         }
@@ -500,7 +500,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         // non‑FLY/TVL 스케줄 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        // <== 여기서 DutyDebriefTime 필드를 사용하도록 수정
                         let dutyDebriefTime = schedule["DutyDebriefTime"] ?? ""
                         let depDateStr = schedule["DepDate"] ?? ""
                         let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
