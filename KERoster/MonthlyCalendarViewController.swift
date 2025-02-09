@@ -124,9 +124,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         updateMonthLabel()
         fetchHolidays(for: currentDate)
         
-       
         // 콘솔에 원본(가공되지 않은) 해당월 schedules 데이터 출력
-        print (schedules)
+        print(schedules)
         printRawSchedulesForCurrentMonth()
     }
     
@@ -501,7 +500,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         // non‑FLY/TVL 스케줄 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        let dutyDebriefTime = schedule["DutyDebrief"] ?? ""
+                        // <== 여기서 DutyDebriefTime 필드를 사용하도록 수정
+                        let dutyDebriefTime = schedule["DutyDebriefTime"] ?? ""
                         let depDateStr = schedule["DepDate"] ?? ""
                         let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
                         

@@ -203,13 +203,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
                 
                 // dutyDebriefTime를 추출하는 함수
-                // 예: "00:00"이면 그대로, "00:00(+1)"이면 "00:00"만 반환
+                // 예: "02:50"이면 그대로, "02:50(+1)"이면 "02:50"만 반환하고, 앞의 5글자만 저장
                 func extractDutyDebriefTime(_ dutyDebrief: String) -> String {
-                    if let parenIndex = dutyDebrief.firstIndex(of: "(") {
-                        let timePart = dutyDebrief[..<parenIndex]
-                        return timePart.trimmingCharacters(in: .whitespaces)
+                    // 허용할 괄호 문자 집합 (예: ASCII "("와 전각 "（")
+                    let possibleOpeningParens: [Character] = ["(", "（"]
+                    if let index = dutyDebrief.firstIndex(where: { possibleOpeningParens.contains($0) }) {
+                        let timePart = dutyDebrief[..<index].trimmingCharacters(in: .whitespaces)
+                        return String(timePart.prefix(5))
                     }
-                    return dutyDebrief.trimmingCharacters(in: .whitespaces)
+                    return String(dutyDebrief.trimmingCharacters(in: .whitespaces).prefix(5))
                 }
 
                 // 각 tr 행을 순회하며 스케줄 데이터 추출
@@ -271,7 +273,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let depDate = calculateDate(baseDate: date, option: depStnTimeOpt)
                         let arrDate = calculateDate(baseDate: date, option: arrStnTimeOpt)
                         
-                        // dutyDebriefTime 추출: 괄호 부분이 있으면 제거한 시간만, 없으면 그대로 사용
+                        // dutyDebriefTime 추출: 괄호 부분이 있으면 제거한 시간만, 없으면 그대로 사용 (앞의 5글자만 저장)
                         let dutyDebriefTime = extractDutyDebriefTime(dutyDebrief)
                         
                         // dutyDebrief 옵션 추출 및 dutyDebriefDate 계산
@@ -298,7 +300,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "ArrStnTimeOpt": arrStnTimeOpt,
                             "ArrDate": arrDate,  // ArrDate 저장
                             "DutyDebrief": dutyDebrief,
-                            "DutyDebriefTime": dutyDebriefTime, // 분리된 시간 값
+                            "DutyDebriefTime": dutyDebriefTime, // 수정된 시간 값 (앞 5글자)
                             "DutyDebriefDate": dutyDebriefDate, // 계산된 날짜 값
                             "FlyingHours": flyingHours,
                             "DutyHours": dutyHours,
@@ -317,7 +319,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             title: "Import Fail",
                             message: "NO SKD on Webview!\nPlease Go to ROSTER > ROSTER CALENDAR > ROSTER REPORT (Roster Report BUTTON @ Right Bottom).\nSelect Format to HTML then Run.\nWhen the screen changes to HTML format, CLICK the IMPORT BUTTON."
                         )
-
                     }
                     return
                 }
