@@ -313,7 +313,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 // 스케줄 데이터가 전혀 없는 경우 알림창 표시
                 if extractedSchedules.isEmpty {
                     DispatchQueue.main.async {
-                        self.showAlert(title: "가져오기 실패", message: "해당 웹뷰에 스케줄이 없습니다.")
+                        self.showAlert(
+                            title: "Import Fail",
+                            message: "NO SKD on Webview!\nPlease Go to ROSTER > ROSTER CALENDAR > ROSTER REPORT (Roster Report BUTTON @ Right Bottom).\nSelect Format to HTML then Run.\nWhen the screen changes to HTML format, CLICK the IMPORT BUTTON."
+                        )
+
                     }
                     return
                 }
@@ -321,13 +325,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 // 기존 스케줄과 병합 (동일 날짜의 스케줄은 새로 가져온 데이터로 덮어쓰기)
                 DispatchQueue.main.async {
                     self.schedules.merge(extractedSchedules) { (_, new) in new }
-                    self.showAlert(title: "가져오기 완료", message: "스케줄을 성공적으로 가져왔습니다.")
+                    self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
                 }
                 
             } catch {
                 print("HTML 파싱 오류: \(error)")
                 DispatchQueue.main.async {
-                    self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
+                    self.showAlert(title: "Imoprt Fail", message: "Failed to Import schedule.(HTML parsing error)")
                 }
             }
         }
@@ -338,7 +342,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     /// 주어진 제목과 메시지로 알림창을 띄우는 함수
     func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
     
