@@ -123,6 +123,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         setupConstraints()
         updateMonthLabel()
         fetchHolidays(for: currentDate)
+        
+       
+        // 콘솔에 원본(가공되지 않은) 해당월 schedules 데이터 출력
+        print (schedules)
+        printRawSchedulesForCurrentMonth()
     }
     
     override func viewDidLayoutSubviews() {
@@ -241,7 +246,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.reloadData()
     }
     
-    // 헬퍼 함수: 해당 날짜에 LAYOVER를 표시해야 하는지 결정
+    // 헬퍼 함수: 호텔 스케줄 관련 (여기선 사용되지 않음)
     func shouldDisplayLayover(for date: Date) -> Bool {
         var allSchedules: [[String: String]] = []
         for (_, scheduleArray) in schedules {
@@ -249,31 +254,60 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 allSchedules.append(schedule)
             }
         }
+        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        
+        // DepDate 기준 오름차순 정렬
         allSchedules.sort { (s1, s2) -> Bool in
-            let d1 = dateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
-            let d2 = dateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
-            return d1 < d2
+            let dep1 = dateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
+            let dep2 = dateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
+            return dep1 < dep2
         }
         
         for (index, schedule) in allSchedules.enumerated() {
             if let hotel = schedule["Hotel"], !hotel.isEmpty,
-               let dutyDebriefStr = schedule["DutyDebriefDate"],
-               let dutyDebriefDate = dateFormatter.date(from: dutyDebriefStr) {
-                if date >= dutyDebriefDate {
-                    if index < allSchedules.count - 1,
-                       let nextDepStr = allSchedules[index + 1]["DepDate"],
-                       let nextDepDate = dateFormatter.date(from: nextDepStr) {
-                        if date < nextDepDate { return true }
-                    } else {
-                        return true
+               let arrDateStr = schedule["ArrDate"],
+               let arrDate = dateFormatter.date(from: arrDateStr) {
+                guard let layoverStart = calendar.date(byAdding: .day, value: 1, to: arrDate) else { continue }
+                var layoverEnd: Date?
+                if index < allSchedules.count - 1 {
+                    if let nextDepStr = allSchedules[index + 1]["DepDate"],
+                       let nextDep = dateFormatter.date(from: nextDepStr),
+                       let end = calendar.date(byAdding: .day, value: -1, to: nextDep) {
+                        layoverEnd = end
                     }
+                }
+                if date >= layoverStart && (layoverEnd == nil || date <= layoverEnd!) {
+                    return true
                 }
             }
         }
         return false
+    }
+    
+    // 콘솔에 원본(가공되지 않은) 해당월 schedules 데이터를 출력하는 함수
+    func printRawSchedulesForCurrentMonth() {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        
+        // 현재 달의 연, 월 정보
+        let currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
+        
+        for (key, scheduleArray) in schedules {
+            for schedule in scheduleArray {
+                if let depDateStr = schedule["DepDate"],
+                   let depDate = dateFormatter.date(from: depDateStr) {
+                    let scheduleComponents = calendar.dateComponents([.year, .month], from: depDate)
+                    if scheduleComponents.year == currentComponents.year &&
+                        scheduleComponents.month == currentComponents.month {
+                        print("Raw Schedule [\(key)]: \(schedule)")
+                    }
+                }
+            }
+        }
     }
     
     // UICollectionViewDataSource
@@ -309,14 +343,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             
             var displayDate: Date?
             var textColor: UIColor = .black
-            var isOutsideMonth = false
             
             if dayNumber < 1 {
                 if let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate),
                    let previousMonthRange = calendar.range(of: .day, in: .month, for: previousMonth) {
                     let previousMonthDays = previousMonthRange.count
                     let day = previousMonthDays + dayNumber
-                    isOutsideMonth = true
                     cell.contentView.backgroundColor = UIColor(named: "LightGreen")
                     textColor = UIColor(named: "DarkGreen") ?? .green
                     var prevComponents = calendar.dateComponents([.year, .month], from: previousMonth)
@@ -325,7 +357,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 }
             } else if dayNumber > currentMonthDays {
                 let day = dayNumber - currentMonthDays
-                isOutsideMonth = true
                 cell.contentView.backgroundColor = UIColor(named: "LightGreen")
                 textColor = UIColor(named: "DarkGreen") ?? .green
                 if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
@@ -334,7 +365,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     displayDate = calendar.date(from: nextComponents)
                 }
             } else {
-                isOutsideMonth = false
                 cell.contentView.backgroundColor = .white
                 textColor = .black
                 var currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
@@ -357,19 +387,20 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
-            var isHolidayCell = false
+            var scheduleTextColor: UIColor = textColor
             if let displayDate = displayDate {
                 let holidayFormatter = DateFormatter()
                 holidayFormatter.locale = Locale(identifier: "en_US_POSIX")
                 holidayFormatter.timeZone = TimeZone(secondsFromGMT: 0)
                 holidayFormatter.dateFormat = "yyyy-MM-dd"
-                let holidayKey = holidayFormatter.string(from: calendar.date(byAdding: .day, value: +1, to: displayDate)!)
-                
-                if let holiday = holidays[holidayKey] {
-                    cell.dateLabel.text = "[\(holiday)] " + dateText
-                    cell.contentView.backgroundColor = UIColor(named: "LightYellow")
-                    cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
-                    isHolidayCell = true
+                if let nextDay = calendar.date(byAdding: .day, value: 1, to: displayDate) {
+                    let holidayKey = holidayFormatter.string(from: nextDay)
+                    if let holiday = holidays[holidayKey] {
+                        cell.dateLabel.text = "[\(holiday)] " + dateText
+                        cell.contentView.backgroundColor = UIColor(named: "LightYellow")
+                        cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
+                        scheduleTextColor = UIColor(named: "DarkYellow") ?? .yellow
+                    }
                 }
                 
                 let scheduleDateFormatter = DateFormatter()
@@ -377,14 +408,25 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
                 
                 var schedulesForCell: [[String: String]] = []
+                // 스케줄 필터링: 오버나이트 스케줄은 DepDate와 ArrDate 각각 해당하는 셀에 추가
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
                         if let depDateStr = schedule["DepDate"],
                            let arrDateStr = schedule["ArrDate"],
                            let depDate = scheduleDateFormatter.date(from: depDateStr),
                            let arrDate = scheduleDateFormatter.date(from: arrDateStr) {
-                            if displayDate >= depDate && displayDate <= arrDate {
-                                schedulesForCell.append(schedule)
+                            
+                            if depDate > arrDate {
+                                // 오버나이트 스케줄
+                                if calendar.isDate(displayDate, inSameDayAs: depDate) ||
+                                   calendar.isDate(displayDate, inSameDayAs: arrDate) {
+                                    schedulesForCell.append(schedule)
+                                }
+                            } else {
+                                // 일반 스케줄
+                                if displayDate >= depDate && displayDate <= arrDate {
+                                    schedulesForCell.append(schedule)
+                                }
                             }
                         } else if let depDateStr = schedule["DepDate"],
                                   let depDate = scheduleDateFormatter.date(from: depDateStr) {
@@ -395,15 +437,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     }
                 }
                 
-                let scheduleTextColor: UIColor = isHolidayCell ? (UIColor(named: "DarkYellow") ?? .yellow) : (isOutsideMonth ? (UIColor(named: "DarkGreen") ?? .green) : .black)
-                
                 schedulesForCell.sort { (s1, s2) -> Bool in
                     let depDate1 = scheduleDateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
                     let depDate2 = scheduleDateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
                     return depDate1 < depDate2
                 }
                 
-                for (index, schedule) in schedulesForCell.enumerated() {
+                // 각 스케줄을 처리하면서 콘솔에 출력 및 셀에 추가
+                for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
                     scheduleLabel.font = UIFont.boldSystemFont(ofSize: 9)
                     scheduleLabel.textAlignment = .left
@@ -413,6 +454,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     var scheduleText = ""
                     
                     if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
+                        // FLY / TVL 스케줄 처리
                         var item = schedule["Item"] ?? ""
                         if workType == "TVL" {
                             if item.count >= 2 {
@@ -427,54 +469,69 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         let arrAp = schedule["ArrAp"] ?? ""
                         let arrTime = schedule["ArrStnTime"] ?? ""
                         
-                        let depDate = schedule["DepDate"] ?? ""
-                        let arrDate = schedule["ArrDate"] ?? ""
+                        guard let depDateStr = schedule["DepDate"],
+                              let arrDateStr = schedule["ArrDate"],
+                              let depDate = scheduleDateFormatter.date(from: depDateStr),
+                              let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
                         
+                        let isOvernight = depDate > arrDate
                         let cellDateString = scheduleDateFormatter.string(from: displayDate)
                         
-                        if !depDate.isEmpty && !arrDate.isEmpty && depDate != arrDate {
-                            if cellDateString == depDate {
+                        if isOvernight {
+                            // 오버나이트 스케줄: 출발일과 도착일 각각 별도 처리
+                            if calendar.isDate(displayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
-                            } else if cellDateString == arrDate {
+                            } else if calendar.isDate(displayDate, inSameDayAs: arrDate) {
                                 scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
                                 continue
                             }
                         } else {
-                            scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
-                        }
-                        
-                        // FLY/TVL 스케줄에서 Hotel 항목 처리
-                        if let hotel = schedule["Hotel"], !hotel.isEmpty {
-                            /*
-                            if index < schedulesForCell.count - 1,
-                               let currentDutyDebriefDate = schedule["DutyDebriefDate"],
-                               let nextDepDate = schedulesForCell[index + 1]["DepDate"] {
-                                if currentDutyDebriefDate == nextDepDate {
-                                    scheduleText += "\nLAYOVER"
-                                } else {
-                                    scheduleText += "\nLAYOVER"
-                                }
+                            // 일반 스케줄: DepDate와 ArrDate 사이의 날짜에 모두 포함시키는 경우
+                            if cellDateString == depDateStr {
+                                scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
+                            } else if cellDateString == arrDateStr {
+                                scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
-                                scheduleText += "\nLAYOVER"
+                                // 만약 DepDate와 ArrDate가 같은 경우 또는 중간 날짜의 경우 기본 포맷 적용
+                                scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                             }
-                            */
                         }
-                        
-                        scheduleLabel.text = scheduleText
                     } else {
+                        // non‑FLY/TVL 스케줄 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        let dutyDebrief = schedule["DutyDebrief"] ?? ""
-                        scheduleLabel.text = "\(activity) \(dutyReport) - \(dutyDebrief)"
+                        let dutyDebriefTime = schedule["DutyDebrief"] ?? ""
+                        let depDateStr = schedule["DepDate"] ?? ""
+                        let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
+                        
+                        if let depDateObj = scheduleDateFormatter.date(from: depDateStr),
+                           let dutyDebriefDateObj = scheduleDateFormatter.date(from: dutyDebriefDateStr) {
+                            if !calendar.isDate(depDateObj, inSameDayAs: dutyDebriefDateObj) {
+                                if calendar.isDate(displayDate, inSameDayAs: depDateObj) {
+                                    scheduleText = "\(activity) \(dutyReport) - 23:59"
+                                } else if calendar.isDate(displayDate, inSameDayAs: dutyDebriefDateObj) {
+                                    scheduleText = "\(activity) 00:00 - \(dutyDebriefTime)"
+                                } else {
+                                    continue
+                                }
+                            } else {
+                                scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+                            }
+                        } else {
+                            scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+                        }
                     }
                     
+                    // 콘솔에 해당 셀과 스케줄 내용을 출력
+                    print("Cell [\(dateText)] schedule: \(scheduleText)")
+                    
+                    scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
                 
-                // 스케줄이 아예 없는 날짜 셀인 경우, LAYOVER 표시 부분 주석 처리
-                /*
-                if schedulesForCell.isEmpty, let displayDate = displayDate {
+                // 스케줄이 없는 날짜 셀의 경우, 호텔 스케줄에 따른 LAYOVER 여부 확인 (여기서는 기존 방식 유지)
+                if schedulesForCell.isEmpty {
                     if shouldDisplayLayover(for: displayDate) {
                         let layoverLabel = UILabel()
                         layoverLabel.font = UIFont.boldSystemFont(ofSize: 9)
@@ -484,7 +541,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         cell.scheduleStackView.addArrangedSubview(layoverLabel)
                     }
                 }
-                */
             }
         }
         return cell
