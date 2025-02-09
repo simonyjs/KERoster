@@ -71,12 +71,13 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // monthLabel: "MMMM yyyy" 형식의 월 표시 (동적 폰트 적용)
+    // 월 레이블: "MMMM yyyy" 형식 (동적 폰트 적용)
     let monthLabel: UILabel = {
         let label = UILabel()
+        // 기본 폰트는 세로 모드 기준 (나중에 updateLayoutForOrientation에서 변경)
         label.font = UIFont.scaledBoldFont(ofSize: 20)
         label.textAlignment = .center
-        label.textColor = .black  // 월 표시 글자색은 기본 검정
+        label.textColor = .black  // 기본 검정색
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -96,8 +97,20 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cv
     }()
     
-    // 요일 배열
-    let daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    // 요일 배열 (iPhone일 경우 축약형, 그 외의 기기는 풀네임)
+    var daysOfWeek: [String] {
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+        } else {
+            return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        }
+    }
+    
+    // MARK: - 레이아웃 제약 (인스턴스 변수)
+    var monthControlHeightConstraint: NSLayoutConstraint!
+    var collectionViewTopConstraint: NSLayoutConstraint!
+    var prevButtonWidthConstraint: NSLayoutConstraint!
+    var nextButtonWidthConstraint: NSLayoutConstraint!
     
     // MARK: - View Lifecycle
     override func viewDidLoad() {
@@ -121,10 +134,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.dataSource = self
         
         setupConstraints()
+        updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
         fetchHolidays(for: currentDate)
         
-        // 콘솔에 원본(가공되지 않은) 해당월 schedules 데이터 출력
+        // 콘솔에 스케줄 데이터 출력 (필요시)
         print(schedules)
         printRawSchedulesForCurrentMonth()
     }
@@ -134,24 +148,42 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.collectionViewLayout.invalidateLayout()
     }
     
+    // 회전(방향 전환) 시 레이아웃 갱신
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: { _ in
+            self.updateLayoutForOrientation(size: size)
+            self.collectionView.collectionViewLayout.invalidateLayout()
+            self.view.layoutIfNeeded()
+        }, completion: nil)
+    }
+    
     // MARK: - Auto Layout 제약조건 설정
     func setupConstraints() {
+        // monthControlView 높이 제약 (기본 40, 나중에 updateLayoutForOrientation에서 변경)
+        monthControlHeightConstraint = monthControlView.heightAnchor.constraint(equalToConstant: 40)
+        // collectionView 상단 제약 (기본 10)
+        collectionViewTopConstraint = collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10)
+        // 버튼 너비 제약 (기본 80)
+        prevButtonWidthConstraint = prevButton.widthAnchor.constraint(equalToConstant: 80)
+        nextButtonWidthConstraint = nextButton.widthAnchor.constraint(equalToConstant: 80)
+        
         NSLayoutConstraint.activate([
             // 상단 컨트롤 뷰
             monthControlView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             monthControlView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             monthControlView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
-            monthControlView.heightAnchor.constraint(equalToConstant: 40),
+            monthControlHeightConstraint,
             
             // 이전 버튼
             prevButton.leadingAnchor.constraint(equalTo: monthControlView.leadingAnchor),
             prevButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
-            prevButton.widthAnchor.constraint(equalToConstant: 80),
+            prevButtonWidthConstraint,
             
             // 다음 버튼
             nextButton.trailingAnchor.constraint(equalTo: monthControlView.trailingAnchor),
             nextButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
-            nextButton.widthAnchor.constraint(equalToConstant: 80),
+            nextButtonWidthConstraint,
             
             // 월 레이블
             monthLabel.leadingAnchor.constraint(equalTo: prevButton.trailingAnchor, constant: 10),
@@ -159,11 +191,34 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             monthLabel.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             
             // 컬렉션 뷰
-            collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10),
+            collectionViewTopConstraint,
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    /// 기기 및 방향에 따라 상단 컨트롤 뷰, 컬렉션 뷰 간격, 버튼 너비, 그리고 월 레이블 폰트 크기를 조정
+    func updateLayoutForOrientation(size: CGSize) {
+        let isLandscape = size.width > size.height
+        let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
+        
+        if isiPhone && isLandscape {
+            // iPhone 가로 모드일 경우
+            monthControlHeightConstraint.constant = 20   // 컨트롤 뷰 높이 20
+            collectionViewTopConstraint.constant = 2         // 컬렉션 뷰 상단 간격 2
+            prevButtonWidthConstraint.constant = 40          // 버튼 너비 40
+            nextButtonWidthConstraint.constant = 40
+            // 월 레이블 폰트 조정 (예: 14 포인트)
+            monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
+        } else {
+            // 그 외의 경우 (세로 모드 혹은 iPad)
+            monthControlHeightConstraint.constant = 40
+            collectionViewTopConstraint.constant = 10
+            prevButtonWidthConstraint.constant = 80
+            nextButtonWidthConstraint.constant = 80
+            monthLabel.font = UIFont.scaledBoldFont(ofSize: 20)
+        }
     }
     
     func updateMonthLabel() {
@@ -309,7 +364,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
-    // UICollectionViewDataSource
+    // MARK: - UICollectionViewDataSource
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return 49
     }
@@ -317,10 +372,17 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "dayCell", for: indexPath) as! CalendarDayCell
         
+        // 기기 및 방향 감지
+        let isLandscape = view.bounds.width > view.bounds.height
+        let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
+        
         if indexPath.item < 7 {
             cell.isHeader = true
+            // 요일 헤더 텍스트는 daysOfWeek 배열에서 가져옴 (iPhone이면 축약, 그 외는 풀네임)
             cell.dateLabel.text = daysOfWeek[indexPath.item]
-            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: 12)
+            // iPhone 가로 모드에서는 헤더 셀 폰트 크기를 6포인트, 그 외에는 10포인트
+            let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
+            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: headerFontSize)
             cell.dateLabel.textColor = .black
             cell.scheduleStackView.isHidden = true
             cell.contentView.backgroundColor = .clear
@@ -381,7 +443,9 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             } else {
                 cell.dateLabel.text = "LAYOVER"
             }
-            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: 10)
+            // 날짜 라벨 폰트: iPhone 가로 모드에서는 7포인트, 그 외에는 10포인트
+            let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
+            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
             cell.dateLabel.textColor = textColor
             
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -416,13 +480,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                            let arrDate = scheduleDateFormatter.date(from: arrDateStr) {
                             
                             if depDate > arrDate {
-                                // 오버나이트 스케줄
                                 if calendar.isDate(displayDate, inSameDayAs: depDate) ||
                                    calendar.isDate(displayDate, inSameDayAs: arrDate) {
                                     schedulesForCell.append(schedule)
                                 }
                             } else {
-                                // 일반 스케줄
                                 if displayDate >= depDate && displayDate <= arrDate {
                                     schedulesForCell.append(schedule)
                                 }
@@ -442,10 +504,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     return depDate1 < depDate2
                 }
                 
-                // 각 스케줄을 처리하면서 콘솔에 출력 및 셀에 추가
+                // 스케줄 폰트: iPhone 가로 모드에서는 5포인트 (원래 4포인트에서 1포인트 올림), 그 외에는 8포인트
+                let scheduleFontSize: CGFloat = (isiPhone && isLandscape) ? 5 : 8
                 for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
-                    scheduleLabel.font = UIFont.boldSystemFont(ofSize: 9)
+                    scheduleLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
                     scheduleLabel.textAlignment = .left
                     scheduleLabel.textColor = scheduleTextColor
                     scheduleLabel.numberOfLines = 0
@@ -453,7 +516,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     var scheduleText = ""
                     
                     if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
-                        // FLY / TVL 스케줄 처리
                         var item = schedule["Item"] ?? ""
                         if workType == "TVL" {
                             if item.count >= 2 {
@@ -477,7 +539,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         let cellDateString = scheduleDateFormatter.string(from: displayDate)
                         
                         if isOvernight {
-                            // 오버나이트 스케줄: 출발일과 도착일 각각 별도 처리
                             if calendar.isDate(displayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
                             } else if calendar.isDate(displayDate, inSameDayAs: arrDate) {
@@ -486,18 +547,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                                 continue
                             }
                         } else {
-                            // 일반 스케줄: DepDate와 ArrDate가 다른 경우에만 첫 번째, 두 번째 분기 적용
                             if cellDateString == depDateStr && depDateStr != arrDateStr {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
                             } else if cellDateString == arrDateStr && depDateStr != arrDateStr {
                                 scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
-                                // DepDate와 ArrDate가 같거나 중간 날짜의 경우 기본 포맷 적용
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                             }
                         }
                     } else {
-                        // non‑FLY/TVL 스케줄 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
                         let dutyDebriefTime = schedule["DutyDebriefTime"] ?? ""
@@ -522,18 +580,16 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         }
                     }
                     
-                    // 콘솔에 해당 셀과 스케줄 내용을 출력
                     print("Cell [\(dateText)] schedule: \(scheduleText)")
                     
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
                 
-                // 스케줄이 없는 날짜 셀의 경우, 호텔 스케줄에 따른 LAYOVER 여부 확인 (여기서는 기존 방식 유지)
                 if schedulesForCell.isEmpty {
                     if shouldDisplayLayover(for: displayDate) {
                         let layoverLabel = UILabel()
-                        layoverLabel.font = UIFont.boldSystemFont(ofSize: 9)
+                        layoverLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
                         layoverLabel.textAlignment = .left
                         layoverLabel.textColor = scheduleTextColor
                         layoverLabel.text = "LAYOVER"
@@ -545,7 +601,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cell
     }
     
-    // UICollectionViewDelegateFlowLayout: 셀 크기 설정
+    // MARK: - UICollectionViewDelegateFlowLayout: 셀 크기 설정
     func collectionView(_ collectionView: UICollectionView,
                         layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -554,10 +610,16 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
         let sectionInset = flowLayout.sectionInset
         let interItemSpacing = flowLayout.minimumInteritemSpacing
+        // 좌우 인셋 + 셀 사이 간격 (7열이면 간격은 6개)
         let totalHorizontalSpacing = sectionInset.left + sectionInset.right + interItemSpacing * 6
-        let cellWidth = (collectionView.frame.width - totalHorizontalSpacing) / 7
+        let cellWidth = floor((collectionView.frame.width - totalHorizontalSpacing) / 7)
         
-        let headerRowHeight: CGFloat = 30
+        let isLandscape = view.bounds.width > view.bounds.height
+        let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
+        
+        // iPhone 가로 모드에서는 헤더 높이를 20, 그 외는 30
+        let headerRowHeight: CGFloat = (isiPhone && isLandscape) ? 20 : 30
+        
         if indexPath.item < 7 {
             return CGSize(width: cellWidth, height: headerRowHeight)
         } else {

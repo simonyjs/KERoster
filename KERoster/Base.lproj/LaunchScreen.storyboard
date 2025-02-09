@@ -28,13 +28,13 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Copyright 2025. Jungsub Yoon All Rights Reserved." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="40m-pg-N5P">
-                                <rect key="frame" x="59.666666666666629" y="753" width="274" height="15"/>
+                                <rect key="frame" x="59.666666666666657" y="753" width="274" height="15"/>
                                 <fontDescription key="fontDescription" name="AppleSDGothicNeo-Bold" family="Apple SD Gothic Neo" pointSize="12"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="KERoster_transparency" translatesAutoresizingMaskIntoConstraints="NO" id="wXN-uK-gUK">
-                                <rect key="frame" x="46.666666666666629" y="-86" width="300" height="1024"/>
+                                <rect key="frame" x="46.666666666666657" y="-86" width="300" height="1024"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="300" id="tJs-qD-IbS"/>
                                 </constraints>
