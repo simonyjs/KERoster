@@ -32,6 +32,17 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     var currentDate = Date()
     let calendar = Calendar.current
     
+    // UserDefaults 키 (ViewController와 동일)
+    let ownerUserDefaultsKey = "ownerInfo"
+    let totalHoursUserDefaultsKey = "totalHours"
+    
+    // 소유자 정보와 총 시간 정보 (기본값은 빈 문자열)
+    var ownerInfo: String = ""
+    var totalHours: String = ""
+    
+    // MARK: - UI Elements
+    
+    // 상단 컨트롤 뷰 (월, 소유자, 총 시간 및 좌우 네비게이션 버튼 포함)
     let monthControlView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
@@ -39,6 +50,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return view
     }()
     
+    // 좌측 이전 월 버튼
     let prevButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.backward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -49,6 +61,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
+    // 우측 다음 월 버튼
     let nextButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.forward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -59,6 +72,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
+    // 중앙의 해당 월 라벨
     let monthLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.scaledBoldFont(ofSize: 20)
@@ -68,6 +82,38 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return label
     }()
     
+    // 좌측에 표시할 소유자 정보 라벨 (글자 크기를 절반으로: 7pt)
+    let ownerLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.scaledSystemFont(ofSize: 7)  // 원래 14pt의 절반
+        label.textAlignment = .center
+        label.textColor = .black
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // 우측에 표시할 총 시간 정보 라벨 (글자 크기를 절반으로: 7pt)
+    let totalHoursLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.scaledSystemFont(ofSize: 7)  // 원래 14pt의 절반
+        label.textAlignment = .center
+        label.textColor = .black
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // 스택뷰를 사용하여 위의 요소들을 수평으로 정렬
+    let monthStackView: UIStackView = {
+        let sv = UIStackView()
+        sv.axis = .horizontal
+        sv.alignment = .center
+        sv.distribution = .equalCentering
+        sv.spacing = 8
+        sv.translatesAutoresizingMaskIntoConstraints = false
+        return sv
+    }()
+    
+    // 달력을 표시할 CollectionView
     let collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.minimumLineSpacing = 1
@@ -90,10 +136,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
+    // 제약조건 변수
     var monthControlHeightConstraint: NSLayoutConstraint!
     var collectionViewTopConstraint: NSLayoutConstraint!
-    var prevButtonWidthConstraint: NSLayoutConstraint!
-    var nextButtonWidthConstraint: NSLayoutConstraint!
+    
+    // MARK: - View LifeCycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -104,10 +151,24 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             loadSchedules()
         }
         
+        // UserDefaults에서 소유자와 총 시간 불러오기
+        if let savedOwner = UserDefaults.standard.string(forKey: ownerUserDefaultsKey) {
+            self.ownerInfo = savedOwner
+        }
+        if let savedHours = UserDefaults.standard.string(forKey: totalHoursUserDefaultsKey) {
+            self.totalHours = savedHours
+        }
+        
+        // 상단 컨트롤 뷰 추가
         view.addSubview(monthControlView)
-        monthControlView.addSubview(prevButton)
-        monthControlView.addSubview(monthLabel)
-        monthControlView.addSubview(nextButton)
+        
+        // 스택뷰 구성 (좌측: prevButton, ownerLabel / 중앙: monthLabel / 우측: totalHoursLabel, nextButton)
+        monthControlView.addSubview(monthStackView)
+        monthStackView.addArrangedSubview(prevButton)
+        monthStackView.addArrangedSubview(ownerLabel)
+        monthStackView.addArrangedSubview(monthLabel)
+        monthStackView.addArrangedSubview(totalHoursLabel)
+        monthStackView.addArrangedSubview(nextButton)
         
         prevButton.addTarget(self, action: #selector(prevMonth), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMonth), for: .touchUpInside)
@@ -119,6 +180,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         setupConstraints()
         updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
+        
+        // 라벨에 UserDefaults에서 불러온 값을 할당
+        ownerLabel.text = ownerInfo
+        totalHoursLabel.text = totalHours
+        
         fetchHolidays(for: currentDate)
     }
     
@@ -130,10 +196,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // 뷰의 압축된 콘텐츠 크기에 맞게 preferredContentSize를 업데이트합니다.
         self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
     }
-
     
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
@@ -143,6 +207,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             self.view.layoutIfNeeded()
         }, completion: nil)
     }
+    
+    // MARK: - 데이터 로드 및 설정
     
     func loadSchedules() {
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
@@ -160,23 +226,18 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     func setupConstraints() {
         monthControlHeightConstraint = monthControlView.heightAnchor.constraint(equalToConstant: 40)
         collectionViewTopConstraint = collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10)
-        prevButtonWidthConstraint = prevButton.widthAnchor.constraint(equalToConstant: 80)
-        nextButtonWidthConstraint = nextButton.widthAnchor.constraint(equalToConstant: 80)
         
         NSLayoutConstraint.activate([
             monthControlView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             monthControlView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             monthControlView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             monthControlHeightConstraint,
-            prevButton.leadingAnchor.constraint(equalTo: monthControlView.leadingAnchor),
-            prevButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
-            prevButtonWidthConstraint,
-            nextButton.trailingAnchor.constraint(equalTo: monthControlView.trailingAnchor),
-            nextButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
-            nextButtonWidthConstraint,
-            monthLabel.leadingAnchor.constraint(equalTo: prevButton.trailingAnchor, constant: 10),
-            monthLabel.trailingAnchor.constraint(equalTo: nextButton.leadingAnchor, constant: -10),
-            monthLabel.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
+            
+            monthStackView.topAnchor.constraint(equalTo: monthControlView.topAnchor),
+            monthStackView.bottomAnchor.constraint(equalTo: monthControlView.bottomAnchor),
+            monthStackView.leadingAnchor.constraint(equalTo: monthControlView.leadingAnchor, constant: 10),
+            monthStackView.trailingAnchor.constraint(equalTo: monthControlView.trailingAnchor, constant: -10),
+            
             collectionViewTopConstraint,
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -191,15 +252,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         if isiPhone && isLandscape {
             monthControlHeightConstraint.constant = 20
             collectionViewTopConstraint.constant = 2
-            prevButtonWidthConstraint.constant = 40
-            nextButtonWidthConstraint.constant = 40
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 5)      // 원래 10pt의 절반
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 5)   // 원래 10pt의 절반
         } else {
             monthControlHeightConstraint.constant = 40
             collectionViewTopConstraint.constant = 10
-            prevButtonWidthConstraint.constant = 80
-            nextButtonWidthConstraint.constant = 80
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 20)
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 7)      // 원래 14pt의 절반
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 7)   // 원래 14pt의 절반
         }
     }
     
@@ -319,6 +380,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     // MARK: - UICollectionViewDataSource
+    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return 49
     }
@@ -520,8 +582,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
                         }
                     }
-                    // 셀 확인 용
-                    //print("Cell [\(dateText)] schedule: \(scheduleText)")
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
