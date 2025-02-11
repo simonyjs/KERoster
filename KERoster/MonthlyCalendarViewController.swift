@@ -520,8 +520,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
                         }
                     }
-                    
-                    print("Cell [\(dateText)] schedule: \(scheduleText)")
+                    // 셀 확인 용
+                    //print("Cell [\(dateText)] schedule: \(scheduleText)")
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }

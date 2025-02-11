@@ -23,15 +23,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // 스토리보드에서 연결된 WebView
     @IBOutlet weak var webView: WKWebView!
     
-    // 날짜별로 여러 스케줄을 저장하는 딕셔너리
-    // 이 데이터는 UserDefaults를 통해 영구 저장됩니다.
+    // 날짜별로 여러 스케줄을 저장하는 딕셔너리 (UserDefaults에 영구 저장)
     var schedules: [String: [[String: String]]] = [:]
     
     // 스토리보드에서 연결된 스케줄을 보여주는 스택뷰
     @IBOutlet weak var scheduleStackView: UIStackView!
     
-    // UserDefaults에 저장할 때 사용할 key
+    // UserDefaults에 저장할 때 사용할 key들
     let schedulesUserDefaultsKey = "schedules"
+    let ownerUserDefaultsKey = "ownerInfo"
+    let totalHoursUserDefaultsKey = "totalHours"
+    
+    // **추가**: 사용자 정보와 총 시간을 저장할 프로퍼티 선언
+    var ownerInfo: String = ""
+    var totalHours: String = ""
     
     // MARK: - UIBarButtonItem 액션들
     
@@ -232,7 +237,37 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     }
                     return String(dutyDebrief.trimmingCharacters(in: .whitespaces).prefix(5))
                 }
+                
+                // 소유자 정보 추출
+                do {
+                    // 주어진 CSS 선택자를 사용하여 소유자 정보가 담긴 요소를 선택합니다.
+                    if let ownerElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(4) > p > span").first() {
+                        // text() 호출 시 try를 사용합니다.
+                        self.ownerInfo = try ownerElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
+                        print("사용자 정보: \(self.ownerInfo)")
+                    } else {
+                        print("소유자 정보를 찾을 수 없습니다.")
+                    }
+                } catch {
+                    print("소유자 정보 추출 중 오류 발생: \(error)")
+                }
 
+                // 총 시간 정보 추출
+                do {
+                    // 주어진 CSS 선택자를 사용하여 총 시간 정보가 담긴 요소를 선택합니다.
+                    if let hoursElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(5) > p > span").first() {
+                        // text() 호출 시 try를 사용합니다.
+                        self.totalHours = try hoursElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
+                        print("총 시간: \(self.totalHours)")
+                    } else {
+                        print("총 시간 정보를 찾을 수 없습니다.")
+                    }
+                } catch {
+                    print("총 시간 정보 추출 중 오류 발생: \(error)")
+                }
+
+
+                
                 // 각 tr 행을 순회하며 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
                     let columns: Elements = try row.select("td")
