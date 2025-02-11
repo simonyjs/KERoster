@@ -139,8 +139,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         fetchHolidays(for: currentDate)
         
         // 콘솔에 스케줄 데이터 출력 (필요시)
-        print(schedules)
-        printRawSchedulesForCurrentMonth()
+        //print(schedules)
+        //printRawSchedulesForCurrentMonth()
     }
     
     override func viewDidLayoutSubviews() {
