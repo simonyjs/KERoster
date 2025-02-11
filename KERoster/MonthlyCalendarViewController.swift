@@ -9,15 +9,13 @@ import UIKit
 
 // MARK: - 폰트 동적 스케일링을 위한 UIFont Extension
 extension UIFont {
-    /// 기준 너비(834포인트, iPad Pro 11인치 기준)에 따른 스케일 팩터를 적용한 Bold 폰트를 반환
     static func scaledBoldFont(ofSize size: CGFloat) -> UIFont {
-        let baseWidth: CGFloat = 834.0 // 기준 너비 (iPad Pro 11인치)
+        let baseWidth: CGFloat = 834.0
         let screenWidth = UIScreen.main.bounds.width
         let scaleFactor = screenWidth / baseWidth
         return UIFont.boldSystemFont(ofSize: size * scaleFactor)
     }
     
-    /// 기준 너비(834포인트, iPad Pro 11인치 기준)에 따른 스케일 팩터를 적용한 일반 시스템 폰트를 반환
     static func scaledSystemFont(ofSize size: CGFloat) -> UIFont {
         let baseWidth: CGFloat = 834.0
         let screenWidth = UIScreen.main.bounds.width
@@ -28,23 +26,12 @@ extension UIFont {
 
 class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    // MARK: - 영구 저장소에서 불러올 스케줄 데이터
-    // 각 스케줄 항목은 "dd-MMM-yyyy" 형식의 DepDate, ArrDate, DutyDebriefDate 등 여러 정보를 포함합니다.
     var schedules: [String: [[String: String]]] = [:]
-    
-    // UserDefaults에 저장할 때 사용한 key (다른 ViewController와 동일)
     let schedulesUserDefaultsKey = "schedules"
-    
-    // 날짜별 휴일 정보를 저장 (키: "yyyy-MM-dd")
     var holidays: [String: String] = [:]
-    
-    // 현재 보여지는 날짜 (월 단위)
     var currentDate = Date()
-    
-    // 현재 사용 중인 Calendar 객체
     let calendar = Calendar.current
     
-    // 상단 컨트롤 뷰 (배경색 없음)
     let monthControlView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
@@ -52,7 +39,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return view
     }()
     
-    // 이전 버튼 (SF Symbol "arrowshape.backward.circle.fill", 채우기 색상 "Ocean")
     let prevButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.backward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -63,7 +49,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 다음 버튼 (SF Symbol "arrowshape.forward.circle.fill", 채우기 색상 "Ocean")
     let nextButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.forward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -74,17 +59,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 월 레이블 ("MMMM yyyy" 형식, 동적 폰트 적용)
     let monthLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.scaledBoldFont(ofSize: 20)
         label.textAlignment = .center
-        label.textColor = .black  // 기본 검정색
+        label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
-    // 달력 컬렉션 뷰
     let collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.minimumLineSpacing = 1
@@ -99,7 +82,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cv
     }()
     
-    // 요일 배열 (iPhone이면 축약형, 그 외는 풀네임)
     var daysOfWeek: [String] {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
@@ -108,34 +90,28 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
-    // MARK: - 레이아웃 제약 (인스턴스 변수)
     var monthControlHeightConstraint: NSLayoutConstraint!
     var collectionViewTopConstraint: NSLayoutConstraint!
     var prevButtonWidthConstraint: NSLayoutConstraint!
     var nextButtonWidthConstraint: NSLayoutConstraint!
     
-    // MARK: - View Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         navigationItem.title = "ROSTER SUMMARY"
         
-        // 만약 외부에서 schedules가 전달되지 않았다면, 영구 저장소(UserDefaults)에서 불러옵니다.
         if schedules.isEmpty {
             loadSchedules()
         }
         
-        // 상단 컨트롤 뷰 및 하위 뷰 추가
         view.addSubview(monthControlView)
         monthControlView.addSubview(prevButton)
         monthControlView.addSubview(monthLabel)
         monthControlView.addSubview(nextButton)
         
-        // 이전/다음 버튼 액션 설정
         prevButton.addTarget(self, action: #selector(prevMonth), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMonth), for: .touchUpInside)
         
-        // 컬렉션 뷰 설정 (delegate, dataSource)
         view.addSubview(collectionView)
         collectionView.delegate = self
         collectionView.dataSource = self
@@ -146,7 +122,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         fetchHolidays(for: currentDate)
     }
     
-    // 화면이 나타날 때마다 최신 스케줄 데이터를 불러와 컬렉션 뷰에 반영합니다.
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadSchedules()
@@ -155,10 +130,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        collectionView.collectionViewLayout.invalidateLayout()
+        // 뷰의 압축된 콘텐츠 크기에 맞게 preferredContentSize를 업데이트합니다.
+        self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
     }
+
     
-    // 회전(방향 전환) 시 레이아웃 갱신
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         coordinator.animate(alongsideTransition: { _ in
@@ -168,53 +144,39 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }, completion: nil)
     }
     
-    // MARK: - 영구 저장소(UserDefaults)에서 schedules 불러오기
     func loadSchedules() {
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                print("MonthlyCalendarViewController: 영구 저장소에서 스케줄 데이터를 불러왔습니다.")
+                print("스케줄 데이터 로드 성공")
             } catch {
                 print("스케줄 불러오기 실패: \(error)")
             }
         } else {
-            print("영구 저장소에 저장된 스케줄 데이터가 없습니다.")
+            print("저장된 스케줄이 없습니다.")
         }
     }
     
-    // MARK: - Auto Layout 제약조건 설정
     func setupConstraints() {
-        // monthControlView 높이 제약 (기본 40, 추후 updateLayoutForOrientation에서 조정)
         monthControlHeightConstraint = monthControlView.heightAnchor.constraint(equalToConstant: 40)
-        // collectionView 상단 제약 (기본 10)
         collectionViewTopConstraint = collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10)
-        // 버튼 너비 제약 (기본 80)
         prevButtonWidthConstraint = prevButton.widthAnchor.constraint(equalToConstant: 80)
         nextButtonWidthConstraint = nextButton.widthAnchor.constraint(equalToConstant: 80)
         
         NSLayoutConstraint.activate([
-            // 상단 컨트롤 뷰
             monthControlView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             monthControlView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             monthControlView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             monthControlHeightConstraint,
-            
-            // 이전 버튼
             prevButton.leadingAnchor.constraint(equalTo: monthControlView.leadingAnchor),
             prevButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             prevButtonWidthConstraint,
-            
-            // 다음 버튼
             nextButton.trailingAnchor.constraint(equalTo: monthControlView.trailingAnchor),
             nextButton.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
             nextButtonWidthConstraint,
-            
-            // 월 레이블
             monthLabel.leadingAnchor.constraint(equalTo: prevButton.trailingAnchor, constant: 10),
             monthLabel.trailingAnchor.constraint(equalTo: nextButton.leadingAnchor, constant: -10),
             monthLabel.centerYAnchor.constraint(equalTo: monthControlView.centerYAnchor),
-            
-            // 컬렉션 뷰
             collectionViewTopConstraint,
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -222,20 +184,17 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         ])
     }
     
-    /// 기기 및 방향에 따라 상단 컨트롤 뷰, 컬렉션 뷰 간격, 버튼 너비, 그리고 월 레이블 폰트 크기를 조정
     func updateLayoutForOrientation(size: CGSize) {
         let isLandscape = size.width > size.height
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
         
         if isiPhone && isLandscape {
-            // iPhone 가로 모드
             monthControlHeightConstraint.constant = 20
             collectionViewTopConstraint.constant = 2
             prevButtonWidthConstraint.constant = 40
             nextButtonWidthConstraint.constant = 40
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
         } else {
-            // 세로 모드 또는 iPad
             monthControlHeightConstraint.constant = 40
             collectionViewTopConstraint.constant = 10
             prevButtonWidthConstraint.constant = 80
@@ -255,7 +214,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         holidays.removeAll()
         guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else { return }
         let startDate = firstDayOfMonth
-        
         var components = DateComponents()
         components.month = 1
         components.second = -1
@@ -323,7 +281,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.reloadData()
     }
     
-    // 헬퍼 함수: 오버나이트(layover) 스케줄 관련 (여기선 사용되지 않음)
+    // MARK: - 헬퍼 함수: 오버나이트(레이오버) 스케줄 관련
     func shouldDisplayLayover(for date: Date) -> Bool {
         var allSchedules: [[String: String]] = []
         for (_, scheduleArray) in schedules {
@@ -331,18 +289,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 allSchedules.append(schedule)
             }
         }
-        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
-        // DepDate 기준 오름차순 정렬
         allSchedules.sort { (s1, s2) -> Bool in
             let dep1 = dateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
             let dep2 = dateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
             return dep1 < dep2
         }
-        
         for (index, schedule) in allSchedules.enumerated() {
             if let hotel = schedule["Hotel"], !hotel.isEmpty,
                let arrDateStr = schedule["ArrDate"],
@@ -364,29 +318,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return false
     }
     
-    // 콘솔에 원본(가공되지 않은) 해당월 schedules 데이터를 출력하는 함수
-    func printRawSchedulesForCurrentMonth() {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy"
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
-        // 현재 달의 연, 월 정보
-        let currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
-        
-        for (key, scheduleArray) in schedules {
-            for schedule in scheduleArray {
-                if let depDateStr = schedule["DepDate"],
-                   let depDate = dateFormatter.date(from: depDateStr) {
-                    let scheduleComponents = calendar.dateComponents([.year, .month], from: depDate)
-                    if scheduleComponents.year == currentComponents.year &&
-                        scheduleComponents.month == currentComponents.month {
-                        print("Raw Schedule [\(key)]: \(schedule)")
-                    }
-                }
-            }
-        }
-    }
-    
     // MARK: - UICollectionViewDataSource
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return 49
@@ -394,14 +325,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "dayCell", for: indexPath) as! CalendarDayCell
-        
-        // 기기 및 방향 감지
         let isLandscape = view.bounds.width > view.bounds.height
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
         
         if indexPath.item < 7 {
             cell.isHeader = true
-            // 요일 헤더 텍스트: iPhone이면 축약, 그 외는 풀네임
             cell.dateLabel.text = daysOfWeek[indexPath.item]
             let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: headerFontSize)
@@ -410,20 +338,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             cell.contentView.backgroundColor = .clear
         } else {
             cell.isHeader = false
-            
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             guard let firstDayOfMonth = calendar.date(from: components) else { return cell }
-            
             let weekday = calendar.component(.weekday, from: firstDayOfMonth)
             var offset = weekday - calendar.firstWeekday
             if offset < 0 { offset += 7 }
-            
             let index = indexPath.item - 7
             let dayNumber = index - offset + 1
-            
             let currentMonthRange = calendar.range(of: .day, in: .month, for: currentDate)!
             let currentMonthDays = currentMonthRange.count
-            
             var displayDate: Date?
             var textColor: UIColor = .black
             
@@ -456,11 +379,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             }
             
             var dateText = ""
-            if let displayDate = displayDate {
+            if let validDisplayDate = displayDate {
                 let dateFormatter = DateFormatter()
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
                 dateFormatter.dateFormat = "MMM dd"
-                dateText = dateFormatter.string(from: displayDate)
+                dateText = dateFormatter.string(from: validDisplayDate)
                 cell.dateLabel.text = dateText
             } else {
                 cell.dateLabel.text = "LAYOVER"
@@ -472,12 +395,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
             var scheduleTextColor: UIColor = textColor
-            if let displayDate = displayDate {
+            if let validDisplayDate = displayDate {
                 let holidayFormatter = DateFormatter()
                 holidayFormatter.locale = Locale(identifier: "en_US_POSIX")
                 holidayFormatter.timeZone = TimeZone(secondsFromGMT: 0)
                 holidayFormatter.dateFormat = "yyyy-MM-dd"
-                if let nextDay = calendar.date(byAdding: .day, value: 1, to: displayDate) {
+                if let nextDay = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
                     let holidayKey = holidayFormatter.string(from: nextDay)
                     if let holiday = holidays[holidayKey] {
                         cell.dateLabel.text = "[\(holiday)] " + dateText
@@ -492,27 +415,25 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
                 
                 var schedulesForCell: [[String: String]] = []
-                // 스케줄 필터링: 오버나이트 스케줄은 DepDate와 ArrDate 각각 해당 셀에 추가
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
                         if let depDateStr = schedule["DepDate"],
                            let arrDateStr = schedule["ArrDate"],
                            let depDate = scheduleDateFormatter.date(from: depDateStr),
                            let arrDate = scheduleDateFormatter.date(from: arrDateStr) {
-                            
                             if depDate > arrDate {
-                                if calendar.isDate(displayDate, inSameDayAs: depDate) ||
-                                   calendar.isDate(displayDate, inSameDayAs: arrDate) {
+                                if calendar.isDate(validDisplayDate, inSameDayAs: depDate) ||
+                                   calendar.isDate(validDisplayDate, inSameDayAs: arrDate) {
                                     schedulesForCell.append(schedule)
                                 }
                             } else {
-                                if displayDate >= depDate && displayDate <= arrDate {
+                                if validDisplayDate >= depDate && validDisplayDate <= arrDate {
                                     schedulesForCell.append(schedule)
                                 }
                             }
                         } else if let depDateStr = schedule["DepDate"],
                                   let depDate = scheduleDateFormatter.date(from: depDateStr) {
-                            if calendar.isDate(displayDate, inSameDayAs: depDate) {
+                            if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
                                 schedulesForCell.append(schedule)
                             }
                         }
@@ -556,12 +477,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                               let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
                         
                         let isOvernight = depDate > arrDate
-                        let cellDateString = scheduleDateFormatter.string(from: displayDate)
+                        let cellDateString = scheduleDateFormatter.string(from: validDisplayDate)
                         
                         if isOvernight {
-                            if calendar.isDate(displayDate, inSameDayAs: depDate) {
+                            if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
-                            } else if calendar.isDate(displayDate, inSameDayAs: arrDate) {
+                            } else if calendar.isDate(validDisplayDate, inSameDayAs: arrDate) {
                                 scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
                             } else {
                                 continue
@@ -585,9 +506,9 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         if let depDateObj = scheduleDateFormatter.date(from: depDateStr),
                            let dutyDebriefDateObj = scheduleDateFormatter.date(from: dutyDebriefDateStr) {
                             if !calendar.isDate(depDateObj, inSameDayAs: dutyDebriefDateObj) {
-                                if calendar.isDate(displayDate, inSameDayAs: depDateObj) {
+                                if calendar.isDate(validDisplayDate, inSameDayAs: depDateObj) {
                                     scheduleText = "\(activity) \(dutyReport) - 23:59"
-                                } else if calendar.isDate(displayDate, inSameDayAs: dutyDebriefDateObj) {
+                                } else if calendar.isDate(validDisplayDate, inSameDayAs: dutyDebriefDateObj) {
                                     scheduleText = "\(activity) 00:00 - \(dutyDebriefTime)"
                                 } else {
                                     continue
@@ -601,20 +522,17 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     }
                     
                     print("Cell [\(dateText)] schedule: \(scheduleText)")
-                    
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
                 
-                if schedulesForCell.isEmpty {
-                    if shouldDisplayLayover(for: displayDate) {
-                        let layoverLabel = UILabel()
-                        layoverLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
-                        layoverLabel.textAlignment = .left
-                        layoverLabel.textColor = scheduleTextColor
-                        layoverLabel.text = "LAYOVER"
-                        cell.scheduleStackView.addArrangedSubview(layoverLabel)
-                    }
+                if schedulesForCell.isEmpty, let validDisplayDate = displayDate, self.shouldDisplayLayover(for: validDisplayDate) {
+                    let layoverLabel = UILabel()
+                    layoverLabel.font = UIFont.boldSystemFont(ofSize: (isiPhone && isLandscape) ? 5 : 8)
+                    layoverLabel.textAlignment = .left
+                    layoverLabel.textColor = scheduleTextColor
+                    layoverLabel.text = "LAYOVER"
+                    cell.scheduleStackView.addArrangedSubview(layoverLabel)
                 }
             }
         }
@@ -632,10 +550,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let interItemSpacing = flowLayout.minimumInteritemSpacing
         let totalHorizontalSpacing = sectionInset.left + sectionInset.right + interItemSpacing * 6
         let cellWidth = floor((collectionView.frame.width - totalHorizontalSpacing) / 7)
-        
         let isLandscape = view.bounds.width > view.bounds.height
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
-        
         let headerRowHeight: CGFloat = (isiPhone && isLandscape) ? 20 : 30
         
         if indexPath.item < 7 {
@@ -648,11 +564,57 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             return CGSize(width: cellWidth, height: cellHeight)
         }
     }
+    
+    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 모달 팝업으로 표시
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard indexPath.item >= 7 else { return }
+        let components = calendar.dateComponents([.year, .month], from: currentDate)
+        guard let firstDayOfMonth = calendar.date(from: components) else { return }
+        let weekday = calendar.component(.weekday, from: firstDayOfMonth)
+        var offset = weekday - calendar.firstWeekday
+        if offset < 0 { offset += 7 }
+        let index = indexPath.item - 7
+        let dayNumber = index - offset + 1
+        
+        var displayDate: Date?
+        if dayNumber < 1 {
+            if let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate),
+               let previousMonthRange = calendar.range(of: .day, in: .month, for: previousMonth) {
+                let previousMonthDays = previousMonthRange.count
+                let day = previousMonthDays + dayNumber
+                var prevComponents = calendar.dateComponents([.year, .month], from: previousMonth)
+                prevComponents.day = day
+                displayDate = calendar.date(from: prevComponents)
+            }
+        } else if dayNumber > calendar.range(of: .day, in: .month, for: currentDate)!.count {
+            let day = dayNumber - calendar.range(of: .day, in: .month, for: currentDate)!.count
+            if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
+                var nextComponents = calendar.dateComponents([.year, .month], from: nextMonth)
+                nextComponents.day = day
+                displayDate = calendar.date(from: nextComponents)
+            }
+        } else {
+            var currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
+            currentComponents.day = dayNumber
+            displayDate = calendar.date(from: currentComponents)
+        }
+        
+        guard let selectedDateObj = displayDate else { return }
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        let selectedDateString = dateFormatter.string(from: selectedDateObj)
+        let filteredSchedules = schedules[selectedDateString] ?? []
+        let detailVC = ScheduleDetailViewController()
+        detailVC.scheduleDetailsList = filteredSchedules
+        detailVC.selectedDate = selectedDateString
+        detailVC.modalPresentationStyle = .formSheet
+        present(detailVC, animated: true, completion: nil)
+    }
 }
 
 // MARK: - CalendarDayCell: 달력의 각 셀 커스텀 클래스
 class CalendarDayCell: UICollectionViewCell {
-    
     let dateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -682,10 +644,8 @@ class CalendarDayCell: UICollectionViewCell {
         super.init(frame: frame)
         contentView.layer.borderWidth = 0.5
         contentView.layer.borderColor = UIColor(named: "Ocean")?.cgColor
-        
         contentView.addSubview(dateLabel)
         contentView.addSubview(scheduleStackView)
-        
         setupNormalConstraints()
         setupHeaderConstraints()
         updateLayoutForHeader()

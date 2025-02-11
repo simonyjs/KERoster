@@ -7,7 +7,7 @@
 
 import UIKit
 
-// ScheduleEditDelegate는 편집/삭제 후 데이터를 전달하기 위한 프로토콜로 가정합니다.
+// ScheduleEditDelegate 프로토콜: 편집/삭제 후 변경된 스케줄 데이터를 전달하기 위한 프로토콜
 protocol ScheduleEditDelegate: AnyObject {
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int)
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
@@ -15,20 +15,21 @@ protocol ScheduleEditDelegate: AnyObject {
 
 class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, ScheduleEditDelegate {
     
-    // 여러 개의 스케줄을 저장 (월별 그룹일 경우, 여러 날짜의 스케줄이 플랫하게 합쳐짐)
+    // 여러 개의 스케줄 세부 정보를 저장 (예: 월별 그룹의 스케줄들이 플랫하게 합쳐짐)
     var scheduleDetailsList: [[String: String]] = []
-    // ViewListViewController에서 전달받은 날짜 또는 달 문자열
-    // (예: "Mar 2025" – 글로벌 스케줄은 UserDefaults에 [String: [[String: String]]] 형식으로 "dd-MMM-yyyy" 키를 사용)
+    // ViewListViewController에서 전달받은 날짜 또는 달 문자열 (예: "Mar 2025")
     var selectedDate: String = ""
     
-    let tableView = UITableView() // 스케줄 리스트를 테이블로 표시
+    // 스케줄 목록을 표시할 테이블 뷰
+    let tableView = UITableView()
     
-    // UserDefaults에 저장된 글로벌 스케줄 데이터를 위한 key (다른 ViewController와 동일)
+    // UserDefaults에 저장된 글로벌 스케줄 데이터의 key (다른 뷰와 동일)
     let schedulesUserDefaultsKey = "schedules"
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // 선택된 날짜가 있으면 제목에 함께 표시
         if selectedDate.isEmpty {
             self.title = "Schedule Details"
         } else {
@@ -41,21 +42,29 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // 스케줄들을 정렬한 후 테이블 뷰 갱신
         sortScheduleDetails()
         tableView.reloadData()
     }
     
-    // MARK: - 테이블뷰 설정
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // 테이블뷰의 레이아웃을 업데이트한 후, 콘텐츠 높이에 약간의 여백(20포인트)을 더해 모달 창의 preferredContentSize를 업데이트합니다.
+        tableView.layoutIfNeeded()
+        self.preferredContentSize = CGSize(width: self.view.frame.width, height: tableView.contentSize.height + 20)
+    }
+    
+    // MARK: - 테이블뷰 설정 및 Auto Layout
     func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         
-        // 빈 FooterView 설정하여 불필요한 빈 셀 제거
+        // 빈 FooterView를 지정하여 불필요한 빈 셀 제거
         tableView.tableFooterView = UIView()
         
-        // UIRefreshControl 추가 (당겨서 리로드)
+        // 당겨서 리프레시할 수 있도록 UIRefreshControl 추가
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
         tableView.refreshControl = refreshControl
@@ -75,7 +84,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         sender.endRefreshing()
     }
     
-    /// 스케줄들을 DepDate 기준으로 오름차순 정렬
+    /// 스케줄들을 DepDate 기준으로 오름차순 정렬합니다.
     func sortScheduleDetails() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
@@ -100,7 +109,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let details = scheduleDetailsList[indexPath.row]
         
@@ -126,7 +134,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let defaultFont = UIFont.systemFont(ofSize: 14)
         let boldFont = UIFont.boldSystemFont(ofSize: 20)
         
-        // NSAttributedString 구성
+        // NSAttributedString을 구성하여 셀에 표시할 텍스트 생성
         let attributedText = NSMutableAttributedString()
         
         if workType == "FLY" || workType == "TVL" {
@@ -167,12 +175,10 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
         } else {
-            // workType이 "FLY" 또는 "TVL"이 아닐 때
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
             
-            // 만약 DutyDebriefDate가 존재하고, DepDate와 다르다면 "DepDate ~ DutyDebriefDate" 형태로 표시
             if let dutyDebriefDateStr = details["DutyDebriefDate"],
                dutyDebriefDateStr != (details["DepDate"] ?? "") {
                 let dutyDebriefFormatted = inputFormatter.date(from: dutyDebriefDateStr).flatMap { outputFormatter.string(from: $0) } ?? dutyDebriefDateStr
@@ -194,8 +200,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         return cell
     }
     
-    // MARK: - UITableViewDelegate
-    
+    // MARK: - UITableViewDelegate 메서드
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -207,7 +212,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         navigationController?.pushViewController(editVC, animated: true)
     }
     
-    // 스와이프하여 삭제 액션 구현 (삭제 후 글로벌 스케줄 업데이트 호출)
+    // 스와이프하여 삭제 액션 (삭제 후 글로벌 스케줄 업데이트 호출)
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { [weak self] (_, _, completionHandler) in
             guard let self = self else { return }
@@ -220,8 +225,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         return UISwipeActionsConfiguration(actions: [deleteAction])
     }
     
-    // MARK: - ScheduleEditDelegate
-    
+    // MARK: - ScheduleEditDelegate 메서드
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int) {
         scheduleDetailsList[index] = schedule
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
@@ -235,13 +239,10 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     // MARK: - 글로벌 스케줄 업데이트 (UserDefaults)
-    /// ScheduleDetailViewController에서 편집/삭제된 스케줄들을 UserDefaults에 저장된 글로벌 스케줄 데이터와 동기화합니다.
-    /// - 전제: 글로벌 스케줄 데이터는 [String: [[String: String]]] 형식이며, 각 키는 "dd-MMM-yyyy" 형식의 날짜 문자열입니다.
+    /// 편집/삭제 후, 현재 화면의 스케줄 정보를 글로벌 스케줄 데이터와 동기화하여 UserDefaults에 저장합니다.
     func updateGlobalSchedulesFromDetails() {
-        // 만약 selectedDate가 비어있다면 업데이트하지 않습니다.
         guard !selectedDate.isEmpty else { return }
         
-        // 글로벌 스케줄 로드
         var globalSchedules: [String: [[String: String]]] = [:]
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
@@ -251,7 +252,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         
-        // 현재 화면에 표시된 스케줄들을 DepDate 기준으로 그룹화
         var updatedGroup: [String: [[String: String]]] = [:]
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
@@ -263,19 +263,15 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         
-        // "MMM yyyy" 형식의 포맷터 (selectedDate와 비교)
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "MMM yyyy"
         monthFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
         let selectedMonth = selectedDate  // 예: "Mar 2025"
         
-        // 글로벌 스케줄 중에서 선택된 월에 해당하는 날짜 키들만 업데이트
         for key in globalSchedules.keys {
             if let date = dateFormatter.date(from: key) {
                 let keyMonth = monthFormatter.string(from: date)
                 if keyMonth == selectedMonth {
-                    // 만약 updatedGroup에 해당 key가 있다면 업데이트, 없으면 해당 key 제거
                     if let newValue = updatedGroup[key] {
                         globalSchedules[key] = newValue
                         updatedGroup.removeValue(forKey: key)
@@ -286,7 +282,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         
-        // updatedGroup에 남은 키들(선택된 월에 해당하는 새로운 날짜들)을 추가
         for (key, value) in updatedGroup {
             if let date = dateFormatter.date(from: key) {
                 let keyMonth = monthFormatter.string(from: date)
@@ -296,7 +291,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         
-        // 업데이트된 글로벌 스케줄 저장
         do {
             let data = try JSONEncoder().encode(globalSchedules)
             UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
@@ -306,7 +300,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
-    // 왼쪽에 표시할 설명 레이블 생성 함수 (필요시 사용)
+    // MARK: - (Optional) 왼쪽 설명 레이블 생성 함수
     func createLeftLabel(text: String) -> UIView {
         let label = UILabel()
         label.text = text
