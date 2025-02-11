@@ -7,15 +7,25 @@
 
 import UIKit
 
+// ScheduleEditDelegate는 편집/삭제 후 데이터를 전달하기 위한 프로토콜로 가정합니다.
+protocol ScheduleEditDelegate: AnyObject {
+    func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int)
+    func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
+}
+
 class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, ScheduleEditDelegate {
     
     // 여러 개의 스케줄을 저장 (월별 그룹일 경우, 여러 날짜의 스케줄이 플랫하게 합쳐짐)
     var scheduleDetailsList: [[String: String]] = []
     // ViewListViewController에서 전달받은 날짜 또는 달 문자열
+    // (예: "Mar 2025" – 글로벌 스케줄은 UserDefaults에 [String: [[String: String]]] 형식으로 "dd-MMM-yyyy" 키를 사용)
     var selectedDate: String = ""
     
     let tableView = UITableView() // 스케줄 리스트를 테이블로 표시
-
+    
+    // UserDefaults에 저장된 글로벌 스케줄 데이터를 위한 key (다른 ViewController와 동일)
+    let schedulesUserDefaultsKey = "schedules"
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -35,6 +45,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadData()
     }
     
+    // MARK: - 테이블뷰 설정
     func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
@@ -64,6 +75,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         sender.endRefreshing()
     }
     
+    /// 스케줄들을 DepDate 기준으로 오름차순 정렬
     func sortScheduleDetails() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
@@ -195,11 +207,14 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         navigationController?.pushViewController(editVC, animated: true)
     }
     
+    // 스와이프하여 삭제 액션 구현 (삭제 후 글로벌 스케줄 업데이트 호출)
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { (_, _, completionHandler) in
+        let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { [weak self] (_, _, completionHandler) in
+            guard let self = self else { return }
             print("삭제 액션 호출 - index: \(indexPath.row)")
             self.scheduleDetailsList.remove(at: indexPath.row)
-            self.tableView.deleteRows(at: [indexPath], with: .fade)
+            tableView.deleteRows(at: [indexPath], with: .fade)
+            self.updateGlobalSchedulesFromDetails()
             completionHandler(true)
         }
         return UISwipeActionsConfiguration(actions: [deleteAction])
@@ -210,11 +225,85 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int) {
         scheduleDetailsList[index] = schedule
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
+        updateGlobalSchedulesFromDetails()
     }
     
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int) {
         scheduleDetailsList.remove(at: index)
         tableView.reloadData()
+        updateGlobalSchedulesFromDetails()
+    }
+    
+    // MARK: - 글로벌 스케줄 업데이트 (UserDefaults)
+    /// ScheduleDetailViewController에서 편집/삭제된 스케줄들을 UserDefaults에 저장된 글로벌 스케줄 데이터와 동기화합니다.
+    /// - 전제: 글로벌 스케줄 데이터는 [String: [[String: String]]] 형식이며, 각 키는 "dd-MMM-yyyy" 형식의 날짜 문자열입니다.
+    func updateGlobalSchedulesFromDetails() {
+        // 만약 selectedDate가 비어있다면 업데이트하지 않습니다.
+        guard !selectedDate.isEmpty else { return }
+        
+        // 글로벌 스케줄 로드
+        var globalSchedules: [String: [[String: String]]] = [:]
+        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+            do {
+                globalSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+            } catch {
+                print("ScheduleDetailViewController: 글로벌 스케줄 로드 실패: \(error)")
+            }
+        }
+        
+        // 현재 화면에 표시된 스케줄들을 DepDate 기준으로 그룹화
+        var updatedGroup: [String: [[String: String]]] = [:]
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        
+        for schedule in scheduleDetailsList {
+            if let depDate = schedule["DepDate"] {
+                updatedGroup[depDate, default: []].append(schedule)
+            }
+        }
+        
+        // "MMM yyyy" 형식의 포맷터 (selectedDate와 비교)
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMM yyyy"
+        monthFormatter.locale = Locale(identifier: "en_US_POSIX")
+        
+        let selectedMonth = selectedDate  // 예: "Mar 2025"
+        
+        // 글로벌 스케줄 중에서 선택된 월에 해당하는 날짜 키들만 업데이트
+        for key in globalSchedules.keys {
+            if let date = dateFormatter.date(from: key) {
+                let keyMonth = monthFormatter.string(from: date)
+                if keyMonth == selectedMonth {
+                    // 만약 updatedGroup에 해당 key가 있다면 업데이트, 없으면 해당 key 제거
+                    if let newValue = updatedGroup[key] {
+                        globalSchedules[key] = newValue
+                        updatedGroup.removeValue(forKey: key)
+                    } else {
+                        globalSchedules.removeValue(forKey: key)
+                    }
+                }
+            }
+        }
+        
+        // updatedGroup에 남은 키들(선택된 월에 해당하는 새로운 날짜들)을 추가
+        for (key, value) in updatedGroup {
+            if let date = dateFormatter.date(from: key) {
+                let keyMonth = monthFormatter.string(from: date)
+                if keyMonth == selectedMonth {
+                    globalSchedules[key] = value
+                }
+            }
+        }
+        
+        // 업데이트된 글로벌 스케줄 저장
+        do {
+            let data = try JSONEncoder().encode(globalSchedules)
+            UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
+            print("ScheduleDetailViewController: 글로벌 스케줄 저장 성공")
+        } catch {
+            print("ScheduleDetailViewController: 글로벌 스케줄 저장 실패: \(error)")
+        }
     }
     
     // 왼쪽에 표시할 설명 레이블 생성 함수 (필요시 사용)

@@ -28,9 +28,12 @@ extension UIFont {
 
 class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    // 스케줄 데이터:
-    // 각 스케줄 항목은 "dd-MMM-yyyy" 형식의 DepDate, ArrDate, DutyDebriefDate 등 여러 정보를 포함함.
+    // MARK: - 영구 저장소에서 불러올 스케줄 데이터
+    // 각 스케줄 항목은 "dd-MMM-yyyy" 형식의 DepDate, ArrDate, DutyDebriefDate 등 여러 정보를 포함합니다.
     var schedules: [String: [[String: String]]] = [:]
+    
+    // UserDefaults에 저장할 때 사용한 key (다른 ViewController와 동일)
+    let schedulesUserDefaultsKey = "schedules"
     
     // 날짜별 휴일 정보를 저장 (키: "yyyy-MM-dd")
     var holidays: [String: String] = [:]
@@ -41,7 +44,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     // 현재 사용 중인 Calendar 객체
     let calendar = Calendar.current
     
-    // 상단 컨트롤 뷰 (배경색 삭제)
+    // 상단 컨트롤 뷰 (배경색 없음)
     let monthControlView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
@@ -49,7 +52,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return view
     }()
     
-    // 이전 버튼: SF Symbol "arrowshape.backward.circle.fill" 사용, 채우기 색상은 "Ocean"
+    // 이전 버튼 (SF Symbol "arrowshape.backward.circle.fill", 채우기 색상 "Ocean")
     let prevButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.backward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -60,7 +63,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 다음 버튼: SF Symbol "arrowshape.forward.circle.fill" 사용, 채우기 색상은 "Ocean"
+    // 다음 버튼 (SF Symbol "arrowshape.forward.circle.fill", 채우기 색상 "Ocean")
     let nextButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.forward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -71,10 +74,9 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 월 레이블: "MMMM yyyy" 형식 (동적 폰트 적용)
+    // 월 레이블 ("MMMM yyyy" 형식, 동적 폰트 적용)
     let monthLabel: UILabel = {
         let label = UILabel()
-        // 기본 폰트는 세로 모드 기준 (나중에 updateLayoutForOrientation에서 변경)
         label.font = UIFont.scaledBoldFont(ofSize: 20)
         label.textAlignment = .center
         label.textColor = .black  // 기본 검정색
@@ -97,7 +99,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cv
     }()
     
-    // 요일 배열 (iPhone일 경우 축약형, 그 외의 기기는 풀네임)
+    // 요일 배열 (iPhone이면 축약형, 그 외는 풀네임)
     var daysOfWeek: [String] {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
@@ -118,6 +120,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         view.backgroundColor = .white
         navigationItem.title = "ROSTER SUMMARY"
         
+        // 만약 외부에서 schedules가 전달되지 않았다면, 영구 저장소(UserDefaults)에서 불러옵니다.
+        if schedules.isEmpty {
+            loadSchedules()
+        }
+        
         // 상단 컨트롤 뷰 및 하위 뷰 추가
         view.addSubview(monthControlView)
         monthControlView.addSubview(prevButton)
@@ -137,10 +144,13 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
         fetchHolidays(for: currentDate)
-        
-        // 콘솔에 스케줄 데이터 출력 (필요시)
-        //print(schedules)
-        //printRawSchedulesForCurrentMonth()
+    }
+    
+    // 화면이 나타날 때마다 최신 스케줄 데이터를 불러와 컬렉션 뷰에 반영합니다.
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadSchedules()
+        collectionView.reloadData()
     }
     
     override func viewDidLayoutSubviews() {
@@ -158,9 +168,23 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }, completion: nil)
     }
     
+    // MARK: - 영구 저장소(UserDefaults)에서 schedules 불러오기
+    func loadSchedules() {
+        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+            do {
+                schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+                print("MonthlyCalendarViewController: 영구 저장소에서 스케줄 데이터를 불러왔습니다.")
+            } catch {
+                print("스케줄 불러오기 실패: \(error)")
+            }
+        } else {
+            print("영구 저장소에 저장된 스케줄 데이터가 없습니다.")
+        }
+    }
+    
     // MARK: - Auto Layout 제약조건 설정
     func setupConstraints() {
-        // monthControlView 높이 제약 (기본 40, 나중에 updateLayoutForOrientation에서 변경)
+        // monthControlView 높이 제약 (기본 40, 추후 updateLayoutForOrientation에서 조정)
         monthControlHeightConstraint = monthControlView.heightAnchor.constraint(equalToConstant: 40)
         // collectionView 상단 제약 (기본 10)
         collectionViewTopConstraint = collectionView.topAnchor.constraint(equalTo: monthControlView.bottomAnchor, constant: 10)
@@ -204,15 +228,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
         
         if isiPhone && isLandscape {
-            // iPhone 가로 모드일 경우
-            monthControlHeightConstraint.constant = 20   // 컨트롤 뷰 높이 20
-            collectionViewTopConstraint.constant = 2         // 컬렉션 뷰 상단 간격 2
-            prevButtonWidthConstraint.constant = 40          // 버튼 너비 40
+            // iPhone 가로 모드
+            monthControlHeightConstraint.constant = 20
+            collectionViewTopConstraint.constant = 2
+            prevButtonWidthConstraint.constant = 40
             nextButtonWidthConstraint.constant = 40
-            // 월 레이블 폰트 조정 (예: 14 포인트)
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
         } else {
-            // 그 외의 경우 (세로 모드 혹은 iPad)
+            // 세로 모드 또는 iPad
             monthControlHeightConstraint.constant = 40
             collectionViewTopConstraint.constant = 10
             prevButtonWidthConstraint.constant = 80
@@ -245,7 +268,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"
         let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com"
-        let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
+        let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
         
         guard let url = URL(string: urlString) else {
             print("URL 생성 실패")
@@ -300,7 +323,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         collectionView.reloadData()
     }
     
-    // 헬퍼 함수: 호텔 스케줄 관련 (여기선 사용되지 않음)
+    // 헬퍼 함수: 오버나이트(layover) 스케줄 관련 (여기선 사용되지 않음)
     func shouldDisplayLayover(for date: Date) -> Bool {
         var allSchedules: [[String: String]] = []
         for (_, scheduleArray) in schedules {
@@ -378,9 +401,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         if indexPath.item < 7 {
             cell.isHeader = true
-            // 요일 헤더 텍스트는 daysOfWeek 배열에서 가져옴 (iPhone이면 축약, 그 외는 풀네임)
+            // 요일 헤더 텍스트: iPhone이면 축약, 그 외는 풀네임
             cell.dateLabel.text = daysOfWeek[indexPath.item]
-            // iPhone 가로 모드에서는 헤더 셀 폰트 크기를 6포인트, 그 외에는 10포인트
             let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: headerFontSize)
             cell.dateLabel.textColor = .black
@@ -443,7 +465,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             } else {
                 cell.dateLabel.text = "LAYOVER"
             }
-            // 날짜 라벨 폰트: iPhone 가로 모드에서는 7포인트, 그 외에는 10포인트
             let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
             cell.dateLabel.textColor = textColor
@@ -471,7 +492,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
                 
                 var schedulesForCell: [[String: String]] = []
-                // 스케줄 필터링: 오버나이트 스케줄은 DepDate와 ArrDate 각각 해당하는 셀에 추가
+                // 스케줄 필터링: 오버나이트 스케줄은 DepDate와 ArrDate 각각 해당 셀에 추가
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
                         if let depDateStr = schedule["DepDate"],
@@ -504,7 +525,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     return depDate1 < depDate2
                 }
                 
-                // 스케줄 폰트: iPhone 가로 모드에서는 5포인트 (원래 4포인트에서 1포인트 올림), 그 외에는 8포인트
                 let scheduleFontSize: CGFloat = (isiPhone && isLandscape) ? 5 : 8
                 for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
@@ -610,14 +630,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
         let sectionInset = flowLayout.sectionInset
         let interItemSpacing = flowLayout.minimumInteritemSpacing
-        // 좌우 인셋 + 셀 사이 간격 (7열이면 간격은 6개)
         let totalHorizontalSpacing = sectionInset.left + sectionInset.right + interItemSpacing * 6
         let cellWidth = floor((collectionView.frame.width - totalHorizontalSpacing) / 7)
         
         let isLandscape = view.bounds.width > view.bounds.height
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
         
-        // iPhone 가로 모드에서는 헤더 높이를 20, 그 외는 30
         let headerRowHeight: CGFloat = (isiPhone && isLandscape) ? 20 : 30
         
         if indexPath.item < 7 {
