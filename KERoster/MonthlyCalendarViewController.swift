@@ -463,11 +463,13 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 var schedulesForCell: [[String: String]] = []
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
+                        // 수정된 부분: 종료 날짜가 ArrDate가 없으면 DutyDebriefDate를 사용하도록 함
                         if let depDateStr = schedule["DepDate"],
-                           let arrDateStr = schedule["ArrDate"],
+                           let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
                            let depDate = scheduleDateFormatter.date(from: depDateStr),
                            let arrDate = scheduleDateFormatter.date(from: arrDateStr) {
                             if depDate > arrDate {
+                                // 오버나이트 스케줄 처리
                                 if calendar.isDate(validDisplayDate, inSameDayAs: depDate) ||
                                    calendar.isDate(validDisplayDate, inSameDayAs: arrDate) {
                                     schedulesForCell.append(schedule)
@@ -519,7 +521,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         let arrTime = schedule["ArrStnTime"] ?? ""
                         
                         guard let depDateStr = schedule["DepDate"],
-                              let arrDateStr = schedule["ArrDate"],
+                              let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
                               let depDate = scheduleDateFormatter.date(from: depDateStr),
                               let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
                         
@@ -535,20 +537,16 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                                 continue
                             }
                         } else {
-                            if cellDateString == depDateStr && depDateStr != arrDateStr {
-                                scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
-                            } else if cellDateString == arrDateStr && depDateStr != arrDateStr {
-                                scheduleText = "\(item) 00:00 \(depAp) - \(arrAp) \(arrTime)"
-                            } else {
-                                scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
-                            }
+                            scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                         }
                     } else {
                         // OTHER 타입 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        // 기존 코드에서 "DutyDebriefTime"을 사용하던 부분을 "DutyDebrief"로 변경
-                        let dutyDebrief = schedule["DutyDebrief"] ?? ""
+                        // dutyDebrief 문자열에서 괄호 이후 부분을 제거하여 hh:mm 형태만 남김
+                        let rawDutyDebrief = schedule["DutyDebrief"] ?? "N/A"
+                        let pureDutyDebrief = rawDutyDebrief.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? rawDutyDebrief
+                        
                         let depDateStr = schedule["DepDate"] ?? ""
                         let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
                         
@@ -558,15 +556,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                                 if calendar.isDate(validDisplayDate, inSameDayAs: depDateObj) {
                                     scheduleText = "\(activity) \(dutyReport) - 23:59"
                                 } else if calendar.isDate(validDisplayDate, inSameDayAs: dutyDebriefDateObj) {
-                                    scheduleText = "\(activity) 00:00 - \(dutyDebrief)"
+                                    scheduleText = "\(activity) 00:00 - \(pureDutyDebrief)"
                                 } else {
                                     continue
                                 }
                             } else {
-                                scheduleText = "\(activity) \(dutyReport) - \(dutyDebrief)"
+                                scheduleText = "\(activity) \(dutyReport) - \(pureDutyDebrief)"
                             }
                         } else {
-                            scheduleText = "\(activity) \(dutyReport) - \(dutyDebrief)"
+                            scheduleText = "\(activity) \(dutyReport) - \(pureDutyDebrief)"
                         }
                     }
                     scheduleLabel.text = scheduleText

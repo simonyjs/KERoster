@@ -48,8 +48,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-
-    
     // 1. iFlight 버튼: iFlight URL을 로드
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")

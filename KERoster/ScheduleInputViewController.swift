@@ -156,7 +156,6 @@ class ScheduleInputViewController: UIViewController, UITextFieldDelegate {
     
     /// OTHER 타입 전용 입력폼 구성
     func setupOtherUI() {
-        // OTHER 타입에서는 시작 날짜, 종료 날짜, 액티비티, 근무 시작시간, 근무 종료시간을 입력받습니다.
         configure(textField: dateTextField, placeholder: "Start Date (yyyy-MM-dd)")
         configure(textField: endDateTextField, placeholder: "End Date (yyyy-MM-dd)")
         configure(textField: activityTextField, placeholder: "Activity")

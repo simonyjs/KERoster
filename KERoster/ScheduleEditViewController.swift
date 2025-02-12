@@ -296,11 +296,8 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
                 showAlert(title: "Invalid Time", message: "Please enter a valid duty end time in format HH:mm.")
                 return
             }
-            if dayDiff > 0 {
-                updatedSchedule["DutyDebrief"] = "\(endTime)(+\(dayDiff))"
-            } else {
-                updatedSchedule["DutyDebrief"] = endTime
-            }
+            // 수동 입력 시 종료 시간은 단순히 hh:mm 형식만 저장 (("+n") 부분 제거)
+            updatedSchedule["DutyDebrief"] = endTime
         }
         
         delegate?.scheduleEditViewController(self, didSaveSchedule: updatedSchedule, at: scheduleIndex)

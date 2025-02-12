@@ -109,6 +109,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let details = scheduleDetailsList[indexPath.row]
         
@@ -175,9 +176,16 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
         } else {
+            // OTHER 타입 스케줄 처리
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
+            
+            // 수동 입력 시 dutyDebrief 값에서 괄호로 시작하는 추가 정보 제거 (예: "17:30(+1)" → "17:30")
+            var pureDutyDebrief = dutyDebrief
+            if let parenIndex = dutyDebrief.firstIndex(of: "(") {
+                pureDutyDebrief = String(dutyDebrief[..<parenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             
             if let dutyDebriefDateStr = details["DutyDebriefDate"],
                dutyDebriefDateStr != (details["DepDate"] ?? "") {
@@ -191,7 +199,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             let activityPrefix = "\(icon) "
             attributedText.append(NSAttributedString(string: activityPrefix, attributes: [.font: defaultFont]))
             attributedText.append(NSAttributedString(string: activity, attributes: [.font: boldFont]))
-            attributedText.append(NSAttributedString(string: " : \(dutyReport) - \(dutyDebrief)", attributes: [.font: defaultFont]))
+            attributedText.append(NSAttributedString(string: " : \(dutyReport) - \(pureDutyDebrief)", attributes: [.font: defaultFont]))
         }
         
         cell.textLabel?.attributedText = attributedText
