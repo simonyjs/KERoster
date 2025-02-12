@@ -28,6 +28,13 @@
                                 <rect key="frame" x="0.0" y="769" width="393" height="49"/>
                                 <items>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Tx4-pg-Fii"/>
+                                    <barButtonItem title="Input" image="square.and.arrow.up.fill" catalog="system" id="nWx-Gn-64g">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <connections>
+                                            <action selector="InputButtonTapped:" destination="BYZ-38-t0r" id="fNy-3r-SdI"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="ccR-mA-zfn"/>
                                     <barButtonItem title="iflight" image="house.fill" catalog="system" id="2qu-vK-mkf">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
@@ -126,6 +133,21 @@
             </objects>
             <point key="canvasLocation" x="2682" y="-2"/>
         </scene>
+        <!--Schedule Input View Controller-->
+        <scene sceneID="6ny-o6-prL">
+            <objects>
+                <viewController storyboardIdentifier="ScheduleInputViewController" id="76c-ic-rAX" customClass="ScheduleInputViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="uJ4-g3-IOA">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="jsJ-eZ-NFN"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="N4y-Sm-suu" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="3497" y="-8"/>
+        </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">
             <objects>
@@ -154,6 +176,7 @@
         <image name="house.fill" catalog="system" width="128" height="104"/>
         <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
         <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
+        <image name="square.and.arrow.up.fill" catalog="system" width="115" height="128"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

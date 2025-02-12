@@ -42,7 +42,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     // MARK: - UI Elements
     
-    // 상단 컨트롤 뷰 (월, 소유자, 총 시간 및 좌우 네비게이션 버튼 포함)
     let monthControlView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
@@ -50,7 +49,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return view
     }()
     
-    // 좌측 이전 월 버튼
     let prevButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.backward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -61,7 +59,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 우측 다음 월 버튼
     let nextButton: UIButton = {
         let button = UIButton(type: .system)
         if let image = UIImage(systemName: "arrowshape.forward.circle.fill")?.withRenderingMode(.alwaysTemplate) {
@@ -72,7 +69,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return button
     }()
     
-    // 중앙의 해당 월 라벨
     let monthLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.scaledBoldFont(ofSize: 20)
@@ -82,27 +78,24 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return label
     }()
     
-    // 좌측에 표시할 소유자 정보 라벨 (글자 크기를 절반에서 50% 증가: 10pt)
     let ownerLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.scaledSystemFont(ofSize: 10)  // 원래 14pt 절반에서 50% 증가: 10pt
+        label.font = UIFont.scaledSystemFont(ofSize: 10)
         label.textAlignment = .center
         label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
-    // 우측에 표시할 총 시간 정보 라벨 (글자 크기를 절반에서 50% 증가: 10pt)
     let totalHoursLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.scaledSystemFont(ofSize: 10)  // 원래 14pt 절반에서 50% 증가: 10pt
+        label.font = UIFont.scaledSystemFont(ofSize: 10)
         label.textAlignment = .center
         label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
-    // 스택뷰를 사용하여 위의 요소들을 수평으로 정렬
     let monthStackView: UIStackView = {
         let sv = UIStackView()
         sv.axis = .horizontal
@@ -113,7 +106,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return sv
     }()
     
-    // 달력을 표시할 CollectionView
     let collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.minimumLineSpacing = 1
@@ -141,7 +133,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     var collectionViewTopConstraint: NSLayoutConstraint!
     
     // MARK: - View LifeCycle
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
@@ -151,7 +142,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             loadSchedules()
         }
         
-        // UserDefaults에서 소유자와 총 시간 불러오기
         if let savedOwner = UserDefaults.standard.string(forKey: ownerUserDefaultsKey) {
             self.ownerInfo = savedOwner
         }
@@ -159,10 +149,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             self.totalHours = savedHours
         }
         
-        // 상단 컨트롤 뷰 추가
         view.addSubview(monthControlView)
-        
-        // 스택뷰 구성 (좌측: prevButton, ownerLabel / 중앙: monthLabel / 우측: totalHoursLabel, nextButton)
         monthControlView.addSubview(monthStackView)
         monthStackView.addArrangedSubview(prevButton)
         monthStackView.addArrangedSubview(ownerLabel)
@@ -181,7 +168,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
         
-        // 라벨에 UserDefaults에서 불러온 값을 할당
         ownerLabel.text = ownerInfo
         totalHoursLabel.text = totalHours
         
@@ -209,7 +195,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     // MARK: - 데이터 로드 및 설정
-    
     func loadSchedules() {
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
@@ -253,14 +238,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             monthControlHeightConstraint.constant = 20
             collectionViewTopConstraint.constant = 2
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
-            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 7)      // 원래 10pt의 절반에 50% 증가
-            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 7)   // 원래 10pt의 절반에 50% 증가
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 7)
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 7)
         } else {
             monthControlHeightConstraint.constant = 40
             collectionViewTopConstraint.constant = 10
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 20)
-            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 10)      // 원래 14pt의 절반에 50% 증가
-            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 10)   // 원래 14pt의 절반에 50% 증가
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 10)
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 10)
         }
     }
     
@@ -380,7 +365,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     // MARK: - UICollectionViewDataSource
-    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return 49
     }
@@ -518,6 +502,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     
                     var scheduleText = ""
                     
+                    // FLY/TVL 타입 처리
                     if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
                         var item = schedule["Item"] ?? ""
                         if workType == "TVL" {
@@ -559,9 +544,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             }
                         }
                     } else {
+                        // OTHER 타입 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        let dutyDebriefTime = schedule["DutyDebriefTime"] ?? ""
+                        // 기존 코드에서 "DutyDebriefTime"을 사용하던 부분을 "DutyDebrief"로 변경
+                        let dutyDebrief = schedule["DutyDebrief"] ?? ""
                         let depDateStr = schedule["DepDate"] ?? ""
                         let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
                         
@@ -571,15 +558,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                                 if calendar.isDate(validDisplayDate, inSameDayAs: depDateObj) {
                                     scheduleText = "\(activity) \(dutyReport) - 23:59"
                                 } else if calendar.isDate(validDisplayDate, inSameDayAs: dutyDebriefDateObj) {
-                                    scheduleText = "\(activity) 00:00 - \(dutyDebriefTime)"
+                                    scheduleText = "\(activity) 00:00 - \(dutyDebrief)"
                                 } else {
                                     continue
                                 }
                             } else {
-                                scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+                                scheduleText = "\(activity) \(dutyReport) - \(dutyDebrief)"
                             }
                         } else {
-                            scheduleText = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+                            scheduleText = "\(activity) \(dutyReport) - \(dutyDebrief)"
                         }
                     }
                     scheduleLabel.text = scheduleText

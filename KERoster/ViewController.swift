@@ -38,6 +38,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     var totalHours: String = ""
     
     // MARK: - UIBarButtonItem 액션들
+   
+    // 0. Input 버튼: 스케줄 입력 화면으로 이동
+    @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let inputVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputViewController") as? ScheduleInputViewController {
+            inputVC.schedules = schedules  // schedules 프로퍼티가 ScheduleInputViewController에 정의되어 있어야 함
+            navigationController?.pushViewController(inputVC, animated: true)
+        }
+    }
+
+
     
     // 1. iFlight 버튼: iFlight URL을 로드
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
