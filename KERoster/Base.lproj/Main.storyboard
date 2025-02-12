@@ -62,6 +62,13 @@
                                             <action selector="CalendarButtonTapped:" destination="BYZ-38-t0r" id="fXu-va-BQj"/>
                                         </connections>
                                     </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="AqG-T0-gQZ"/>
+                                    <barButtonItem title="Tools" image="wrench.and.screwdriver.fill" catalog="system" id="H5w-cu-f1B">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <connections>
+                                            <action selector="toolsButtonTapped:" destination="BYZ-38-t0r" id="3om-x3-bZD"/>
+                                        </connections>
+                                    </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="fQL-Fu-Uxb"/>
                                 </items>
                                 <color key="barTintColor" red="0.0" green="0.32852089410000002" blue="0.57488495110000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -148,6 +155,61 @@
             </objects>
             <point key="canvasLocation" x="3497" y="-8"/>
         </scene>
+        <!--Tools View Controller-->
+        <scene sceneID="vYX-FC-ITv">
+            <objects>
+                <viewController storyboardIdentifier="ToolsViewController" id="JW2-Ra-eN6" customClass="ToolsViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="xnY-Js-WER">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="FVb-zO-fYP">
+                                <rect key="frame" x="0.0" y="59" width="393" height="793"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <prototypes>
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="ToolCell" id="fgG-vq-x02">
+                                        <rect key="frame" x="0.0" y="50" width="393" height="43.666667938232422"/>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="fgG-vq-x02" id="A1e-Ou-aCe">
+                                            <rect key="frame" x="0.0" y="0.0" width="393" height="43.666667938232422"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                        </tableViewCellContentView>
+                                    </tableViewCell>
+                                </prototypes>
+                            </tableView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="lmW-XC-oEz"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="FVb-zO-fYP" firstAttribute="top" secondItem="lmW-XC-oEz" secondAttribute="top" id="Fv6-kg-pl9"/>
+                            <constraint firstItem="FVb-zO-fYP" firstAttribute="trailing" secondItem="lmW-XC-oEz" secondAttribute="trailing" id="ioK-Bo-GZf"/>
+                            <constraint firstAttribute="bottom" secondItem="FVb-zO-fYP" secondAttribute="bottom" id="s4A-AF-e16"/>
+                            <constraint firstItem="FVb-zO-fYP" firstAttribute="leading" secondItem="lmW-XC-oEz" secondAttribute="leading" id="xTi-Uy-b1E"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="tableView" destination="FVb-zO-fYP" id="csB-jV-bNZ"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Fk3-47-YQu" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4255.7251908396947" y="-8.4507042253521139"/>
+        </scene>
+        <!--Cold Temp Correction View Controller-->
+        <scene sceneID="Em9-Sn-azN">
+            <objects>
+                <viewController storyboardIdentifier="ColdTempCorrectionViewController" id="D6N-kN-EYd" customClass="ColdTempCorrectionViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="FOD-ec-wxe">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="trP-5f-vM5"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="pbR-IM-L8p" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4991" y="1"/>
+        </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">
             <objects>
@@ -177,6 +239,7 @@
         <image name="square.and.arrow.down" catalog="system" width="112" height="128"/>
         <image name="square.and.arrow.down.fill" catalog="system" width="121" height="128"/>
         <image name="square.and.arrow.up.fill" catalog="system" width="115" height="128"/>
+        <image name="wrench.and.screwdriver.fill" catalog="system" width="128" height="119"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

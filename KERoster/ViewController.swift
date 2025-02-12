@@ -87,6 +87,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
+    // 6. Tools 버튼 클릭 시
+    @IBAction func toolsButtonTapped(_ sender: UIBarButtonItem) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let toolsVC = storyboard.instantiateViewController(withIdentifier: "ToolsViewController") as? ToolsViewController {
+            navigationController?.pushViewController(toolsVC, animated: true)
+        }
+    }
+
     // MARK: - View LifeCycle
     
     override func viewDidAppear(_ animated: Bool) {
