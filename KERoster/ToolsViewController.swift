@@ -18,6 +18,9 @@ class ToolsViewController: UIViewController, UITableViewDataSource, UITableViewD
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // 네비게이션 바 제목 설정
+        self.navigationItem.title = "TOOLS"
+        
         // 테이블 뷰의 데이터 소스와 델리게이트 설정
         tableView.dataSource = self
         tableView.delegate = self
@@ -56,8 +59,3 @@ class ToolsViewController: UIViewController, UITableViewDataSource, UITableViewD
         }
     }
 }
-
-
-
-
-
