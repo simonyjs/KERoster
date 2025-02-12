@@ -25,9 +25,9 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     let arrDateTextField = UITextField()      // 도착 날짜
     let itemTextField = UITextField()         // C/S 항목
     let depApTextField = UITextField()        // DEP (출발 공항)
-    let depStnTimeTextField = UITextField()   // STD (출발 시간) → 시간 피커 적용
+    let depStnTimeTextField = UITextField()   // STD (출발 시간) → 원래 시간 피커 사용, 지금은 주석 처리됨
     let arrApTextField = UITextField()        // DEST (도착 공항)
-    let arrStnTimeTextField = UITextField()   // STA (도착 시간) → 시간 피커 적용
+    let arrStnTimeTextField = UITextField()   // STA (도착 시간) → 원래 시간 피커 사용, 지금은 주석 처리됨
     let flyingHoursTextField = UITextField()  // Flying Hours
     let dutyHoursTextField = UITextField()    // Duty Hours
     
@@ -39,9 +39,6 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     
     // 메인 스택뷰 (모든 UI 요소를 담음)
     let mainStackView = UIStackView()
-    
-    // 현재 편집 중인 텍스트필드를 추적 (날짜/시간 선택 시 사용)
-    var activeTextField: UITextField?
     
     // MARK: - Date & Time Formatters
     let dateFormatter: DateFormatter = {
@@ -112,27 +109,44 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
         mainStackView.addArrangedSubview(deleteButton)
     }
     
-    /// FLY/TVL 전용 UI 구성 – 날짜와 시간 입력은 DatePicker/TimePicker 사용
+    // MARK: - WorkType 변경 액션
+    @objc func workTypeChanged(_ sender: UISegmentedControl) {
+        let selectedWorkType = sender.titleForSegment(at: sender.selectedSegmentIndex) ?? "FLY"
+        schedule["WorkType"] = selectedWorkType
+        
+        // 기존 UI 제거 후 다시 구성
+        mainStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        mainStackView.addArrangedSubview(workTypeSegmentedControl)
+        
+        if selectedWorkType == "FLY" || selectedWorkType == "TVL" {
+            setupFlyTVLUI()
+        } else {
+            setupOtherUI()
+        }
+    }
+    
+    /// FLY/TVL 전용 UI 구성 – 원래는 날짜와 시간 입력을 위해 DatePicker/TimePicker를 사용하지만,
+    /// 지금은 주석 처리하여 사용자가 직접 입력할 수 있도록 함.
     func setupFlyTVLUI() {
         // 출발 날짜
         configure(textField: depDateTextField, placeholder: "dd-MMM-yyyy", text: schedule["DepDate"])
-        addDatePicker(to: depDateTextField)
+        // addDatePicker(to: depDateTextField) // Picker 사용 대신 수동 입력
         // 도착 날짜
         configure(textField: arrDateTextField, placeholder: "dd-MMM-yyyy", text: schedule["ArrDate"])
-        addDatePicker(to: arrDateTextField)
+        // addDatePicker(to: arrDateTextField) // Picker 사용 대신 수동 입력
         
         // C/S, DEP 정보
         configure(textField: itemTextField, placeholder: "C/S", text: schedule["Item"])
         configure(textField: depApTextField, placeholder: "DEP", text: schedule["DepAp"])
         
-        // STD (출발 시간) – 시간 입력용 TimePicker 부착
+        // STD (출발 시간)
         configure(textField: depStnTimeTextField, placeholder: "STD", text: schedule["DepStnTime"])
-        addTimePicker(to: depStnTimeTextField)
+        // addTimePicker(to: depStnTimeTextField) // Picker 사용 대신 수동 입력
         
         // DEST (도착 공항) 및 STA (도착 시간)
         configure(textField: arrApTextField, placeholder: "DEST", text: schedule["ArrAp"])
         configure(textField: arrStnTimeTextField, placeholder: "STA", text: schedule["ArrStnTime"])
-        addTimePicker(to: arrStnTimeTextField)
+        // addTimePicker(to: arrStnTimeTextField) // Picker 사용 대신 수동 입력
         
         // Flying Hours, Duty Hours
         configure(textField: flyingHoursTextField, placeholder: "Flying Hours", text: schedule["FlyingHours"])
@@ -157,7 +171,7 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     /// FLY/TVL가 아닌 경우 UI 구성 – DATE, ACTIVITY, DUTY START, DUTY END만 표시
     func setupOtherUI() {
         configure(textField: dateTextField, placeholder: "dd-MMM-yyyy", text: schedule["DepDate"])
-        addDatePicker(to: dateTextField)
+        // addDatePicker(to: dateTextField) // Picker 사용 대신 수동 입력
         configure(textField: activityTextField, placeholder: "ACTIVITY", text: schedule["Activity"])
         configure(textField: dutyReportTextField, placeholder: "DUTY START", text: schedule["DutyReport"])
         configure(textField: dutyDebriefTextField, placeholder: "DUTY END", text: schedule["DutyDebrief"])
@@ -180,9 +194,7 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
         textField.borderStyle = .roundedRect
         textField.text = text
         textField.textColor = .black
-        if placeholder == "dd-MMM-yyyy" {
-            textField.delegate = self
-        }
+        textField.delegate = self
     }
     
     /// 왼쪽에 label과 텍스트필드를 포함하는 수평 스택뷰 생성
@@ -200,77 +212,44 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
         return hStack
     }
     
-    /// DatePicker 부착 (날짜 입력)
-    func addDatePicker(to textField: UITextField) {
-        let datePicker = UIDatePicker()
-        datePicker.datePickerMode = .date
-        if #available(iOS 13.4, *) {
-            datePicker.preferredDatePickerStyle = .wheels
-        }
-        datePicker.addTarget(self, action: #selector(dateChanged(_:)), for: .valueChanged)
-        textField.inputView = datePicker
-        
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let doneButton = UIBarButtonItem(barButtonSystemItem: .done,
-                                         target: self,
-                                         action: #selector(donePressed))
-        toolbar.setItems([doneButton], animated: false)
-        textField.inputAccessoryView = toolbar
-    }
-    
-    /// TimePicker 부착 (시간 입력)
-    func addTimePicker(to textField: UITextField) {
-        let timePicker = UIDatePicker()
-        timePicker.datePickerMode = .time
-        if #available(iOS 13.4, *) {
-            timePicker.preferredDatePickerStyle = .wheels
-        }
-        timePicker.addTarget(self, action: #selector(timeChanged(_:)), for: .valueChanged)
-        textField.inputView = timePicker
-        
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let doneButton = UIBarButtonItem(barButtonSystemItem: .done,
-                                         target: self,
-                                         action: #selector(donePressed))
-        toolbar.setItems([doneButton], animated: false)
-        textField.inputAccessoryView = toolbar
-    }
-    
     // MARK: - UITextFieldDelegate
     func textFieldDidBeginEditing(_ textField: UITextField) {
-        activeTextField = textField
+        // 현재 편집 중인 텍스트필드를 추적 (필요에 따라 추가 구현)
     }
     
     func textFieldDidEndEditing(_ textField: UITextField) {
-        activeTextField = nil
+        // 편집 종료 시 추적 제거 (필요에 따라 추가 구현)
     }
     
-    // DatePicker 값 변경 시 (날짜 포맷터 적용)
-    @objc func dateChanged(_ sender: UIDatePicker) {
-        activeTextField?.text = dateFormatter.string(from: sender.date)
+    /// 입력 형식 검증: 날짜는 dd-MMM-yyyy, 시간은 HH:mm 형식 체크
+    func validateInputFormat() -> Bool {
+        let dateFields = [depDateTextField, arrDateTextField, dateTextField]
+        let timeFields = [depStnTimeTextField, arrStnTimeTextField, dutyReportTextField, dutyDebriefTextField]
+        
+        for textField in dateFields {
+            if let text = textField.text, !text.isEmpty {
+                if dateFormatter.date(from: text) == nil {
+                    showAlert(title: "Invalid Date", message: "Please enter a valid date in format: dd-MMM-yyyy")
+                    return false
+                }
+            }
+        }
+        
+        for textField in timeFields {
+            if let text = textField.text, !text.isEmpty {
+                if timeFormatter.date(from: text) == nil {
+                    showAlert(title: "Invalid Time", message: "Please enter a valid time in format: HH:mm")
+                    return false
+                }
+            }
+        }
+        
+        return true
     }
     
-    // TimePicker 값 변경 시 (시간 포맷터 적용)
-    @objc func timeChanged(_ sender: UIDatePicker) {
-        activeTextField?.text = timeFormatter.string(from: sender.date)
-    }
-    
-    // 완료 버튼 클릭 시 (키보드/피커 내림)
-    @objc func donePressed() {
-        activeTextField?.resignFirstResponder()
-    }
-    
-    // WorkType 선택 변경 시 호출 (세그먼트 컨트롤)
-    @objc func workTypeChanged(_ sender: UISegmentedControl) {
-        let selected = sender.titleForSegment(at: sender.selectedSegmentIndex) ?? "FLY"
-        schedule["WorkType"] = selected
-        // 필요에 따라 UI 재구성 가능
-    }
-    
-    // MARK: - 저장 및 삭제 액션
     @objc func saveTapped() {
+        guard validateInputFormat() else { return }
+        
         var updatedSchedule = schedule
         let workType = schedule["WorkType"] ?? "FLY"
         if workType == "FLY" || workType == "TVL" {
@@ -303,6 +282,12 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
             self.delegate?.scheduleEditViewController(self, didDeleteScheduleAt: self.scheduleIndex)
             self.navigationController?.popViewController(animated: true)
         }))
-        present(alert, animated: true, completion: nil)
+        present(alert, animated: true)
+    }
+    
+    func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        present(alert, animated: true)
     }
 }

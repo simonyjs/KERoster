@@ -82,20 +82,20 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return label
     }()
     
-    // 좌측에 표시할 소유자 정보 라벨 (글자 크기를 절반으로: 7pt)
+    // 좌측에 표시할 소유자 정보 라벨 (글자 크기를 절반에서 50% 증가: 10pt)
     let ownerLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.scaledSystemFont(ofSize: 7)  // 원래 14pt의 절반
+        label.font = UIFont.scaledSystemFont(ofSize: 10)  // 원래 14pt 절반에서 50% 증가: 10pt
         label.textAlignment = .center
         label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
-    // 우측에 표시할 총 시간 정보 라벨 (글자 크기를 절반으로: 7pt)
+    // 우측에 표시할 총 시간 정보 라벨 (글자 크기를 절반에서 50% 증가: 10pt)
     let totalHoursLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.scaledSystemFont(ofSize: 7)  // 원래 14pt의 절반
+        label.font = UIFont.scaledSystemFont(ofSize: 10)  // 원래 14pt 절반에서 50% 증가: 10pt
         label.textAlignment = .center
         label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -253,14 +253,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             monthControlHeightConstraint.constant = 20
             collectionViewTopConstraint.constant = 2
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 14)
-            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 5)      // 원래 10pt의 절반
-            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 5)   // 원래 10pt의 절반
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 7)      // 원래 10pt의 절반에 50% 증가
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 7)   // 원래 10pt의 절반에 50% 증가
         } else {
             monthControlHeightConstraint.constant = 40
             collectionViewTopConstraint.constant = 10
             monthLabel.font = UIFont.scaledBoldFont(ofSize: 20)
-            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 7)      // 원래 14pt의 절반
-            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 7)   // 원래 14pt의 절반
+            ownerLabel.font = UIFont.scaledSystemFont(ofSize: 10)      // 원래 14pt의 절반에 50% 증가
+            totalHoursLabel.font = UIFont.scaledSystemFont(ofSize: 10)   // 원래 14pt의 절반에 50% 증가
         }
     }
     
