@@ -526,7 +526,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                               let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
                         
                         let isOvernight = depDate > arrDate
-                        let cellDateString = scheduleDateFormatter.string(from: validDisplayDate)
+                        _ = scheduleDateFormatter.string(from: validDisplayDate)
                         
                         if isOvernight {
                             if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
