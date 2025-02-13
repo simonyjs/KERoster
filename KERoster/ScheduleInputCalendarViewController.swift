@@ -231,6 +231,9 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             cell.contentView.backgroundColor = .clear
         } else {
             cell.isHeader = false
+            // 셀 재사용 문제로 기존 요약 레이블 제거
+            cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             guard let firstDayOfMonth = calendar.date(from: components) else { return cell }
             let weekday = calendar.component(.weekday, from: firstDayOfMonth)
@@ -281,6 +284,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
                 dateFormatter.dateFormat = "MMM dd"
                 dateText = dateFormatter.string(from: validDisplayDate)
+                
                 // 휴일 정보 표시
                 let holidayFormatter = DateFormatter()
                 holidayFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -306,17 +310,77 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
             
-            // 추가: 해당 날짜에 저장된 스케줄이 있다면, 셀 하단에 요약(예: "(2)")을 표시
+            // 셀의 날짜를 "dd-MMM-yyyy" 형식의 문자열로 변환
             let scheduleDateFormatter = DateFormatter()
             scheduleDateFormatter.locale = Locale(identifier: "en_US_POSIX")
             scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
-            if let validDisplayDate = displayDate {
-                let dateKey = scheduleDateFormatter.string(from: validDisplayDate)
-                if let schedulesForCell = schedules[dateKey], !schedulesForCell.isEmpty {
+            guard let validDisplayDate = displayDate else { return cell }
+            let cellDateKey = scheduleDateFormatter.string(from: validDisplayDate)
+            
+            // 새롭게: 해당 날짜에 저장된 스케줄 중
+            // - WorkType이 "FLY"/"TVL"이고 DepDate와 ArrDate가 없는 경우 (layover 일정)이면 "LAYOVER"로 표시
+            // - 그렇지 않고 WorkType이 "FLY"/"TVL"인 경우,
+            //      만약 DepDate와 ArrDate가 같으면 → "✈️ (개수)"
+            //      만약 두 날짜가 다르면, 셀 날짜가 DepDate와 일치하면 "✈️ (개수)", 셀 날짜가 ArrDate와 일치하면 "✈️ (개수)"를 각각 표시
+            // - 기타 일정은 "🏢 (개수)"로 표시합니다.
+            
+            // 집계 변수
+            var layoverCount = 0
+            var flyDepCount = 0
+            var flyArrCount = 0
+            var otherCount = 0
+            
+            // schedules 딕셔너리에서, 해당 셀의 날짜에 해당하는 스케줄만 선택
+            if let schedulesForCell = schedules[cellDateKey] {
+                for schedule in schedulesForCell {
+                    let workType = schedule["WorkType"] ?? ""
+                    let dep = schedule["DepDate"] ?? ""
+                    let arr = schedule["ArrDate"] ?? ""
+                    let hotel = schedule["Hotel"] ?? ""
+                    
+                    if !hotel.isEmpty && dep.isEmpty && arr.isEmpty {
+                        // layover 일정
+                        layoverCount += 1
+                    } else if workType == "FLY" || workType == "TVL" {
+                        if dep == cellDateKey && arr == cellDateKey {
+                            // 같은 날에 출발/도착 → 단일 항목
+                            flyDepCount += 1
+                        } else {
+                            if dep == cellDateKey {
+                                flyDepCount += 1
+                            }
+                            if arr == cellDateKey && arr != dep {
+                                flyArrCount += 1
+                            }
+                        }
+                    } else {
+                        // 그 외 WorkType인 경우
+                        if dep == cellDateKey || arr == cellDateKey {
+                            otherCount += 1
+                        }
+                    }
+                }
+                
+                var summaryParts = [String]()
+                if layoverCount > 0 {
+                    summaryParts.append("LAYOVER (\(layoverCount))")
+                }
+                if flyDepCount > 0 {
+                    summaryParts.append("✈️ (\(flyDepCount))")
+                }
+                if flyArrCount > 0 {
+                    summaryParts.append("✈️ (\(flyArrCount))")
+                }
+                if otherCount > 0 {
+                    summaryParts.append("🏢 (\(otherCount))")
+                }
+                
+                let finalSummary = summaryParts.joined(separator: ", ")
+                if !finalSummary.isEmpty {
                     let summaryLabel = UILabel()
                     summaryLabel.font = UIFont.systemFont(ofSize: (isiPhone && isLandscape) ? 5 : 8)
                     summaryLabel.textColor = textColor
-                    summaryLabel.text = "(\(schedulesForCell.count))"
+                    summaryLabel.text = finalSummary
                     cell.scheduleStackView.addArrangedSubview(summaryLabel)
                 }
             }
@@ -468,5 +532,4 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         loadSchedules()
         collectionView.reloadData()
     }
-    
 }
