@@ -447,7 +447,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         // 선택된 날짜를 문자열 형태로 변환 (키: dd-MMM-yyyy)
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
-        let selectedDateString = formatter.string(from: selectedDate)
+        _ = formatter.string(from: selectedDate)
         
         // 선택된 날짜에 대해 ScheduleInputFormViewController를 모달로 띄움
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
