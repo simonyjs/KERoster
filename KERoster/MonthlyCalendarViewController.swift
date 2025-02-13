@@ -32,13 +32,13 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     var currentDate = Date()
     let calendar = Calendar.current
     
-    // UserDefaults 키 (ViewController와 동일)
-    let ownerUserDefaultsKey = "ownerInfo"
-    let totalHoursUserDefaultsKey = "totalHours"
-    
-    // 소유자 정보와 총 시간 정보 (기본값은 빈 문자열)
+    // 소유자 정보와 총 시간 정보
     var ownerInfo: String = ""
     var totalHours: String = ""
+    
+    // 추가: UserDefaults Key들 선언
+    let ownerUserDefaultsKey = "ownerInfo"
+    let totalHoursUserDefaultsKey = "totalHours"
     
     // MARK: - UI Elements
     
@@ -463,13 +463,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 var schedulesForCell: [[String: String]] = []
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
-                        // 수정된 부분: 종료 날짜가 ArrDate가 없으면 DutyDebriefDate를 사용하도록 함
                         if let depDateStr = schedule["DepDate"],
                            let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
                            let depDate = scheduleDateFormatter.date(from: depDateStr),
                            let arrDate = scheduleDateFormatter.date(from: arrDateStr) {
                             if depDate > arrDate {
-                                // 오버나이트 스케줄 처리
                                 if calendar.isDate(validDisplayDate, inSameDayAs: depDate) ||
                                    calendar.isDate(validDisplayDate, inSameDayAs: arrDate) {
                                     schedulesForCell.append(schedule)
@@ -504,7 +502,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     
                     var scheduleText = ""
                     
-                    // FLY/TVL 타입 처리
                     if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
                         var item = schedule["Item"] ?? ""
                         if workType == "TVL" {
@@ -526,8 +523,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                               let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
                         
                         let isOvernight = depDate > arrDate
-                        _ = scheduleDateFormatter.string(from: validDisplayDate)
-                        
                         if isOvernight {
                             if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
@@ -540,10 +535,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                         }
                     } else {
-                        // OTHER 타입 처리
                         let activity = schedule["Activity"] ?? ""
                         let dutyReport = schedule["DutyReport"] ?? ""
-                        // dutyDebrief 문자열에서 괄호 이후 부분을 제거하여 hh:mm 형태만 남김
                         let rawDutyDebrief = schedule["DutyDebrief"] ?? "N/A"
                         let pureDutyDebrief = rawDutyDebrief.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? rawDutyDebrief
                         
@@ -610,7 +603,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
-    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 모달 팝업으로 표시
+    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 팝업으로 표시
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         guard indexPath.item >= 7 else { return }
         let components = calendar.dateComponents([.year, .month], from: currentDate)
@@ -625,8 +618,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         if dayNumber < 1 {
             if let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate),
                let previousMonthRange = calendar.range(of: .day, in: .month, for: previousMonth) {
-                let previousMonthDays = previousMonthRange.count
-                let day = previousMonthDays + dayNumber
+                let day = previousMonthRange.count + dayNumber
                 var prevComponents = calendar.dateComponents([.year, .month], from: previousMonth)
                 prevComponents.day = day
                 displayDate = calendar.date(from: prevComponents)
@@ -644,17 +636,21 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             displayDate = calendar.date(from: currentComponents)
         }
         
-        guard let selectedDateObj = displayDate else { return }
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy"
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        let selectedDateString = dateFormatter.string(from: selectedDateObj)
-        let filteredSchedules = schedules[selectedDateString] ?? []
-        let detailVC = ScheduleDetailViewController()
-        detailVC.scheduleDetailsList = filteredSchedules
-        detailVC.selectedDate = selectedDateString
-        detailVC.modalPresentationStyle = .formSheet
-        present(detailVC, animated: true, completion: nil)
+        guard let selectedDate = displayDate else { return }
+        
+        // 날짜를 문자열로 변환하여 전달 (날짜 키 형식: dd-MMM-yyyy)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MMM-yyyy"
+        let selectedDateString = formatter.string(from: selectedDate)
+        
+        // 선택된 날짜와 해당 날짜의 스케줄 목록을 ScheduleDetailViewController에 전달하여 팝업으로 표시
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let detailVC = storyboard.instantiateViewController(withIdentifier: "ScheduleDetailViewController") as? ScheduleDetailViewController {
+            detailVC.selectedDate = selectedDateString
+            detailVC.scheduleDetailsList = schedules[selectedDateString] ?? []
+            detailVC.modalPresentationStyle = .formSheet
+            present(detailVC, animated: true, completion: nil)
+        }
     }
 }
 

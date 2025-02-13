@@ -39,12 +39,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     // MARK: - UIBarButtonItem 액션들
    
-    // 0. Input 버튼: 스케줄 입력 화면으로 이동
+    // 0. Input 버튼: 스케줄 입력 달력 화면으로 이동 (날짜 선택 후 입력 팝업을 띄움)
     @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let inputVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputViewController") as? ScheduleInputViewController {
-            inputVC.schedules = schedules  // schedules 프로퍼티가 ScheduleInputViewController에 정의되어 있어야 함
-            navigationController?.pushViewController(inputVC, animated: true)
+        // ScheduleInputCalendarViewController : 달력에서 날짜 선택 후 스케줄 입력 팝업 호출
+        if let inputCalendarVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputCalendarViewController") as? ScheduleInputCalendarViewController {
+            navigationController?.pushViewController(inputCalendarVC, animated: true)
         }
     }
 
@@ -54,7 +54,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     /*
-    // 2. CrewLink 버튼: CrewLink URL을 로드
+    // CrewLink 버튼: CrewLink URL을 로드 (필요시 사용)
     @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://crewlink.koreanair.com/")
     }
@@ -80,7 +80,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
             calendarVC.schedules = schedules
-            // 직접 현재 파싱된 값을 전달 (또는 MonthlyCalendarViewController에서는 UserDefaults에서 불러옴)
+            // 소유자 정보와 총 시간 정보를 전달 (또는 MonthlyCalendarViewController에서 UserDefaults에서 불러올 수 있음)
             calendarVC.ownerInfo = self.ownerInfo
             calendarVC.totalHours = self.totalHours
             navigationController?.pushViewController(calendarVC, animated: true)
@@ -91,6 +91,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // 웹뷰 델리게이트 설정
         webView.navigationDelegate = self
         webView.uiDelegate = self
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
@@ -98,8 +99,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadSchedules()
+        loadSchedules() // 저장된 스케줄 불러오기
         
+        // 네비게이션 바 스타일 설정 (배경색, 글자색 등)
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(named: "Ocean")
@@ -116,6 +118,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // MARK: - WebView Delegate Methods
     
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // 새 창이 열리려는 경우 현재 웹뷰에서 로드
         if navigationAction.targetFrame == nil {
             webView.load(navigationAction.request)
             decisionHandler(.cancel)
@@ -125,6 +128,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        // 새 창 요청 시 URL을 로드
         if let url = navigationAction.request.url {
             webView.load(URLRequest(url: url))
         }
@@ -169,6 +173,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // MARK: - 스케줄 가져오기 (Import) 기능
     
     func importSchedule() {
+        // 웹뷰의 HTML 전체를 가져와 SwiftSoup으로 파싱
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
                 print("❌ HTML 가져오기 실패")
@@ -191,6 +196,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 var sequenceCounter: [String: Int] = [:]
                 let calendar = Calendar.current
                 
+                // 날짜 계산: 기본 날짜에 옵션(예: +1, -1)을 적용
                 func calculateDate(baseDate: String, option: String) -> String {
                     guard let baseDateObj = dateFormatter.date(from: baseDate) else { return baseDate }
                     let pattern = #"([-+]\d+)"#
@@ -254,7 +260,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     print("총 시간 정보 추출 중 오류 발생: \(error)")
                 }
                 
-                // 저장: UserDefaults에 소유자와 총 시간 값 저장
+                // UserDefaults에 소유자 및 총 시간 저장
                 UserDefaults.standard.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
                 UserDefaults.standard.set(self.totalHours, forKey: self.totalHoursUserDefaultsKey)
                 
@@ -376,7 +382,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     // MARK: - 스케줄 추가 (예시)
-    
     func addScheduleToStackView(date: String, activity: String) {
         let containerView = UIView()
         containerView.translatesAutoresizingMaskIntoConstraints = false

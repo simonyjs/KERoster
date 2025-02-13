@@ -133,10 +133,10 @@
             </objects>
             <point key="canvasLocation" x="2682" y="-2"/>
         </scene>
-        <!--Schedule Input View Controller-->
+        <!--Schedule Input Calendar View Controller-->
         <scene sceneID="6ny-o6-prL">
             <objects>
-                <viewController storyboardIdentifier="ScheduleInputViewController" id="76c-ic-rAX" customClass="ScheduleInputViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="ScheduleInputCalendarViewController" id="76c-ic-rAX" customClass="ScheduleInputCalendarViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="uJ4-g3-IOA">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -147,6 +147,36 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="N4y-Sm-suu" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="3497" y="-8"/>
+        </scene>
+        <!--Schedule Input Form View Controller-->
+        <scene sceneID="Qnp-Kr-CG9">
+            <objects>
+                <viewController storyboardIdentifier="ScheduleInputFormViewController" id="ijE-8s-O8m" customClass="ScheduleInputFormViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="0SR-Lc-ipn">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="kt1-iT-MQh"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="092-j3-9qm" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4294" y="-4"/>
+        </scene>
+        <!--Schedule Detail View Controller-->
+        <scene sceneID="W3K-BW-5RK">
+            <objects>
+                <viewController storyboardIdentifier="ScheduleDetailViewController" id="p7g-kM-eek" customClass="ScheduleDetailViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="k5K-G5-gdW">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="aXu-vX-uRZ"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="11Y-XC-lmx" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="5063" y="6"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">
