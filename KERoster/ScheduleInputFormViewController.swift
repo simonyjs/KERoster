@@ -19,8 +19,8 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     let scrollView: UIScrollView = {
         let sv = UIScrollView()
         sv.translatesAutoresizingMaskIntoConstraints = false
-        // 폼 전체 배경색을 검은색으로 고정
-        sv.backgroundColor = UIColor.black
+        // 시스템 배경색 사용 (.systemBackground은 다크/라이트 모두에 적합)
+        sv.backgroundColor = .systemBackground
         return sv
     }()
     
@@ -37,8 +37,8 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         let control = UISegmentedControl(items: ["FLY", "TVL", "OTHER"])
         control.selectedSegmentIndex = 0
         control.translatesAutoresizingMaskIntoConstraints = false
-        // 텍스트 색상은 흰색으로 고정
-        control.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .normal)
+        // 기본 텍스트 색상은 시스템 색상 사용 (예: .label)
+        control.setTitleTextAttributes([.foregroundColor: UIColor.label], for: .normal)
         return control
     }()
     
@@ -48,9 +48,9 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         if #available(iOS 14.0, *) { picker.preferredDatePickerStyle = .inline }
         picker.datePickerMode = .date
         picker.translatesAutoresizingMaskIntoConstraints = false
-        picker.backgroundColor = UIColor.black
-        // UIDatePicker 내부 텍스트 색상은 흰색 (비공식 API)
-        picker.setValue(UIColor.white, forKey: "textColor")
+        // UIDatePicker는 기본 배경색과 텍스트 색상이 시스템에 맞게 설정됨
+        picker.backgroundColor = .secondarySystemBackground
+        // (참고: 내부 텍스트 색상은 공식 API가 없으므로 기본값 사용)
         return picker
     }()
     
@@ -59,8 +59,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         if #available(iOS 14.0, *) { picker.preferredDatePickerStyle = .inline }
         picker.datePickerMode = .date
         picker.translatesAutoresizingMaskIntoConstraints = false
-        picker.backgroundColor = UIColor.black
-        picker.setValue(UIColor.white, forKey: "textColor")
+        picker.backgroundColor = .secondarySystemBackground
         return picker
     }()
     
@@ -78,8 +77,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         if #available(iOS 14.0, *) { picker.preferredDatePickerStyle = .inline }
         picker.datePickerMode = .date
         picker.translatesAutoresizingMaskIntoConstraints = false
-        picker.backgroundColor = UIColor.black
-        picker.setValue(UIColor.white, forKey: "textColor")
+        picker.backgroundColor = .secondarySystemBackground
         return picker
     }()
     
@@ -88,8 +86,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         if #available(iOS 14.0, *) { picker.preferredDatePickerStyle = .inline }
         picker.datePickerMode = .date
         picker.translatesAutoresizingMaskIntoConstraints = false
-        picker.backgroundColor = UIColor.black
-        picker.setValue(UIColor.white, forKey: "textColor")
+        picker.backgroundColor = .secondarySystemBackground
         return picker
     }()
     
@@ -97,10 +94,12 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     let dutyReportTextField = UITextField()        // 근무 시작시간
     let dutyDebriefTextField = UITextField()         // 근무 종료시간
 
+    // MARK: - View LifeCycle
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // 전체 배경 검은색
-        view.backgroundColor = UIColor.black
+        // 시스템 배경색 사용: 다크/라이트 모드 모두에 적합
+        view.backgroundColor = .systemBackground
         self.title = "스케줄 입력"
         
         setupScrollView()
@@ -135,6 +134,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     }
     
     // MARK: - 스크롤뷰 및 스택뷰 설정
+    
     func setupScrollView() {
         view.addSubview(scrollView)
         NSLayoutConstraint.activate([
@@ -156,6 +156,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     }
     
     // MARK: - 키보드 대응
+    
     @objc func keyboardWillShow(notification: Notification) {
         guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         scrollView.contentInset.bottom = keyboardFrame.height
@@ -168,23 +169,24 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     }
     
     // MARK: - UI 설정
+    
     func configureSegmentedControl() {
         workTypeSegmentedControl.addTarget(self, action: #selector(workTypeChanged(_:)), for: .valueChanged)
         mainStackView.addArrangedSubview(workTypeSegmentedControl)
     }
     
-    // 레이블과 텍스트필드 수평 스택뷰 생성 (배경 검정, 텍스트 흰색)
+    // 레이블과 텍스트필드 수평 스택뷰 생성 (시스템 동적 색상 사용)
     func createLabeledField(labelText: String, textField: UITextField) -> UIStackView {
         let label = UILabel()
         label.text = labelText
         label.font = UIFont.systemFont(ofSize: 14)
-        label.textColor = UIColor.white
+        label.textColor = .label
         label.widthAnchor.constraint(equalToConstant: 100).isActive = true
         
         textField.placeholder = labelText
         textField.borderStyle = .roundedRect
-        textField.textColor = UIColor.white
-        textField.backgroundColor = UIColor.darkGray
+        textField.textColor = .label
+        textField.backgroundColor = .secondarySystemBackground
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.heightAnchor.constraint(equalToConstant: 30).isActive = true
         
@@ -194,12 +196,12 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         return hStack
     }
     
-    // 레이블과 UIDatePicker로 구성된 수직 스택뷰 생성 (배경 검정, 텍스트 흰색)
+    // 레이블과 UIDatePicker로 구성된 수직 스택뷰 생성 (시스템 색상 사용)
     func createLabeledPicker(labelText: String, picker: UIDatePicker) -> UIStackView {
         let label = UILabel()
         label.text = labelText
         label.font = UIFont.systemFont(ofSize: 14)
-        label.textColor = UIColor.white
+        label.textColor = .label
         
         let vStack = UIStackView(arrangedSubviews: [label, picker])
         vStack.axis = .vertical
@@ -210,8 +212,9 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     /// FLY/TVL 입력폼 구성
     func setupFlyTVLUI() {
         // 기존 입력폼 제거 (세그먼트 컨트롤 제외)
-        mainStackView.arrangedSubviews.forEach { view in
+        for view in mainStackView.arrangedSubviews {
             if view !== workTypeSegmentedControl {
+                mainStackView.removeArrangedSubview(view)
                 view.removeFromSuperview()
             }
         }
@@ -229,8 +232,9 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     
     /// OTHER 입력폼 구성
     func setupOtherUI() {
-        mainStackView.arrangedSubviews.forEach { view in
+        for view in mainStackView.arrangedSubviews {
             if view !== workTypeSegmentedControl {
+                mainStackView.removeArrangedSubview(view)
                 view.removeFromSuperview()
             }
         }
@@ -242,22 +246,19 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         mainStackView.addArrangedSubview(createLabeledField(labelText: "End Time", textField: dutyDebriefTextField))
     }
     
-    func configure(textField: UITextField, placeholder: String) {
-        textField.placeholder = placeholder
-        textField.borderStyle = .roundedRect
-        textField.textColor = UIColor.white
-        textField.backgroundColor = UIColor.darkGray
-        textField.delegate = self
-        textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.heightAnchor.constraint(equalToConstant: 30).isActive = true
-    }
-    
     func addSaveButton() {
+        // 저장 버튼이 중복되지 않도록 기존 저장 버튼 제거
+        for view in mainStackView.arrangedSubviews {
+            if let button = view as? UIButton, button.currentTitle == "Save Schedule" {
+                mainStackView.removeArrangedSubview(button)
+                button.removeFromSuperview()
+            }
+        }
         let saveButton = UIButton(type: .system)
         saveButton.setTitle("Save Schedule", for: .normal)
         saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
-        saveButton.backgroundColor = UIColor.systemBlue
-        saveButton.tintColor = UIColor.white
+        saveButton.backgroundColor = .systemBlue
+        saveButton.tintColor = .white
         saveButton.layer.cornerRadius = 5
         saveButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
         saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
@@ -265,6 +266,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
     }
     
     // MARK: - Action Methods
+    
     @objc func workTypeChanged(_ sender: UISegmentedControl) {
         let selectedType = workTypeSegmentedControl.titleForSegment(at: workTypeSegmentedControl.selectedSegmentIndex)
         if selectedType == "FLY" || selectedType == "TVL" {
@@ -275,7 +277,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         addSaveButton()
     }
     
-    // item 검증 함수: 반드시 2글자 영어 대문자 + 3글자 또는 4글자의 숫자 (예: KE123, KE1234)
+    // item 검증 함수: 2글자 대문자와 3~4자리 숫자 (예: KE123, KE1234)
     func isValidItem(_ item: String) -> Bool {
         let pattern = "^[A-Z]{2}\\d{3,4}$"
         return NSPredicate(format: "SELF MATCHES %@", pattern).evaluate(with: item)
@@ -287,13 +289,11 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         outputDateFormatter.locale = Locale(identifier: "en_US_POSIX")
         
         func isValidTime(_ time: String) -> Bool {
-            // 시간은 반드시 HH:MM 형식 (00:00 ~ 23:59)
             let timeRegex = "^([01]\\d|2[0-3]):([0-5]\\d)$"
             return NSPredicate(format: "SELF MATCHES %@", timeRegex).evaluate(with: time)
         }
         
         func isValidAirportCode(_ code: String) -> Bool {
-            // 공항 코드는 반드시 3글자 대문자 (IATA)
             let codeRegex = "^[A-Z]{3}$"
             return NSPredicate(format: "SELF MATCHES %@", codeRegex).evaluate(with: code)
         }
@@ -310,7 +310,6 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
             schedule["DepDate"] = outputDateFormatter.string(from: depDate)
             schedule["ArrDate"] = outputDateFormatter.string(from: arrDate)
             
-            // 공항 코드 검사 (반드시 IATA 3글자, 영어 대문자)
             guard let depAp = depApTextField.text?.uppercased(), isValidAirportCode(depAp) else {
                 showAlert(title: "Invalid Airport", message: "Enter a valid departure airport code (3-letter IATA).")
                 return
@@ -322,7 +321,6 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
             schedule["DepAp"] = depAp
             schedule["ArrAp"] = arrAp
             
-            // Item 검증: 반드시 영어 대문자 2글자와 숫자 3글자 또는 4글자 (예: KE123, KE1234)
             if let item = itemTextField.text, !item.isEmpty {
                 let itemUpper = item.uppercased()
                 if isValidItem(itemUpper) {
@@ -333,7 +331,6 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
                 }
             }
             
-            // 시간은 반드시 HH:MM 형식
             guard let depTime = depStnTimeTextField.text, isValidTime(depTime) else {
                 showAlert(title: "Invalid Time", message: "Enter a valid departure time (HH:mm).")
                 return
@@ -345,7 +342,6 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
             schedule["DepStnTime"] = depTime
             schedule["ArrStnTime"] = arrTime
             
-            // 비행시간과 근무시간은 사용자가 입력하면 HH:MM 형식이어야 함.
             if let flyingHours = flyingHoursTextField.text, !flyingHours.isEmpty {
                 if isValidTime(flyingHours) {
                     schedule["FlyingHours"] = flyingHours
@@ -363,41 +359,35 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
                 }
             }
         } else {
-            // OTHER 타입인 경우
             let startDate = startDatePicker.date
             let endDate = endDatePicker.date
             schedule["DepDate"] = outputDateFormatter.string(from: startDate)
             schedule["DutyDebriefDate"] = outputDateFormatter.string(from: endDate)
             
-            // Activity는 제한 없이 입력받음 (대문자로 저장)
             if let activity = activityTextField.text, !activity.isEmpty {
-                 schedule["Activity"] = activity.uppercased()
+                schedule["Activity"] = activity.uppercased()
             }
-            
-            // 시작 시간(근무 시작시간)은 HH:MM 형식인지 검증
             guard let startTime = dutyReportTextField.text, isValidTime(startTime) else {
-                 showAlert(title: "Invalid Time", message: "Enter a valid start time (HH:mm).")
-                 return
+                showAlert(title: "Invalid Time", message: "Enter a valid start time (HH:mm).")
+                return
             }
             schedule["DutyReport"] = startTime
             
-            // 종료 시간(근무 종료시간)도 HH:MM 형식인지 검증
             guard let endTime = dutyDebriefTextField.text, isValidTime(endTime) else {
-                 showAlert(title: "Invalid Time", message: "Enter a valid end time (HH:mm).")
-                 return
+                showAlert(title: "Invalid Time", message: "Enter a valid end time (HH:mm).")
+                return
             }
             let dayDiff = Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 0
             schedule["DutyDebrief"] = dayDiff > 0 ? "\(endTime)(+\(dayDiff))" : endTime
         }
-
         
-        // 스케줄 저장: UserDefaults에 저장
+        // 스케줄 저장 로직: UserDefaults에 저장
         var savedSchedules = [String: [[String: String]]]()
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
                 savedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             } catch {
-                print("스케줄 로드 실패: \(error)")
+                print("Failed to load schedules: \(error)")
             }
         }
         if let depDateKey = schedule["DepDate"] {
@@ -408,10 +398,9 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
             UserDefaults.standard.set(encodedData, forKey: schedulesUserDefaultsKey)
             print("Saved schedule: \(savedSchedules)")
         } catch {
-            print("스케줄 저장 실패: \(error)")
+            print("Failed to save schedule: \(error)")
         }
         
-        // 저장 완료 후 알림창을 띄우고 팝업 닫기
         let alert = UIAlertController(title: "Success", message: "Schedule saved successfully.", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
             self.dismiss(animated: true, completion: nil)

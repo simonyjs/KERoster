@@ -146,7 +146,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="N4y-Sm-suu" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="3497" y="-8"/>
+            <point key="canvasLocation" x="-909" y="-4"/>
         </scene>
         <!--Schedule Input Form View Controller-->
         <scene sceneID="Qnp-Kr-CG9">
@@ -161,7 +161,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="092-j3-9qm" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="4294" y="-4"/>
+            <point key="canvasLocation" x="-909" y="697"/>
         </scene>
         <!--Schedule Detail View Controller-->
         <scene sceneID="W3K-BW-5RK">
@@ -176,7 +176,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="11Y-XC-lmx" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="5063" y="6"/>
+            <point key="canvasLocation" x="2682" y="697"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">
