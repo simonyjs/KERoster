@@ -31,18 +31,26 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // UserDefaults에 저장할 때 사용할 key들
     let schedulesUserDefaultsKey = "schedules"
     let ownerUserDefaultsKey = "ownerInfo"
-    let totalHoursUserDefaultsKey = "totalHours"
+    // 총 시간은 매월마다 달라지므로 [월: 총시간] 형태로 저장 (키: "yyyy-MM")
+    let totalHoursByMonthUserDefaultsKey = "totalHoursByMonth"
     
     // 사용자 정보와 총 시간을 저장할 프로퍼티 선언
     var ownerInfo: String = ""
     var totalHours: String = ""
+    
+    // MARK: - 헬퍼 함수: 날짜를 "yyyy-MM" 포맷의 문자열로 변환 (예: "2025-02")
+    func formattedMonth(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.string(from: date)
+    }
     
     // MARK: - UIBarButtonItem 액션들
    
     // 0. Input 버튼: 스케줄 입력 달력 화면으로 이동 (날짜 선택 후 입력 팝업을 띄움)
     @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        // ScheduleInputCalendarViewController : 달력에서 날짜 선택 후 스케줄 입력 팝업 호출
+        // ScheduleInputCalendarViewController: 달력에서 날짜 선택 후 스케줄 입력 팝업 호출
         if let inputCalendarVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputCalendarViewController") as? ScheduleInputCalendarViewController {
             navigationController?.pushViewController(inputCalendarVC, animated: true)
         }
@@ -80,7 +88,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
             calendarVC.schedules = schedules
-            // 소유자 정보와 총 시간 정보를 전달 (또는 MonthlyCalendarViewController에서 UserDefaults에서 불러올 수 있음)
+            // 소유자 정보는 그대로, 총 시간은 월별 데이터에서 현재 월의 값을 전달
             calendarVC.ownerInfo = self.ownerInfo
             calendarVC.totalHours = self.totalHours
             navigationController?.pushViewController(calendarVC, animated: true)
@@ -174,7 +182,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     // MARK: - 스케줄 가져오기 (Import) 기능
-    
     func importSchedule() {
         // ApList.json에서 공항 정보 로드 (정밀한 DST 처리를 위해 필요)
         guard let airports = loadAirportList() else {
@@ -272,9 +279,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     print("총 시간 정보 추출 중 오류 발생: \(error)")
                 }
                 
-                // UserDefaults에 소유자 및 총 시간 저장
+                // UserDefaults에 소유자 정보 저장
                 UserDefaults.standard.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
-                UserDefaults.standard.set(self.totalHours, forKey: self.totalHoursUserDefaultsKey)
+                
+                // 여기서는 각 스케줄의 출발일(DepDate)을 기준으로 월별 스케줄 개수를 집계하여
+                // 출발 스케줄이 가장 많은 달을 총 시간(totalHours)이 속한 달로 결정합니다.
+                var depMonthCount: [String: Int] = [:]
                 
                 // 각 tr 행을 순회하며 스케줄 데이터 추출
                 for (_, row) in rows.enumerated() {
@@ -293,6 +303,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let dutyHours = columns.getOrNil(13)
                         let hotel = columns.getOrNil(16)
                         
+                        // 만약 날짜가 비어있거나 "N/A"이면 이전 날짜(lastDate)를 사용
                         if date.isEmpty || date == "N/A" {
                             if lastDate == "Unknown" { continue }
                             date = lastDate
@@ -363,9 +374,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         ]
                         
                         extractedSchedules[date, default: []].append(scheduleEntry)
+                        
+                        // **출발 월 기준 집계:** 각 스케줄의 DepDate를 Date 객체로 변환한 후, 해당 월("yyyy-MM")의 카운트를 증가
+                        if let depDateObj = dateFormatter.date(from: depDate) {
+                            let monthKey = self.formattedMonth(for: depDateObj)
+                            depMonthCount[monthKey, default: 0] += 1
+                        }
                     }
                 }
                 
+                // 스케줄이 하나도 추출되지 않았다면 에러 메시지 출력
                 if extractedSchedules.isEmpty {
                     DispatchQueue.main.async {
                         self.showAlert(
@@ -374,6 +392,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         )
                     }
                     return
+                }
+                
+                // **출발 스케줄이 가장 많은 달을 결정:**
+                if let maxEntry = depMonthCount.max(by: { $0.value < $1.value }) {
+                    let majorityMonthKey = maxEntry.key
+                    print("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
+                    var monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
+                    monthlyHours[majorityMonthKey] = self.totalHours
+                    UserDefaults.standard.set(monthlyHours, forKey: self.totalHoursByMonthUserDefaultsKey)
+                    // 현재 totalHours도 업데이트 (예: 달력 화면으로 전달하기 위함)
+                    self.totalHours = monthlyHours[majorityMonthKey] ?? ""
                 }
                 
                 DispatchQueue.main.async {
