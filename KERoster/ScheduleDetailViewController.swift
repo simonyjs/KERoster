@@ -139,14 +139,16 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let attributedText = NSMutableAttributedString()
         
         if workType == "FLY" || workType == "TVL" {
-            var item = details["Item"] ?? "N/A"
+            // 항공편 정보 및 시간 관련 데이터를 가져옴
+            var item = details["Item"] ?? "N/A"   // 항공편 번호 등
             let depAp = details["DepAp"] ?? "N/A"
-            let depTime = details["DepStnTime"] ?? "N/A"
+            let depTimeLocal = details["DepStnTime"] ?? "N/A"
             let arrAp = details["ArrAp"] ?? "N/A"
-            let arrTime = details["ArrStnTime"] ?? "N/A"
+            let arrTimeLocal = details["ArrStnTime"] ?? "N/A"
             let flyingHours = details["FlyingHours"] ?? "N/A"
             let dutyHours = details["DutyHours"] ?? "N/A"
             
+            // 항공편 종류에 따른 아이콘 설정
             var transportIcon = ""
             if workType == "FLY" {
                 transportIcon = "✈️"
@@ -157,6 +159,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 }
             }
             
+            // 날짜 라인 (동일 날짜이면 한 줄, 다르면 범위로 표시)
             let dateLine: String
             if depDateFormatted == arrDateFormatted {
                 dateLine = "📅 \(depDateFormatted)"
@@ -165,18 +168,34 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
             attributedText.append(NSAttributedString(string: dateLine, attributes: [.font: defaultFont]))
             
+            // 공항별 시간대 및 UTC 변환을 위해 Airport.swift의 함수를 사용
+            let airports = loadAirportList() ?? []
+            // UTC 시간 (시:분만) 계산
+            let depTimeUTC = convertLocalTimeToUTCTime(dateString: depDateOriginal, timeString: depTimeLocal, airportCode: depAp, airports: airports)
+            let arrTimeUTC = convertLocalTimeToUTCTime(dateString: arrDateOriginal, timeString: arrTimeLocal, airportCode: arrAp, airports: airports)
+            // 각 공항의 시간대 오프셋 문자열 (예: "+9", "+8")
+            let depOffset = timezoneOffsetString(for: depAp, airports: airports)
+            let arrOffset = timezoneOffsetString(for: arrAp, airports: airports)
+            
+            // 출발/도착 시간 문자열 구성
+            // 예: "10:21(01:21Z) ICN(+9)" 및 "12:44(04:44Z) XMN(+8)"
+            let departureStr = "\(depTimeLocal)(\(depTimeUTC)Z) \(depAp)(\(depOffset))"
+            let arrivalStr = "\(arrTimeLocal)(\(arrTimeUTC)Z) \(arrAp)(\(arrOffset))"
+            
+            // 항공편 정보 라인 구성
             let flightLine = "\n\(transportIcon) "
             attributedText.append(NSAttributedString(string: flightLine, attributes: [.font: defaultFont]))
             attributedText.append(NSAttributedString(string: item, attributes: [.font: boldFont]))
             
-            var detailsLine = "\n📍 \(depTime) \(depAp) - \(arrAp) \(arrTime)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
+            // 세부 정보 라인: 출발-도착 시간, FLT TIME, DUTY HOURS, (호텔 정보)
+            var detailsLine = "\n📍 \(departureStr) - \(arrivalStr)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
             if let hotel = details["Hotel"], !hotel.isEmpty {
                 detailsLine += "\n🏨 Hotel: \(hotel)"
             }
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
         } else {
-            // OTHER 타입 스케줄 처리
+            // WORKTYPE이 FLY/TVL가 아닌 경우, 기존 방식대로 처리
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
@@ -305,6 +324,24 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             print("ScheduleDetailViewController: 글로벌 스케줄 저장 성공")
         } catch {
             print("ScheduleDetailViewController: 글로벌 스케줄 저장 실패: \(error)")
+        }
+    }
+    
+    // MARK: - 콘솔에 스케줄을 출력하는 함수
+    func printSchedulesToConsole() {
+        // UserDefaults에서 글로벌 스케줄 데이터를 읽어 출력
+        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey),
+           let globalSchedules = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            print("----- 저장된 스케줄 출력 -----")
+            for (date, entries) in globalSchedules {
+                print("날짜: \(date)")
+                for entry in entries {
+                    print("스케줄: \(entry)")
+                }
+            }
+            print("----- 출력 완료 -----")
+        } else {
+            print("글로벌 스케줄 데이터가 없습니다.")
         }
     }
     

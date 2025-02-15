@@ -28,6 +28,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     var schedules: [String: [[String: String]]] = [:]
     let schedulesUserDefaultsKey = "schedules"
+    // holidays 딕셔너리는 API에서 받은 "yyyy-MM-dd" 문자열을 그대로 키로 사용
     var holidays: [String: String] = [:]
     var currentDate = Date()
     let calendar = Calendar.current
@@ -256,6 +257,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         monthLabel.text = formatter.string(from: currentDate)
     }
     
+    // MARK: - 휴일 정보 가져오기 (API에서 받은 날짜 문자열을 그대로 사용)
     func fetchHolidays(for date: Date) {
         holidays.removeAll()
         guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else { return }
@@ -290,12 +292,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 return
             }
             do {
+                // JSON 응답의 휴일 날짜 문자열은 이미 "yyyy-MM-dd" 형태입니다.
                 if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                    let items = jsonObject["items"] as? [[String: Any]] {
                     for item in items {
                         if let startInfo = item["start"] as? [String: Any],
                            let startDateStr = startInfo["date"] as? String,
                            let summary = item["summary"] as? String {
+                            // API에서 받은 날짜 문자열을 그대로 키로 사용
                             print("휴일: \(startDateStr) - \(summary)")
                             self.holidays[startDateStr] = summary
                         }
@@ -442,12 +446,14 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             
             var scheduleTextColor: UIColor = textColor
             if let validDisplayDate = displayDate {
-                let holidayFormatter = DateFormatter()
-                holidayFormatter.locale = Locale(identifier: "en_US_POSIX")
-                holidayFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-                holidayFormatter.dateFormat = "yyyy-MM-dd"
+                // GMT 기준 포맷터를 사용하여 달력의 날짜를 문자열로 변환
+                let utcFormatter = DateFormatter()
+                utcFormatter.locale = Locale(identifier: "en_US_POSIX")
+                utcFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+                utcFormatter.dateFormat = "yyyy-MM-dd"
+                // 예를 들어, 셀에 표시되는 날짜가 휴일인지 확인할 때, GMT 기준으로 비교
                 if let nextDay = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
-                    let holidayKey = holidayFormatter.string(from: nextDay)
+                    let holidayKey = utcFormatter.string(from: nextDay)
                     if let holiday = holidays[holidayKey] {
                         cell.dateLabel.text = "[\(holiday)] " + dateText
                         cell.contentView.backgroundColor = UIColor(named: "LightYellow")

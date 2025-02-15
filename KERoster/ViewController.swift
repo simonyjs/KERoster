@@ -47,14 +47,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             navigationController?.pushViewController(inputCalendarVC, animated: true)
         }
     }
-
+    
     // 1. iFlight 버튼: iFlight URL을 로드
     @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
     }
     
     /*
-    // CrewLink 버튼: CrewLink URL을 로드 (필요시 사용)
+    // CrewLink 버튼: 필요시 사용 (CrewLink URL 로드)
     @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
         loadURL("https://crewlink.koreanair.com/")
     }
@@ -113,6 +113,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         navigationController?.navigationBar.compactAppearance = appearance
         navigationController?.navigationBar.tintColor = .white
         navigationController?.navigationBar.isTranslucent = false
+        
+        // 기존 저장된 스케줄을 콘솔에 출력
+        printSchedulesToConsole()
     }
     
     // MARK: - WebView Delegate Methods
@@ -173,6 +176,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // MARK: - 스케줄 가져오기 (Import) 기능
     
     func importSchedule() {
+        // ApList.json에서 공항 정보 로드 (정밀한 DST 처리를 위해 필요)
+        guard let airports = loadAirportList() else {
+            print("ApList.json 로딩 실패")
+            DispatchQueue.main.async {
+                self.showAlert(title: "Import Fail", message: "공항 정보 로딩에 실패했습니다.")
+            }
+            return
+        }
+        
         // 웹뷰의 HTML 전체를 가져와 SwiftSoup으로 파싱
         webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
             guard let htmlString = html as? String else {
@@ -322,6 +334,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let seq = (sequenceCounter[date] ?? 0) + 1
                         sequenceCounter[date] = seq
                         
+                        // ApList.json을 기반으로 로컬 시간 -> UTC 변환 수행 (정밀한 DST 처리)
+                        let depTimeUTC = (depStnTime != "N/A") ? convertLocalTimeToUTCTime(dateString: depDate, timeString: depStnTime, airportCode: depAp, airports: airports) : "N/A"
+                        let arrTimeUTC = (arrStnTime != "N/A") ? convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrStnTime, airportCode: arrAp, airports: airports) : "N/A"
+                        
                         let scheduleEntry: [String: String] = [
                             "Seq": "\(seq)",
                             "Activity": activity,
@@ -341,7 +357,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "DutyDebriefDate": dutyDebriefDate,
                             "FlyingHours": flyingHours,
                             "DutyHours": dutyHours,
-                            "Hotel": hotel
+                            "Hotel": hotel,
+                            "DepStnTimeUTC": depTimeUTC,
+                            "ArrStnTimeUTC": arrTimeUTC
                         ]
                         
                         extractedSchedules[date, default: []].append(scheduleEntry)
@@ -361,6 +379,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 DispatchQueue.main.async {
                     self.schedules.merge(extractedSchedules) { (_, new) in new }
                     self.saveSchedules()
+                    // 콘솔에 스케줄 출력
+                    self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
                 }
                 
@@ -373,8 +393,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // MARK: - 알림창 표시 함수
+    // MARK: - 콘솔에 스케줄을 출력하는 함수
+    func printSchedulesToConsole() {
+        print("----- 저장된 스케줄 출력 -----")
+        for (date, entries) in schedules {
+            print("날짜: \(date)")
+            for entry in entries {
+                print("스케줄: \(entry)")
+            }
+        }
+        print("----- 출력 완료 -----")
+    }
     
+    // MARK: - 알림창 표시 함수
     func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
