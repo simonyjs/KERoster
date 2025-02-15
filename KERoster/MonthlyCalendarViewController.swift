@@ -666,7 +666,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
-    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 팝업으로 표시
+    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 팝업으로 표시 (출발일 또는 도착일 기준 조회)
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         guard indexPath.item >= 7 else { return }
         let components = calendar.dateComponents([.year, .month], from: currentDate)
@@ -701,16 +701,28 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         guard let selectedDate = displayDate else { return }
         
-        // 날짜를 문자열로 변환하여 전달 (날짜 키 형식: dd-MMM-yyyy)
+        // 날짜를 "dd-MMM-yyyy" 형식으로 변환
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
         let selectedDateString = formatter.string(from: selectedDate)
         
-        // 선택된 날짜와 해당 날짜의 스케줄 목록을 ScheduleDetailViewController에 전달하여 팝업으로 표시
+        // 모든 스케줄을 순회하며, 출발일(DepDate) 또는 도착일(ArrDate)이 선택한 날짜와 일치하는 스케줄 필터링
+        var filteredSchedules = [[String: String]]()
+        for (_, scheduleArray) in schedules {
+            for schedule in scheduleArray {
+                if let depDate = schedule["DepDate"], depDate == selectedDateString {
+                    filteredSchedules.append(schedule)
+                } else if let arrDate = schedule["ArrDate"], arrDate == selectedDateString {
+                    filteredSchedules.append(schedule)
+                }
+            }
+        }
+        
+        // 선택된 날짜와 필터링된 스케줄을 상세 화면에 전달
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let detailVC = storyboard.instantiateViewController(withIdentifier: "ScheduleDetailViewController") as? ScheduleDetailViewController {
             detailVC.selectedDate = selectedDateString
-            detailVC.scheduleDetailsList = schedules[selectedDateString] ?? []
+            detailVC.scheduleDetailsList = filteredSchedules
             detailVC.modalPresentationStyle = .formSheet
             present(detailVC, animated: true, completion: nil)
         }
