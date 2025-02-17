@@ -24,6 +24,7 @@ extension UIFont {
     }
 }
 
+// MARK: - MonthlyCalendarViewController
 class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     // 스케줄 데이터 (날짜별로 스케줄 목록 저장)
@@ -301,7 +302,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let timeMin = isoFormatter.string(from: startDate)
         let timeMax = isoFormatter.string(from: endDate)
         
-        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"
+        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"  // 본인의 Google API Key
         let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com"
         let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
         

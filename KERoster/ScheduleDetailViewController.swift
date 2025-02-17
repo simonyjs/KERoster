@@ -7,29 +7,99 @@
 
 import UIKit
 
-// ScheduleEditDelegate 프로토콜: 편집/삭제 후 변경된 스케줄 데이터를 전달하기 위한 프로토콜
+// MARK: - ScheduleEditDelegate 프로토콜
 protocol ScheduleEditDelegate: AnyObject {
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int)
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
 }
 
+// MARK: - AVWX API 응답 모델
+struct AirportInfo: Decodable {
+    let name: String
+    let city: String
+    let country: String
+    let iata: String
+    let icao: String
+    // 필요 시 추가 필드 선언
+}
+
+struct METAR: Decodable {
+    let raw: String
+}
+
+struct TAF: Decodable {
+    let raw: String
+}
+
+// MARK: - 응답 캐싱 (TTL 1시간 적용)
+class WeatherDataCache {
+    static let shared = WeatherDataCache()
+    private init() { }
+    
+    // TTL: 1시간 = 3600초
+    private let ttl: TimeInterval = 3600
+    
+    // 캐시 항목과 저장 시각을 함께 저장
+    private var airportInfoCache: [String: (data: AirportInfo, date: Date)] = [:]
+    private var metarCache: [String: (data: String, date: Date)] = [:]
+    private var tafCache: [String: (data: String, date: Date)] = [:]
+    
+    func getAirportInfo(for key: String) -> AirportInfo? {
+        if let entry = airportInfoCache[key], Date().timeIntervalSince(entry.date) < ttl {
+            return entry.data
+        }
+        return nil
+    }
+    
+    func setAirportInfo(_ info: AirportInfo, for key: String) {
+        airportInfoCache[key] = (info, Date())
+    }
+    
+    func getMETAR(for key: String) -> String? {
+        if let entry = metarCache[key], Date().timeIntervalSince(entry.date) < ttl {
+            return entry.data
+        }
+        return nil
+    }
+    
+    func setMETAR(_ metar: String, for key: String) {
+        metarCache[key] = (metar, Date())
+    }
+    
+    func getTAF(for key: String) -> String? {
+        if let entry = tafCache[key], Date().timeIntervalSince(entry.date) < ttl {
+            return entry.data
+        }
+        return nil
+    }
+    
+    func setTAF(_ taf: String, for key: String) {
+        tafCache[key] = (taf, Date())
+    }
+    
+    // 캐시 전체 초기화 (수동 새로고침 시 사용)
+    func clearCache() {
+        airportInfoCache.removeAll()
+        metarCache.removeAll()
+        tafCache.removeAll()
+    }
+}
+
 class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, ScheduleEditDelegate {
     
-    // 여러 개의 스케줄 세부 정보를 저장 (예: 월별 그룹의 스케줄들이 플랫하게 합쳐짐)
+    // MARK: - Properties
     var scheduleDetailsList: [[String: String]] = []
-    // ViewListViewController에서 전달받은 날짜 또는 달 문자열 (예: "Mar 2025")
     var selectedDate: String = ""
     
-    // 스케줄 목록을 표시할 테이블 뷰
     let tableView = UITableView()
-    
-    // UserDefaults에 저장된 글로벌 스케줄 데이터의 key (다른 뷰와 동일)
     let schedulesUserDefaultsKey = "schedules"
     
+    // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        // 모달 프레젠테이션 스타일을 .automatic 으로 설정
+        self.modalPresentationStyle = .automatic
         
-        // 선택된 날짜가 있으면 제목에 함께 표시
         if selectedDate.isEmpty {
             self.title = "Schedule Details"
         } else {
@@ -42,29 +112,26 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // 스케줄들을 정렬한 후 테이블 뷰 갱신
         sortScheduleDetails()
         tableView.reloadData()
+        // 프리페칭: 스케줄 내 모든 비행 관련 공항 코드의 데이터를 미리 가져옴
+        prefetchWeatherData()
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // 테이블뷰의 레이아웃을 업데이트한 후, 콘텐츠 높이에 약간의 여백(20포인트)을 더해 모달 창의 preferredContentSize를 업데이트합니다.
         tableView.layoutIfNeeded()
         self.preferredContentSize = CGSize(width: self.view.frame.width, height: tableView.contentSize.height + 20)
     }
     
-    // MARK: - 테이블뷰 설정 및 Auto Layout
+    // MARK: - TableView Setup
     func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.tableFooterView = UIView() // 빈 셀 제거
         
-        // 빈 FooterView를 지정하여 불필요한 빈 셀 제거
-        tableView.tableFooterView = UIView()
-        
-        // 당겨서 리프레시할 수 있도록 UIRefreshControl 추가
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
         tableView.refreshControl = refreshControl
@@ -79,21 +146,22 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     @objc func refreshData(_ sender: UIRefreshControl) {
+        // 수동 새로고침 시 캐시 초기화 후 프리페칭
+        WeatherDataCache.shared.clearCache()
+        prefetchWeatherData()
         sortScheduleDetails()
         tableView.reloadData()
         sender.endRefreshing()
     }
     
-    /// 스케줄들을 DepDate 기준으로 오름차순 정렬합니다.
+    // MARK: - Data Sorting
     func sortScheduleDetails() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        
-        scheduleDetailsList.sort { (dict1, dict2) -> Bool in
+        scheduleDetailsList.sort { dict1, dict2 in
             let dateString1 = dict1["DepDate"] ?? selectedDate
             let dateString2 = dict2["DepDate"] ?? selectedDate
-            
             if let date1 = dateFormatter.date(from: dateString1),
                let date2 = dateFormatter.date(from: dateString2) {
                 return date1 < date2
@@ -102,8 +170,193 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
-    // MARK: - UITableViewDataSource
+    // MARK: - Pre-fetching Weather Data
+    func prefetchWeatherData() {
+        var airportCodes = Set<String>()
+        for schedule in scheduleDetailsList {
+            if let workType = schedule["WorkType"], (workType == "FLY" || workType == "TVL") {
+                if let depAp = schedule["DepAp"], !depAp.isEmpty {
+                    airportCodes.insert(depAp)
+                }
+                if let arrAp = schedule["ArrAp"], !arrAp.isEmpty {
+                    airportCodes.insert(arrAp)
+                }
+            }
+        }
+        for code in airportCodes {
+            if WeatherDataCache.shared.getAirportInfo(for: code) == nil {
+                fetchAirportInfo(for: code) { _ in }
+            }
+            if WeatherDataCache.shared.getMETAR(for: code) == nil {
+                fetchMETAR(for: code) { _ in }
+            }
+            if WeatherDataCache.shared.getTAF(for: code) == nil {
+                fetchTAF(for: code) { _ in }
+            }
+        }
+    }
     
+    // MARK: - AVWX API 호출 함수들 (캐싱 적용)
+    func fetchAirportInfo(for airportCode: String, completion: @escaping (AirportInfo?) -> Void) {
+        if let cached = WeatherDataCache.shared.getAirportInfo(for: airportCode) {
+            completion(cached)
+            return
+        }
+        let urlString = "https://avwx.rest/api/station/\(airportCode)?format=json"
+        guard let url = URL(string: urlString) else { completion(nil); return }
+        var request = URLRequest(url: url)
+        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("공항 API 요청 오류: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            guard let data = data else { completion(nil); return }
+            do {
+                let info = try JSONDecoder().decode(AirportInfo.self, from: data)
+                WeatherDataCache.shared.setAirportInfo(info, for: airportCode)
+                completion(info)
+            } catch {
+                print("공항 API JSON 디코딩 오류: \(error.localizedDescription)")
+                completion(nil)
+            }
+        }.resume()
+    }
+    
+    func fetchMETAR(for airportCode: String, completion: @escaping (String?) -> Void) {
+        if let cached = WeatherDataCache.shared.getMETAR(for: airportCode) {
+            completion(cached)
+            return
+        }
+        let urlString = "https://avwx.rest/api/metar/\(airportCode)?format=json&options=info,translate"
+        guard let url = URL(string: urlString) else { completion(nil); return }
+        var request = URLRequest(url: url)
+        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("METAR 요청 오류: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            guard let data = data else { completion(nil); return }
+            do {
+                let metar = try JSONDecoder().decode(METAR.self, from: data)
+                WeatherDataCache.shared.setMETAR(metar.raw, for: airportCode)
+                completion(metar.raw)
+            } catch {
+                print("METAR JSON 디코딩 오류: \(error.localizedDescription)")
+                completion(nil)
+            }
+        }.resume()
+    }
+    
+    func fetchTAF(for airportCode: String, completion: @escaping (String?) -> Void) {
+        if let cached = WeatherDataCache.shared.getTAF(for: airportCode) {
+            completion(cached)
+            return
+        }
+        let urlString = "https://avwx.rest/api/taf/\(airportCode)?format=json&options=info,translate"
+        guard let url = URL(string: urlString) else { completion(nil); return }
+        var request = URLRequest(url: url)
+        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("TAF 요청 오류: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            guard let data = data else { completion(nil); return }
+            do {
+                let taf = try JSONDecoder().decode(TAF.self, from: data)
+                WeatherDataCache.shared.setTAF(taf.raw, for: airportCode)
+                completion(taf.raw)
+            } catch {
+                print("TAF JSON 디코딩 오류: \(error.localizedDescription)")
+                completion(nil)
+            }
+        }.resume()
+    }
+    
+    // MARK: - 비행 관련 추가 정보 가져오기 (출발/도착 공항 정보, METAR, TAF)
+    func fetchFlightAdditionalInfo(for schedule: [String: String], indexPath: IndexPath, currentText: NSAttributedString) {
+        guard let depAp = schedule["DepAp"], let arrAp = schedule["ArrAp"] else { return }
+        let dispatchGroup = DispatchGroup()
+        
+        var depAirportInfoStr: String?
+        var depMetarStr: String?
+        var depTafStr: String?
+        var arrAirportInfoStr: String?
+        var arrMetarStr: String?
+        var arrTafStr: String?
+        
+        dispatchGroup.enter()
+        fetchAirportInfo(for: depAp) { info in
+            if let info = info {
+                depAirportInfoStr = "\(info.name) (\(info.iata)) - \(info.city), \(info.country)"
+            }
+            dispatchGroup.leave()
+        }
+        dispatchGroup.enter()
+        fetchMETAR(for: depAp) { metar in
+            depMetarStr = metar
+            dispatchGroup.leave()
+        }
+        dispatchGroup.enter()
+        fetchTAF(for: depAp) { taf in
+            depTafStr = taf
+            dispatchGroup.leave()
+        }
+        dispatchGroup.enter()
+        fetchAirportInfo(for: arrAp) { info in
+            if let info = info {
+                arrAirportInfoStr = "\(info.name) (\(info.iata)) - \(info.city), \(info.country)"
+            }
+            dispatchGroup.leave()
+        }
+        dispatchGroup.enter()
+        fetchMETAR(for: arrAp) { metar in
+            arrMetarStr = metar
+            dispatchGroup.leave()
+        }
+        dispatchGroup.enter()
+        fetchTAF(for: arrAp) { taf in
+            arrTafStr = taf
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            let additionalText = """
+            
+            --- FLT WX INFO ---
+            [DEP]
+            A/P: \(depAirportInfoStr ?? "N/A")
+            METAR: \(depMetarStr ?? "N/A")
+            TAF: \(depTafStr ?? "N/A")
+            [ARR]
+            A/P: \(arrAirportInfoStr ?? "N/A")
+            METAR: \(arrMetarStr ?? "N/A")
+            TAF: \(arrTafStr ?? "N/A")
+            """
+            let additionalAttr = NSAttributedString(string: additionalText, attributes: [
+                .font: UIFont.systemFont(ofSize: 12),
+                .foregroundColor: UIColor.systemGreen
+            ])
+            if let cell = self.tableView.cellForRow(at: indexPath) {
+                let combined = NSMutableAttributedString(attributedString: currentText)
+                combined.append(additionalAttr)
+                cell.textLabel?.attributedText = combined
+                
+                // 강제로 테이블 뷰 레이아웃 업데이트하고 모달의 preferredContentSize 재설정
+                self.tableView.beginUpdates()
+                self.tableView.endUpdates()
+                self.preferredContentSize = CGSize(width: self.view.frame.width,
+                                                   height: self.tableView.contentSize.height + 20)
+            }
+        }
+    }
+    
+    // MARK: - UITableViewDataSource Methods
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return scheduleDetailsList.count
     }
@@ -113,7 +366,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let details = scheduleDetailsList[indexPath.row]
         
-        // 날짜 변환을 위한 포맷터 설정
         let inputFormatter = DateFormatter()
         inputFormatter.dateFormat = "dd-MMM-yyyy"
         inputFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -121,26 +373,21 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let outputFormatter = DateFormatter()
         outputFormatter.dateFormat = "yyyy-MM-dd"
         
-        // DepDate와 ArrDate 원본 문자열 (없으면 selectedDate 사용)
         let depDateOriginal = details["DepDate"] ?? selectedDate
         let arrDateOriginal = details["ArrDate"] ?? selectedDate
         
-        // 변환된 날짜 문자열
         let depDateFormatted = inputFormatter.date(from: depDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? depDateOriginal
         let arrDateFormatted = inputFormatter.date(from: arrDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? arrDateOriginal
         
         let workType = details["WorkType"] ?? "N/A"
         
-        // 기본 글꼴과 굵은 글꼴
         let defaultFont = UIFont.systemFont(ofSize: 14)
         let boldFont = UIFont.boldSystemFont(ofSize: 20)
         
-        // NSAttributedString을 구성하여 셀에 표시할 텍스트 생성
         let attributedText = NSMutableAttributedString()
         
         if workType == "FLY" || workType == "TVL" {
-            // 항공편 정보 및 시간 관련 데이터를 가져옴
-            var item = details["Item"] ?? "N/A"   // 항공편 번호 등
+            var item = details["Item"] ?? "N/A"
             let depAp = details["DepAp"] ?? "N/A"
             let depTimeLocal = details["DepStnTime"] ?? "N/A"
             let arrAp = details["ArrAp"] ?? "N/A"
@@ -148,7 +395,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             let flyingHours = details["FlyingHours"] ?? "N/A"
             let dutyHours = details["DutyHours"] ?? "N/A"
             
-            // 항공편 종류에 따른 아이콘 설정
             var transportIcon = ""
             if workType == "FLY" {
                 transportIcon = "✈️"
@@ -159,7 +405,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 }
             }
             
-            // 날짜 라인 (동일 날짜이면 한 줄, 다르면 범위로 표시)
             let dateLine: String
             if depDateFormatted == arrDateFormatted {
                 dateLine = "📅 \(depDateFormatted)"
@@ -168,39 +413,26 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
             attributedText.append(NSAttributedString(string: dateLine, attributes: [.font: defaultFont]))
             
-            // 공항별 시간대 및 UTC 변환을 위해 Airport.swift의 함수를 사용
-            let airports = loadAirportList() ?? []
-            // UTC 시간 (시:분만) 계산
-            let depTimeUTC = convertLocalTimeToUTCTime(dateString: depDateOriginal, timeString: depTimeLocal, airportCode: depAp, airports: airports)
-            let arrTimeUTC = convertLocalTimeToUTCTime(dateString: arrDateOriginal, timeString: arrTimeLocal, airportCode: arrAp, airports: airports)
-            // 각 공항의 시간대 오프셋 문자열 (예: "+9", "+8")
-            let depOffset = timezoneOffsetString(for: depAp, airports: airports)
-            let arrOffset = timezoneOffsetString(for: arrAp, airports: airports)
+            let departureStr = "\(depTimeLocal) \(depAp)"
+            let arrivalStr = "\(arrTimeLocal) \(arrAp)"
             
-            // 출발/도착 시간 문자열 구성
-            // 예: "10:21(01:21Z) ICN(+9)" 및 "12:44(04:44Z) XMN(+8)"
-            let departureStr = "\(depTimeLocal)(\(depTimeUTC)Z) \(depAp)(\(depOffset))"
-            let arrivalStr = "\(arrTimeLocal)(\(arrTimeUTC)Z) \(arrAp)(\(arrOffset))"
-            
-            // 항공편 정보 라인 구성
             let flightLine = "\n\(transportIcon) "
             attributedText.append(NSAttributedString(string: flightLine, attributes: [.font: defaultFont]))
             attributedText.append(NSAttributedString(string: item, attributes: [.font: boldFont]))
             
-            // 세부 정보 라인: 출발-도착 시간, FLT TIME, DUTY HOURS, (호텔 정보)
             var detailsLine = "\n📍 \(departureStr) - \(arrivalStr)\n⏳ FLT TIME: \(flyingHours)\n⌛ DUTY HOURS: \(dutyHours)"
             if let hotel = details["Hotel"], !hotel.isEmpty {
                 detailsLine += "\n🏨 Hotel: \(hotel)"
             }
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
+            fetchFlightAdditionalInfo(for: details, indexPath: indexPath, currentText: attributedText)
+            
         } else {
-            // WORKTYPE이 FLY/TVL가 아닌 경우, 기존 방식대로 처리
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
             
-            // 수동 입력 시 dutyDebrief 값에서 괄호로 시작하는 추가 정보 제거 (예: "17:30(+1)" → "17:30")
             var pureDutyDebrief = dutyDebrief
             if let parenIndex = dutyDebrief.firstIndex(of: "(") {
                 pureDutyDebrief = String(dutyDebrief[..<parenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -223,14 +455,12 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
-        
         return cell
     }
     
-    // MARK: - UITableViewDelegate 메서드
+    // MARK: - UITableViewDelegate Methods
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        
         let schedule = scheduleDetailsList[indexPath.row]
         let editVC = ScheduleEditViewController()
         editVC.schedule = schedule
@@ -239,11 +469,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         navigationController?.pushViewController(editVC, animated: true)
     }
     
-    // 스와이프하여 삭제 액션 (삭제 후 글로벌 스케줄 업데이트 호출)
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { [weak self] (_, _, completionHandler) in
             guard let self = self else { return }
-            print("삭제 액션 호출 - index: \(indexPath.row)")
             self.scheduleDetailsList.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
             self.updateGlobalSchedulesFromDetails()
@@ -252,7 +480,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         return UISwipeActionsConfiguration(actions: [deleteAction])
     }
     
-    // MARK: - ScheduleEditDelegate 메서드
+    // MARK: - ScheduleEditDelegate Methods
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int) {
         scheduleDetailsList[index] = schedule
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
@@ -266,7 +494,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     // MARK: - 글로벌 스케줄 업데이트 (UserDefaults)
-    /// 편집/삭제 후, 현재 화면의 스케줄 정보를 글로벌 스케줄 데이터와 동기화하여 UserDefaults에 저장합니다.
     func updateGlobalSchedulesFromDetails() {
         guard !selectedDate.isEmpty else { return }
         
@@ -275,7 +502,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             do {
                 globalSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             } catch {
-                print("ScheduleDetailViewController: 글로벌 스케줄 로드 실패: \(error)")
+                print("글로벌 스케줄 로드 실패: \(error)")
             }
         }
         
@@ -293,7 +520,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "MMM yyyy"
         monthFormatter.locale = Locale(identifier: "en_US_POSIX")
-        let selectedMonth = selectedDate  // 예: "Mar 2025"
+        let selectedMonth = selectedDate
         
         for key in globalSchedules.keys {
             if let date = dateFormatter.date(from: key) {
@@ -321,15 +548,27 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         do {
             let data = try JSONEncoder().encode(globalSchedules)
             UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
-            print("ScheduleDetailViewController: 글로벌 스케줄 저장 성공")
+            print("글로벌 스케줄 저장 성공")
         } catch {
-            print("ScheduleDetailViewController: 글로벌 스케줄 저장 실패: \(error)")
+            print("글로벌 스케줄 저장 실패: \(error)")
         }
     }
     
-    // MARK: - 콘솔에 스케줄을 출력하는 함수
+    // MARK: - (Optional) 왼쪽 설명 레이블 생성 함수
+    func createLeftLabel(text: String) -> UIView {
+        let label = UILabel()
+        label.text = text
+        label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        label.textColor = .darkGray
+        label.sizeToFit()
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: label.frame.width + 10, height: label.frame.height))
+        label.frame.origin = CGPoint(x: 5, y: (containerView.frame.height - label.frame.height) / 2)
+        containerView.addSubview(label)
+        return containerView
+    }
+    
+    // MARK: - 콘솔에 스케줄 출력 함수
     func printSchedulesToConsole() {
-        // UserDefaults에서 글로벌 스케줄 데이터를 읽어 출력
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey),
            let globalSchedules = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
             print("----- 저장된 스케줄 출력 -----")
@@ -343,20 +582,5 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         } else {
             print("글로벌 스케줄 데이터가 없습니다.")
         }
-    }
-    
-    // MARK: - (Optional) 왼쪽 설명 레이블 생성 함수
-    func createLeftLabel(text: String) -> UIView {
-        let label = UILabel()
-        label.text = text
-        label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-        label.textColor = .darkGray
-        label.sizeToFit()
-        
-        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: label.frame.width + 10, height: label.frame.height))
-        label.frame.origin = CGPoint(x: 5, y: (containerView.frame.height - label.frame.height) / 2)
-        containerView.addSubview(label)
-        
-        return containerView
     }
 }
