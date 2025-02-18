@@ -36,7 +36,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     // 현재 선택된 날짜(달)
     var currentDate = Date()
-    let calendar = Calendar.current
+    // 시스템 시간대 변경에 따른 최신 정보를 반영하기 위해 calendar를 재할당할 수 있도록 함
+    var calendar = Calendar.current
     
     // 소유자 정보와 총 시간 정보
     var ownerInfo: String = ""
@@ -55,7 +56,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     // MARK: - UI Elements
-    
     let monthControlView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
@@ -153,6 +153,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         view.backgroundColor = .white
         navigationItem.title = "ROSTER SUMMARY"
         
+        // 시스템 시간대 변경 알림 등록
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(systemTimeZoneDidChange),
+                                               name: NSNotification.Name.NSSystemTimeZoneDidChange,
+                                               object: nil)
+        
         // 저장된 스케줄 불러오기
         if schedules.isEmpty {
             loadSchedules()
@@ -200,7 +206,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadSchedules()
-        // 월별 총 시간도 다시 업데이트 (다른 달로 변경되었을 수 있으므로)
+        // 월별 총 시간 업데이트
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -223,6 +229,27 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             self.collectionView.collectionViewLayout.invalidateLayout()
             self.view.layoutIfNeeded()
         }, completion: nil)
+    }
+    
+    deinit {
+        // 뷰 컨트롤러 해제 시 알림 옵저버 제거
+        NotificationCenter.default.removeObserver(self, name: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil)
+    }
+    
+    // MARK: - 시스템 시간대 변경 처리
+    @objc func systemTimeZoneDidChange(notification: Notification) {
+        print("시스템 시간대가 변경되었습니다. 내부 객체를 재설정합니다.")
+        
+        // 최신 시간대 정보를 반영하기 위해 calendar 재설정
+        calendar = Calendar.current
+        
+        // 현재 날짜 업데이트
+        currentDate = Date()
+        
+        // 달력 관련 UI 업데이트
+        updateMonthLabel()
+        fetchHolidays(for: currentDate)
+        collectionView.reloadData()
     }
     
     // MARK: - 데이터 로드 및 설정
@@ -322,14 +349,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 return
             }
             do {
-                // JSON 응답의 휴일 날짜 문자열은 "yyyy-MM-dd" 형식입니다.
                 if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                    let items = jsonObject["items"] as? [[String: Any]] {
                     for item in items {
                         if let startInfo = item["start"] as? [String: Any],
                            let startDateStr = startInfo["date"] as? String,
                            let summary = item["summary"] as? String {
-                            // API에서 받은 날짜 문자열을 그대로 키로 사용
                             print("휴일: \(startDateStr) - \(summary)")
                             self.holidays[startDateStr] = summary
                         }
@@ -354,7 +379,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         fetchHolidays(for: currentDate)
         collectionView.reloadData()
         
-        // 이전 달의 총 시간 업데이트
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -370,7 +394,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         fetchHolidays(for: currentDate)
         collectionView.reloadData()
         
-        // 다음 달의 총 시간 업데이트
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -702,12 +725,10 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         guard let selectedDate = displayDate else { return }
         
-        // 날짜를 "dd-MMM-yyyy" 형식으로 변환
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
         let selectedDateString = formatter.string(from: selectedDate)
         
-        // 모든 스케줄을 순회하며, 출발일(DepDate) 또는 도착일(ArrDate)이 선택한 날짜와 일치하는 스케줄 필터링
         var filteredSchedules = [[String: String]]()
         for (_, scheduleArray) in schedules {
             for schedule in scheduleArray {
@@ -719,7 +740,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             }
         }
         
-        // 선택된 날짜와 필터링된 스케줄을 상세 화면에 전달
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         if let detailVC = storyboard.instantiateViewController(withIdentifier: "ScheduleDetailViewController") as? ScheduleDetailViewController {
             detailVC.selectedDate = selectedDateString
