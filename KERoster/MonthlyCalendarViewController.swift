@@ -666,7 +666,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     
                     // sdc 값이 있을 경우 줄 바꿈 후 🛑 와 함께 출력 (대소문자에 주의)
                     if let sdcValue = schedule["SDC"], !sdcValue.isEmpty {
-                        scheduleText += "\n🛑 [\(sdcValue)]"
+                        scheduleText += "\n🛑[\(sdcValue)]"
                     }
                     
                     scheduleLabel.text = scheduleText
