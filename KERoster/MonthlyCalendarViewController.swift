@@ -175,6 +175,9 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
         }
         
+        // **캘린더의 firstWeekday를 명시적으로 1(일요일부터 시작)로 설정**
+        calendar.firstWeekday = 1
+        
         // UI 구성요소 추가
         view.addSubview(monthControlView)
         monthControlView.addSubview(monthStackView)
@@ -242,6 +245,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         
         // 최신 시간대 정보를 반영하기 위해 calendar 재설정
         calendar = Calendar.current
+        calendar.firstWeekday = 1  // 여기도 명시적으로 일요일부터 시작
         
         // 현재 날짜 업데이트
         currentDate = Date()

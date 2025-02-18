@@ -9,12 +9,12 @@
 /* Begin PBXBuildFile section */
 		380FAEC62D5C251200BF2E33 /* ScheduleInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */; };
 		381027942D60DD0E00E67459 /* Airport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381027932D60DD0E00E67459 /* Airport.swift */; };
-		381027982D60E46200E67459 /* ApList.json in Resources */ = {isa = PBXBuildFile; fileRef = 381027972D60E46200E67459 /* ApList.json */; };
 		381C5CA12D4FA95D00D92F8D /* ScheduleEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */; };
 		382093F42D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382093F32D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift */; };
 		382093F62D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382093F52D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift */; };
 		384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */; };
 		3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */; };
+		3872B6042D65366F00154B50 /* ApList.json in Resources */ = {isa = PBXBuildFile; fileRef = 3872B6032D65366F00154B50 /* ApList.json */; };
 		38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */; };
 		38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192B82D4109B3006BDDDF /* AppDelegate.swift */; };
 		38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */; };
@@ -50,12 +50,12 @@
 /* Begin PBXFileReference section */
 		380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputViewController.swift; sourceTree = "<group>"; };
 		381027932D60DD0E00E67459 /* Airport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Airport.swift; sourceTree = "<group>"; };
-		381027972D60E46200E67459 /* ApList.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = ApList.json; path = ../../../../../Downloads/ApList.json; sourceTree = "<group>"; };
 		381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEditViewController.swift; sourceTree = "<group>"; };
 		382093F32D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputCalendarViewController.swift; sourceTree = "<group>"; };
 		382093F52D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputFormViewController.swift; sourceTree = "<group>"; };
 		384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewListViewController.swift; sourceTree = "<group>"; };
 		3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthlyCalendarViewController.swift; sourceTree = "<group>"; };
+		3872B6032D65366F00154B50 /* ApList.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = ApList.json; sourceTree = "<group>"; };
 		38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailViewController.swift; sourceTree = "<group>"; };
 		38E192B52D4109B2006BDDDF /* KERoster.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KERoster.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38E192B82D4109B3006BDDDF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -123,7 +123,7 @@
 		38E192B72D4109B2006BDDDF /* KERoster */ = {
 			isa = PBXGroup;
 			children = (
-				381027972D60E46200E67459 /* ApList.json */,
+				3872B6032D65366F00154B50 /* ApList.json */,
 				381027932D60DD0E00E67459 /* Airport.swift */,
 				38E192B82D4109B3006BDDDF /* AppDelegate.swift */,
 				38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */,
@@ -274,7 +274,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				381027982D60E46200E67459 /* ApList.json in Resources */,
+				3872B6042D65366F00154B50 /* ApList.json in Resources */,
 				38E192C82D4109B5006BDDDF /* LaunchScreen.storyboard in Resources */,
 				38E192C52D4109B5006BDDDF /* Assets.xcassets in Resources */,
 				38E192C02D4109B3006BDDDF /* Main.storyboard in Resources */,

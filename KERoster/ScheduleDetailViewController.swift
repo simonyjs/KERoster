@@ -250,23 +250,49 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     // 날씨 정보가 이미 표시된 (날짜 + 공항 쌍) 키를 추적
     var displayedWeatherKeys: Set<String> = []
     
+    // CLOSE 버튼 – 모달로 팝업될 때만 보이도록 함
+    let closeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("CLOSE", for: .normal)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        // 버튼 배경은 흰색, 텍스트는 "Ocean" 색상으로 설정
+        button.backgroundColor = .white
+        button.setTitleColor(UIColor(named: "Ocean"), for: .normal)
+        button.layer.cornerRadius = 8
+        return button
+    }()
+    
     // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
         self.modalPresentationStyle = .automatic
         
+        // 타이틀 설정 (선택된 날짜가 있으면 함께 표시)
         if selectedDate.isEmpty {
-            self.title = "Schedule Details"
+            self.title = "Detail Schedule Info"
         } else {
-            self.title = "Schedule Details (\(selectedDate))"
+            self.title = "Detail Schedule Info (\(selectedDate))"
         }
         
         view.backgroundColor = .white
         setupTableView()
+        setupCloseButton()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // 모달로 프레젠트된 경우에만 CLOSE 버튼과 네비게이션 바 스타일 적용
+        if self.presentingViewController != nil {
+            closeButton.isHidden = false
+            navigationController?.setNavigationBarHidden(false, animated: false)
+            navigationController?.navigationBar.barTintColor = UIColor(named: "Ocean")
+            navigationController?.navigationBar.isTranslucent = false
+            navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
+        } else {
+            // 모달이 아니라면 CLOSE 버튼은 숨김
+            closeButton.isHidden = true
+        }
+        
         displayedWeatherKeys.removeAll()
         sortScheduleDetails()
         tableView.reloadData()
@@ -276,8 +302,29 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         tableView.layoutIfNeeded()
+        var additionalHeight: CGFloat = 20
+        // 아이패드에서는 CLOSE 버튼 높이만큼 추가하여 창이 줄어들지 않도록 함
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            additionalHeight += closeButton.frame.height + 10
+        }
         self.preferredContentSize = CGSize(width: self.view.frame.width,
-                                           height: tableView.contentSize.height + 20)
+                                           height: tableView.contentSize.height + additionalHeight)
+    }
+    
+    // MARK: - CLOSE 버튼 설정 및 액션
+    func setupCloseButton() {
+        view.addSubview(closeButton)
+        closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            closeButton.widthAnchor.constraint(equalToConstant: 60),
+            closeButton.heightAnchor.constraint(equalToConstant: 30)
+        ])
+    }
+    
+    @objc func closeTapped() {
+        dismiss(animated: true, completion: nil)
     }
     
     // MARK: - TableView Setup
@@ -294,13 +341,15 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
+            // 테이블 뷰의 상단은 CLOSE 버튼 아래쪽에서 시작하도록 offset 적용
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
     
+    // MARK: - 새로고침 액션
     @objc func refreshData(_ sender: UIRefreshControl) {
         WeatherDataCache.shared.clearCache()
         displayedWeatherKeys.removeAll()
@@ -310,7 +359,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         sender.endRefreshing()
     }
     
-    // MARK: - Data Sorting
+    // MARK: - 데이터 정렬
     func sortScheduleDetails() {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
@@ -326,7 +375,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
-    // MARK: - Pre-fetching Weather Data
+    // MARK: - 날씨 데이터 미리 가져오기
     func prefetchWeatherData() {
         var airportCodes = Set<String>()
         for schedule in scheduleDetailsList {
@@ -353,7 +402,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     // METAR 결과는 오직 원문(raw_text)만 사용합니다.
     func fetchMETAR(for airportCode: String, completion: @escaping (String?) -> Void) {
         guard let icao = convertIATAToICAO(airportCode) else {
-            print("IATA to ICAO conversion failed for \(airportCode)")
+            print("IATA to ICAO 변환 실패: \(airportCode)")
             completion(nil)
             return
         }
@@ -378,7 +427,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             let parser = XMLParser(data: data)
             parser.delegate = parserDelegate
             if parser.parse(), let metarText = parserDelegate.foundText {
-                // METAR 결과는 오직 원문만 사용 (flight_category는 표기하지 않음)
                 let finalMetarText = metarText
                 WeatherDataCache.shared.setMETAR(finalMetarText, for: icao)
                 completion(finalMetarText)
@@ -392,7 +440,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     // MARK: - AWC API를 사용한 TAF 데이터 호출 (IATA → ICAO 변환 후 요청)
     func fetchTAF(for airportCode: String, completion: @escaping (String?) -> Void) {
         guard let icao = convertIATAToICAO(airportCode) else {
-            print("IATA to ICAO conversion failed for \(airportCode)")
+            print("IATA to ICAO 변환 실패: \(airportCode)")
             completion(nil)
             return
         }
