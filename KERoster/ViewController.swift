@@ -301,6 +301,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let dutyDebrief = columns.getOrNil(11)
                         let flyingHours = columns.getOrNil(12)
                         let dutyHours = columns.getOrNil(13)
+                        let sdc = columns.getOrNil(14)
                         let hotel = columns.getOrNil(16)
                         
                         // 만약 날짜가 비어있거나 "N/A"이면 이전 날짜(lastDate)를 사용
@@ -368,6 +369,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "DutyDebriefDate": dutyDebriefDate,
                             "FlyingHours": flyingHours,
                             "DutyHours": dutyHours,
+                            "SDC": sdc,
                             "Hotel": hotel,
                             "DepStnTimeUTC": depTimeUTC,
                             "ArrStnTimeUTC": arrTimeUTC

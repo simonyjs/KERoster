@@ -511,15 +511,32 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
                 dateFormatter.dateFormat = "MMM dd"
                 dateText = dateFormatter.string(from: validDisplayDate)
+                
+                // 매번 폰트 재설정 (셀 재사용 문제 방지)
+                let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
+                cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
                 cell.dateLabel.text = dateText
+                
+                // 오늘 날짜이면 셀 배경색과 날짜 레이블 글자색을 변경
+                if Calendar.current.isDate(validDisplayDate, inSameDayAs: Date()) {
+                    cell.contentView.backgroundColor = UIColor(named: "LightCyan")
+                    cell.dateLabel.textColor = UIColor(named: "Ocean")
+                } else {
+                    // 이전/다음 달 날짜는 LightGreen, 현재 달은 white
+                    if dayNumber < 1 || dayNumber > currentMonthDays {
+                        cell.contentView.backgroundColor = UIColor(named: "LightGreen")
+                        textColor = UIColor(named: "DarkGreen") ?? .green
+                    } else {
+                        cell.contentView.backgroundColor = .white
+                        textColor = .black
+                    }
+                    cell.dateLabel.textColor = textColor
+                }
             } else {
                 cell.dateLabel.text = "LAYOVER"
             }
-            let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
-            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
-            cell.dateLabel.textColor = textColor
             
-            // 기존 스케줄 뷰 제거
+            // 기존 스케줄 뷰 제거 (재사용 대비)
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
             var scheduleTextColor: UIColor = textColor
@@ -529,7 +546,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 utcFormatter.locale = Locale(identifier: "en_US_POSIX")
                 utcFormatter.timeZone = TimeZone(secondsFromGMT: 0)
                 utcFormatter.dateFormat = "yyyy-MM-dd"
-                // 예를 들어, 셀에 표시되는 날짜의 다음 날이 휴일인지 확인
+                // 예: 셀에 표시되는 날짜의 다음 날이 휴일인지 확인
                 if let nextDay = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
                     let holidayKey = utcFormatter.string(from: nextDay)
                     if let holiday = holidays[holidayKey] {
@@ -646,6 +663,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             scheduleText = "\(activity) \(dutyReport) - \(pureDutyDebrief)"
                         }
                     }
+                    
+                    // sdc 값이 있을 경우 줄 바꿈 후 🛑 와 함께 출력 (대소문자에 주의)
+                    if let sdcValue = schedule["SDC"], !sdcValue.isEmpty {
+                        scheduleText += "\n🛑 [\(sdcValue)]"
+                    }
+                    
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
