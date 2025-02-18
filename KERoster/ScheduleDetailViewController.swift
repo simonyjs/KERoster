@@ -13,24 +13,6 @@ protocol ScheduleEditDelegate: AnyObject {
     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
 }
 
-// MARK: - AVWX API 응답 모델
-struct AirportInfo: Decodable {
-    let name: String
-    let city: String
-    let country: String
-    let iata: String
-    let icao: String
-    // 필요 시 추가 필드 선언
-}
-
-struct METAR: Decodable {
-    let raw: String
-}
-
-struct TAF: Decodable {
-    let raw: String
-}
-
 // MARK: - 응답 캐싱 (TTL 1시간 적용)
 class WeatherDataCache {
     static let shared = WeatherDataCache()
@@ -39,21 +21,8 @@ class WeatherDataCache {
     // TTL: 1시간 = 3600초
     private let ttl: TimeInterval = 3600
     
-    // 캐시 항목과 저장 시각을 함께 저장
-    private var airportInfoCache: [String: (data: AirportInfo, date: Date)] = [:]
     private var metarCache: [String: (data: String, date: Date)] = [:]
     private var tafCache: [String: (data: String, date: Date)] = [:]
-    
-    func getAirportInfo(for key: String) -> AirportInfo? {
-        if let entry = airportInfoCache[key], Date().timeIntervalSince(entry.date) < ttl {
-            return entry.data
-        }
-        return nil
-    }
-    
-    func setAirportInfo(_ info: AirportInfo, for key: String) {
-        airportInfoCache[key] = (info, Date())
-    }
     
     func getMETAR(for key: String) -> String? {
         if let entry = metarCache[key], Date().timeIntervalSince(entry.date) < ttl {
@@ -79,12 +48,196 @@ class WeatherDataCache {
     
     // 캐시 전체 초기화 (수동 새로고침 시 사용)
     func clearCache() {
-        airportInfoCache.removeAll()
         metarCache.removeAll()
         tafCache.removeAll()
     }
 }
 
+/*
+ // MARK: - AVWX API 공항 정보 응답 모델 (나중에 사용)
+ struct AirportInfo: Decodable {
+     let name: String
+     let city: String
+     let country: String
+     let iata: String
+     let icao: String
+ }
+ 
+ // 기존 AVWX API를 사용한 공항 정보 호출 함수는 주석 처리합니다.
+ */
+
+// MARK: - AirportMapping 모델 (ApList.json 파일 형식)
+struct AirportMapping: Codable {
+    let IATA: String
+    let ICAO: String
+    let utc_offset: Double
+    let dst: Bool
+    let name: String
+}
+
+// 전역 매핑 딕셔너리 (IATA -> ICAO)
+var airportMappingDict: [String: String] = [:]
+
+// ApList.json 파일에서 매핑 정보를 로드하는 함수
+func loadAirportMapping() {
+    if let url = Bundle.main.url(forResource: "ApList", withExtension: "json") {
+        do {
+            let data = try Data(contentsOf: url)
+            let airports = try JSONDecoder().decode([AirportMapping].self, from: data)
+            for airport in airports {
+                airportMappingDict[airport.IATA.uppercased()] = airport.ICAO
+            }
+        } catch {
+            print("ApList.json 로딩 오류: \(error)")
+        }
+    } else {
+        print("ApList.json 파일을 찾을 수 없습니다.")
+    }
+}
+
+// MARK: - IATA → ICAO 변환 함수 (ApList.json 사용)
+func convertIATAToICAO(_ iata: String) -> String? {
+    if airportMappingDict.isEmpty {
+        loadAirportMapping()
+    }
+    return airportMappingDict[iata.uppercased()]
+}
+
+// MARK: - Airport Info JSON 모델 (새로운 응답 형식: JSON 배열)
+struct AirportInfoData: Codable {
+    let icaoId: String
+    let name: String
+    let country: String
+}
+
+// MARK: - 공항 정보 가져오기 함수
+func fetchAirportInfo(for airportCode: String, completion: @escaping (String?) -> Void) {
+    // IATA → ICAO 변환
+    guard let icao = convertIATAToICAO(airportCode) else {
+        print("IATA to ICAO conversion failed for \(airportCode)")
+        completion(nil)
+        return
+    }
+    let urlString = "https://aviationweather.gov/api/data/airport?ids=\(icao)&format=json"
+    guard let url = URL(string: urlString) else {
+        completion(nil)
+        return
+    }
+    var request = URLRequest(url: url)
+    request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("Airport Info 요청 오류: \(error.localizedDescription)")
+            completion(nil)
+            return
+        }
+        guard let data = data else { completion(nil); return }
+        do {
+            let airportInfos = try JSONDecoder().decode([AirportInfoData].self, from: data)
+            if let first = airportInfos.first {
+                let infoString = "\(first.name), \(first.country)"
+                completion(infoString)
+            } else {
+                completion(nil)
+            }
+        } catch {
+            print("Airport Info JSON 파싱 오류: \(error)")
+            completion(nil)
+        }
+    }.resume()
+}
+
+// MARK: - AWC XML Parser Delegate (XML 응답에서 <raw_text> 및 <flight_category> 추출)
+class AWCXMLParserDelegate: NSObject, XMLParserDelegate {
+    var foundText: String?
+    var flightCategory: String?
+    
+    var currentElement = ""
+    var capturing = false
+    var textBuffer = ""
+    
+    var capturingFlightCategory = false
+    var flightCategoryBuffer = ""
+    
+    func parser(_ parser: XMLParser, didStartElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+        currentElement = elementName
+        if elementName == "raw_text" {
+            capturing = true
+            textBuffer = ""
+        } else if elementName == "flight_category" {
+            capturingFlightCategory = true
+            flightCategoryBuffer = ""
+        }
+    }
+    
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        if capturing {
+            textBuffer += string
+        }
+        if capturingFlightCategory {
+            flightCategoryBuffer += string
+        }
+    }
+    
+    func parser(_ parser: XMLParser, didEndElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?) {
+        if elementName == "raw_text" {
+            capturing = false
+            foundText = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if elementName == "flight_category" {
+            capturingFlightCategory = false
+            flightCategory = flightCategoryBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+}
+
+// MARK: - 상세 METAR 정보 가져오기 (원문과 flight_category 반환)
+// METAR 결과는 오직 raw_text(원문)만 사용합니다.
+func fetchDetailedMETAR(for airportCode: String, completion: @escaping ((metarText: String?, flightCategory: String?)?) -> Void) {
+    guard let icao = convertIATAToICAO(airportCode) else {
+        completion(nil)
+        return
+    }
+    let urlString = "https://aviationweather.gov/api/data/metar?ids=\(icao)&format=xml&taf=false"
+    guard let url = URL(string: urlString) else { completion(nil); return }
+    var request = URLRequest(url: url)
+    request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+    URLSession.shared.dataTask(with: request) { data, response, error in
+         if let error = error {
+             print("Detailed METAR 요청 오류: \(error.localizedDescription)")
+             completion(nil)
+             return
+         }
+         guard let data = data else { completion(nil); return }
+         let parserDelegate = AWCXMLParserDelegate()
+         let parser = XMLParser(data: data)
+         parser.delegate = parserDelegate
+         if parser.parse() {
+             let metarText = parserDelegate.foundText
+             let flightCat = parserDelegate.flightCategory
+             completion((metarText, flightCat))
+         } else {
+             print("Detailed METAR XML 파싱 실패")
+             completion(nil)
+         }
+    }.resume()
+}
+
+// MARK: - 공항 헤더 정보 가져오기 함수
+// 헤더 형식: [공항코드] flight_category & 공항정보
+func fetchHeaderInfo(for airportCode: String, completion: @escaping (String) -> Void) {
+    fetchDetailedMETAR(for: airportCode) { result in
+        fetchAirportInfo(for: airportCode) { airportInfo in
+            let flightCat = result?.flightCategory ?? "N/A"
+            let info = airportInfo ?? "N/A"
+            let header = "[\(airportCode)] ☀️ \(flightCat) 🛫 \(info)"
+            completion(header)
+        }
+    }
+}
+
+// MARK: - ScheduleDetailViewController
 class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, ScheduleEditDelegate {
     
     // MARK: - Properties
@@ -94,10 +247,12 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     let tableView = UITableView()
     let schedulesUserDefaultsKey = "schedules"
     
+    // 날씨 정보가 이미 표시된 (날짜 + 공항 쌍) 키를 추적
+    var displayedWeatherKeys: Set<String> = []
+    
     // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        // 모달 프레젠테이션 스타일을 .automatic 으로 설정
         self.modalPresentationStyle = .automatic
         
         if selectedDate.isEmpty {
@@ -112,16 +267,17 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        displayedWeatherKeys.removeAll()
         sortScheduleDetails()
         tableView.reloadData()
-        // 프리페칭: 스케줄 내 모든 비행 관련 공항 코드의 데이터를 미리 가져옴
         prefetchWeatherData()
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         tableView.layoutIfNeeded()
-        self.preferredContentSize = CGSize(width: self.view.frame.width, height: tableView.contentSize.height + 20)
+        self.preferredContentSize = CGSize(width: self.view.frame.width,
+                                           height: tableView.contentSize.height + 20)
     }
     
     // MARK: - TableView Setup
@@ -130,7 +286,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        tableView.tableFooterView = UIView() // 빈 셀 제거
+        tableView.tableFooterView = UIView()
         
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
@@ -146,8 +302,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     @objc func refreshData(_ sender: UIRefreshControl) {
-        // 수동 새로고침 시 캐시 초기화 후 프리페칭
         WeatherDataCache.shared.clearCache()
+        displayedWeatherKeys.removeAll()
         prefetchWeatherData()
         sortScheduleDetails()
         tableView.reloadData()
@@ -184,9 +340,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         for code in airportCodes {
-            if WeatherDataCache.shared.getAirportInfo(for: code) == nil {
-                fetchAirportInfo(for: code) { _ in }
-            }
             if WeatherDataCache.shared.getMETAR(for: code) == nil {
                 fetchMETAR(for: code) { _ in }
             }
@@ -196,43 +349,24 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
-    // MARK: - AVWX API 호출 함수들 (캐싱 적용)
-    func fetchAirportInfo(for airportCode: String, completion: @escaping (AirportInfo?) -> Void) {
-        if let cached = WeatherDataCache.shared.getAirportInfo(for: airportCode) {
-            completion(cached)
-            return
-        }
-        let urlString = "https://avwx.rest/api/station/\(airportCode)?format=json"
-        guard let url = URL(string: urlString) else { completion(nil); return }
-        var request = URLRequest(url: url)
-        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("공항 API 요청 오류: \(error.localizedDescription)")
-                completion(nil)
-                return
-            }
-            guard let data = data else { completion(nil); return }
-            do {
-                let info = try JSONDecoder().decode(AirportInfo.self, from: data)
-                WeatherDataCache.shared.setAirportInfo(info, for: airportCode)
-                completion(info)
-            } catch {
-                print("공항 API JSON 디코딩 오류: \(error.localizedDescription)")
-                completion(nil)
-            }
-        }.resume()
-    }
-    
+    // MARK: - AWC API를 사용한 METAR 데이터 호출 (IATA → ICAO 변환 후 요청)
+    // METAR 결과는 오직 원문(raw_text)만 사용합니다.
     func fetchMETAR(for airportCode: String, completion: @escaping (String?) -> Void) {
-        if let cached = WeatherDataCache.shared.getMETAR(for: airportCode) {
+        guard let icao = convertIATAToICAO(airportCode) else {
+            print("IATA to ICAO conversion failed for \(airportCode)")
+            completion(nil)
+            return
+        }
+        if let cached = WeatherDataCache.shared.getMETAR(for: icao) {
             completion(cached)
             return
         }
-        let urlString = "https://avwx.rest/api/metar/\(airportCode)?format=json&options=info,translate"
+        let urlString = "https://aviationweather.gov/api/data/metar?ids=\(icao)&format=xml&taf=false"
         guard let url = URL(string: urlString) else { completion(nil); return }
+        
         var request = URLRequest(url: url)
-        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("METAR 요청 오류: \(error.localizedDescription)")
@@ -240,26 +374,38 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 return
             }
             guard let data = data else { completion(nil); return }
-            do {
-                let metar = try JSONDecoder().decode(METAR.self, from: data)
-                WeatherDataCache.shared.setMETAR(metar.raw, for: airportCode)
-                completion(metar.raw)
-            } catch {
-                print("METAR JSON 디코딩 오류: \(error.localizedDescription)")
+            let parserDelegate = AWCXMLParserDelegate()
+            let parser = XMLParser(data: data)
+            parser.delegate = parserDelegate
+            if parser.parse(), let metarText = parserDelegate.foundText {
+                // METAR 결과는 오직 원문만 사용 (flight_category는 표기하지 않음)
+                let finalMetarText = metarText
+                WeatherDataCache.shared.setMETAR(finalMetarText, for: icao)
+                completion(finalMetarText)
+            } else {
+                print("METAR XML 파싱 실패")
                 completion(nil)
             }
         }.resume()
     }
     
+    // MARK: - AWC API를 사용한 TAF 데이터 호출 (IATA → ICAO 변환 후 요청)
     func fetchTAF(for airportCode: String, completion: @escaping (String?) -> Void) {
-        if let cached = WeatherDataCache.shared.getTAF(for: airportCode) {
+        guard let icao = convertIATAToICAO(airportCode) else {
+            print("IATA to ICAO conversion failed for \(airportCode)")
+            completion(nil)
+            return
+        }
+        if let cached = WeatherDataCache.shared.getTAF(for: icao) {
             completion(cached)
             return
         }
-        let urlString = "https://avwx.rest/api/taf/\(airportCode)?format=json&options=info,translate"
+        let urlString = "https://aviationweather.gov/api/data/taf?ids=\(icao)&format=xml&metar=false&time=valid"
         guard let url = URL(string: urlString) else { completion(nil); return }
+        
         var request = URLRequest(url: url)
-        request.addValue("U62wY39v-wjG_tb0NuT6k6Joo3sniCBH7-uJxB3o7W0", forHTTPHeaderField: "Authorization")
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("TAF 요청 오류: \(error.localizedDescription)")
@@ -267,36 +413,48 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 return
             }
             guard let data = data else { completion(nil); return }
-            do {
-                let taf = try JSONDecoder().decode(TAF.self, from: data)
-                WeatherDataCache.shared.setTAF(taf.raw, for: airportCode)
-                completion(taf.raw)
-            } catch {
-                print("TAF JSON 디코딩 오류: \(error.localizedDescription)")
+            let parserDelegate = AWCXMLParserDelegate()
+            let parser = XMLParser(data: data)
+            parser.delegate = parserDelegate
+            if parser.parse(), var tafText = parserDelegate.foundText {
+                let tokens = ["BECMG", "FM", "TEMPO", "PROB", "NOSIG"]
+                for token in tokens {
+                    tafText = tafText.replacingOccurrences(of: " \(token)", with: "\n\(token)")
+                }
+                WeatherDataCache.shared.setTAF(tafText, for: icao)
+                completion(tafText)
+            } else {
+                print("TAF XML 파싱 실패")
                 completion(nil)
             }
         }.resume()
     }
     
-    // MARK: - 비행 관련 추가 정보 가져오기 (출발/도착 공항 정보, METAR, TAF)
+    // MARK: - 비행 관련 추가 날씨 정보 가져오기 (공항 헤더 정보 포함)
+    // 출력 형식:
+    // [출발공항] flight_category & 공항정보
+    // METAR: (출발 METAR 원문)
+    // TAF: (출발 TAF)
+    // [도착공항] flight_category & 공항정보
+    // METAR: (도착 METAR 원문)
+    // TAF: (도착 TAF)
     func fetchFlightAdditionalInfo(for schedule: [String: String], indexPath: IndexPath, currentText: NSAttributedString) {
         guard let depAp = schedule["DepAp"], let arrAp = schedule["ArrAp"] else { return }
-        let dispatchGroup = DispatchGroup()
         
-        var depAirportInfoStr: String?
+        let dateKey = schedule["DepDate"] ?? selectedDate
+        let sortedAirports = [depAp, arrAp].sorted()
+        let weatherKey = "\(dateKey)_\(sortedAirports[0])_\(sortedAirports[1])"
+        if displayedWeatherKeys.contains(weatherKey) {
+            return
+        }
+        displayedWeatherKeys.insert(weatherKey)
+        
+        let dispatchGroup = DispatchGroup()
         var depMetarStr: String?
         var depTafStr: String?
-        var arrAirportInfoStr: String?
         var arrMetarStr: String?
         var arrTafStr: String?
         
-        dispatchGroup.enter()
-        fetchAirportInfo(for: depAp) { info in
-            if let info = info {
-                depAirportInfoStr = "\(info.name) (\(info.iata)) - \(info.city), \(info.country)"
-            }
-            dispatchGroup.leave()
-        }
         dispatchGroup.enter()
         fetchMETAR(for: depAp) { metar in
             depMetarStr = metar
@@ -305,13 +463,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         dispatchGroup.enter()
         fetchTAF(for: depAp) { taf in
             depTafStr = taf
-            dispatchGroup.leave()
-        }
-        dispatchGroup.enter()
-        fetchAirportInfo(for: arrAp) { info in
-            if let info = info {
-                arrAirportInfoStr = "\(info.name) (\(info.iata)) - \(info.city), \(info.country)"
-            }
             dispatchGroup.leave()
         }
         dispatchGroup.enter()
@@ -325,33 +476,48 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             dispatchGroup.leave()
         }
         
+        let headerGroup = DispatchGroup()
+        var depHeader: String = "[\(depAp)] N/A"
+        var arrHeader: String = "[\(arrAp)] N/A"
+        
+        headerGroup.enter()
+        fetchHeaderInfo(for: depAp) { header in
+            depHeader = header
+            headerGroup.leave()
+        }
+        headerGroup.enter()
+        fetchHeaderInfo(for: arrAp) { header in
+            arrHeader = header
+            headerGroup.leave()
+        }
+        
         dispatchGroup.notify(queue: .main) {
-            let additionalText = """
-            
-            --- FLT WX INFO ---
-            [DEP]
-            A/P: \(depAirportInfoStr ?? "N/A")
-            METAR: \(depMetarStr ?? "N/A")
-            TAF: \(depTafStr ?? "N/A")
-            [ARR]
-            A/P: \(arrAirportInfoStr ?? "N/A")
-            METAR: \(arrMetarStr ?? "N/A")
-            TAF: \(arrTafStr ?? "N/A")
-            """
-            let additionalAttr = NSAttributedString(string: additionalText, attributes: [
-                .font: UIFont.systemFont(ofSize: 12),
-                .foregroundColor: UIColor.systemGreen
-            ])
-            if let cell = self.tableView.cellForRow(at: indexPath) {
-                let combined = NSMutableAttributedString(attributedString: currentText)
-                combined.append(additionalAttr)
-                cell.textLabel?.attributedText = combined
+            headerGroup.notify(queue: .main) {
+                let additionalText = """
                 
-                // 강제로 테이블 뷰 레이아웃 업데이트하고 모달의 preferredContentSize 재설정
-                self.tableView.beginUpdates()
-                self.tableView.endUpdates()
-                self.preferredContentSize = CGSize(width: self.view.frame.width,
-                                                   height: self.tableView.contentSize.height + 20)
+                --- FLT WX INFO ---
+                \(depHeader)
+                METAR: \(depMetarStr ?? "N/A")
+                TAF: \(depTafStr ?? "N/A")
+                --- FLT WX INFO ---
+                \(arrHeader)
+                METAR: \(arrMetarStr ?? "N/A")
+                TAF: \(arrTafStr ?? "N/A")
+                """
+                let additionalAttr = NSAttributedString(string: additionalText, attributes: [
+                    .font: UIFont.systemFont(ofSize: 12),
+                    .foregroundColor: UIColor.systemGreen
+                ])
+                if let cell = self.tableView.cellForRow(at: indexPath) {
+                    let combined = NSMutableAttributedString(attributedString: currentText)
+                    combined.append(additionalAttr)
+                    cell.textLabel?.attributedText = combined
+                    
+                    self.tableView.beginUpdates()
+                    self.tableView.endUpdates()
+                    self.preferredContentSize = CGSize(width: self.view.frame.width,
+                                                       height: self.tableView.contentSize.height + 20)
+                }
             }
         }
     }
@@ -455,6 +621,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
+        cell.textLabel?.lineBreakMode = .byWordWrapping
         return cell
     }
     
