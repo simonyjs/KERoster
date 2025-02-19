@@ -45,7 +45,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     // UserDefaults Key들
     let ownerUserDefaultsKey = "ownerInfo"
-    // 총 시간은 매월마다 달라지므로 딕셔너리로 관리 (key: "yyyy-MM", value: 총 시간)
     let totalHoursByMonthUserDefaultsKey = "totalHoursByMonth"
     
     // MARK: - 헬퍼 함수: 현재 날짜의 "yyyy-MM" 포맷 문자열 반환
@@ -134,7 +133,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cv
     }()
     
-    // 요일 배열 (iPhone과 iPad에 따라 다르게 표기)
+    // 요일 배열
     var daysOfWeek: [String] {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
@@ -153,32 +152,26 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         view.backgroundColor = .white
         navigationItem.title = "ROSTER SUMMARY"
         
-        // 시스템 시간대 변경 알림 등록
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(systemTimeZoneDidChange),
                                                name: NSNotification.Name.NSSystemTimeZoneDidChange,
                                                object: nil)
         
-        // 저장된 스케줄 불러오기
         if schedules.isEmpty {
             loadSchedules()
         }
         
-        // UserDefaults에서 소유자 정보 불러오기 (소유자는 변하지 않음)
         if let savedOwner = UserDefaults.standard.string(forKey: ownerUserDefaultsKey) {
             self.ownerInfo = savedOwner
         }
         
-        // UserDefaults에서 월별 총 시간 불러오기
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
         }
         
-        // **캘린더의 firstWeekday를 명시적으로 1(일요일부터 시작)로 설정**
         calendar.firstWeekday = 1
         
-        // UI 구성요소 추가
         view.addSubview(monthControlView)
         monthControlView.addSubview(monthStackView)
         monthStackView.addArrangedSubview(prevButton)
@@ -198,18 +191,15 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
         
-        // UI 업데이트: 소유자 및 총 시간 표시
         ownerLabel.text = ownerInfo
         totalHoursLabel.text = totalHours
         
-        // 현재 달의 휴일 정보 API 호출
         fetchHolidays(for: currentDate)
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadSchedules()
-        // 월별 총 시간 업데이트
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -235,38 +225,29 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     deinit {
-        // 뷰 컨트롤러 해제 시 알림 옵저버 제거
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil)
     }
     
-    // MARK: - 시스템 시간대 변경 처리
     @objc func systemTimeZoneDidChange(notification: Notification) {
-        print("시스템 시간대가 변경되었습니다. 내부 객체를 재설정합니다.")
-        
-        // 최신 시간대 정보를 반영하기 위해 calendar 재설정
+        print("시스템 시간대 변경 – 내부 재설정")
         calendar = Calendar.current
-        calendar.firstWeekday = 1  // 여기도 명시적으로 일요일부터 시작
-        
-        // 현재 날짜 업데이트
+        calendar.firstWeekday = 1
         currentDate = Date()
-        
-        // 달력 관련 UI 업데이트
         updateMonthLabel()
         fetchHolidays(for: currentDate)
         collectionView.reloadData()
     }
     
-    // MARK: - 데이터 로드 및 설정
     func loadSchedules() {
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                print("스케줄 데이터 로드 성공")
+                print("스케줄 로드 성공")
             } catch {
                 print("스케줄 불러오기 실패: \(error)")
             }
         } else {
-            print("저장된 스케줄이 없습니다.")
+            print("저장된 스케줄 없음")
         }
     }
     
@@ -318,7 +299,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         monthLabel.text = formatter.string(from: currentDate)
     }
     
-    // MARK: - 휴일 정보 가져오기 (Google Calendar API 사용)
     func fetchHolidays(for date: Date) {
         holidays.removeAll()
         guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else { return }
@@ -333,7 +313,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let timeMin = isoFormatter.string(from: startDate)
         let timeMax = isoFormatter.string(from: endDate)
         
-        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"  // 본인의 Google API Key
+        let apiKey = "AIzaSyBz8S4W3GWLukQ-etLQBlWUP385pPlFunY"
         let calendarId = "ko.south_korea.official%23holiday%40group.v.calendar.google.com"
         let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
         
@@ -376,13 +356,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         task.resume()
     }
     
-    // MARK: - 월 변경 버튼 액션
     @objc func prevMonth() {
         currentDate = calendar.date(byAdding: .month, value: -1, to: currentDate) ?? currentDate
         updateMonthLabel()
         fetchHolidays(for: currentDate)
         collectionView.reloadData()
-        
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -397,7 +375,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         updateMonthLabel()
         fetchHolidays(for: currentDate)
         collectionView.reloadData()
-        
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""
@@ -407,7 +384,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         totalHoursLabel.text = totalHours
     }
     
-    // MARK: - 헬퍼 함수: 오버나이트(레이오버) 스케줄 관련
     func shouldDisplayLayover(for date: Date) -> Bool {
         var allSchedules: [[String: String]] = []
         for (_, scheduleArray) in schedules {
@@ -444,7 +420,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return false
     }
     
-    // MARK: - UICollectionViewDataSource
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return 49
     }
@@ -455,7 +430,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
         
         if indexPath.item < 7 {
-            // 요일 헤더 셀
             cell.isHeader = true
             cell.dateLabel.text = daysOfWeek[indexPath.item]
             let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
@@ -464,7 +438,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             cell.scheduleStackView.isHidden = true
             cell.contentView.backgroundColor = .clear
         } else {
-            // 날짜 셀
             cell.isHeader = false
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             guard let firstDayOfMonth = calendar.date(from: components) else { return cell }
@@ -479,7 +452,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             var textColor: UIColor = .black
             
             if dayNumber < 1 {
-                // 이전 달 날짜 표시
                 if let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate),
                    let previousMonthRange = calendar.range(of: .day, in: .month, for: previousMonth) {
                     let previousMonthDays = previousMonthRange.count
@@ -491,7 +463,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     displayDate = calendar.date(from: prevComponents)
                 }
             } else if dayNumber > currentMonthDays {
-                // 다음 달 날짜 표시
                 let day = dayNumber - currentMonthDays
                 cell.contentView.backgroundColor = UIColor(named: "LightGreen")
                 textColor = UIColor(named: "DarkGreen") ?? .green
@@ -501,7 +472,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     displayDate = calendar.date(from: nextComponents)
                 }
             } else {
-                // 현재 달 날짜 표시
                 cell.contentView.backgroundColor = .white
                 textColor = .black
                 var currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
@@ -516,41 +486,58 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 dateFormatter.dateFormat = "MMM dd"
                 dateText = dateFormatter.string(from: validDisplayDate)
                 
-                // 매번 폰트 재설정 (셀 재사용 문제 방지)
                 let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
-                cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
-                cell.dateLabel.text = dateText
-                
-                // 오늘 날짜이면 셀 배경색과 날짜 레이블 글자색을 변경
+                // 오늘 날짜의 "날짜 표시 부분"만 변경 (예: "20")
                 if Calendar.current.isDate(validDisplayDate, inSameDayAs: Date()) {
-                    cell.contentView.backgroundColor = UIColor(named: "LightCyan")
-                    cell.dateLabel.textColor = UIColor(named: "Ocean")
+                    // 전체 dateLabel은 "Feb 20" 등으로 출력되지만,
+                    // 오늘 날짜에 한해 overlay할 todayLabel(태그 999)을 추가해 day 부분만 변경
+                    cell.dateLabel.text = dateText  // 기존 텍스트는 그대로
+                    // 기존에 태그 999가 있다면 제거
+                    cell.contentView.viewWithTag(999)?.removeFromSuperview()
+                    
+                    let dayFormatter = DateFormatter()
+                    dayFormatter.dateFormat = "d"
+                    let dayString = dayFormatter.string(from: validDisplayDate)
+                    
+                    // todayLabel 생성 (크기는 고정, 필요에 따라 조정)
+                    let todayLabel = UILabel()
+                    todayLabel.tag = 999
+                    todayLabel.text = dayString
+                    todayLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
+                    todayLabel.textColor = .white
+                    todayLabel.textAlignment = .center
+                    todayLabel.backgroundColor = .red
+                    todayLabel.clipsToBounds = true
+                    todayLabel.translatesAutoresizingMaskIntoConstraints = false
+                    cell.contentView.addSubview(todayLabel)
+                    
+                    // todayLabel의 크기 및 위치: dateLabel의 오른쪽 부분에 오버레이하도록 제약조건 추가
+                    NSLayoutConstraint.activate([
+                        todayLabel.centerYAnchor.constraint(equalTo: cell.dateLabel.centerYAnchor),
+                        todayLabel.trailingAnchor.constraint(equalTo: cell.dateLabel.trailingAnchor),
+                        todayLabel.widthAnchor.constraint(equalToConstant: 16),
+                        todayLabel.heightAnchor.constraint(equalTo: todayLabel.widthAnchor)
+                    ])
+                    todayLabel.layer.cornerRadius = 8  // width/2
                 } else {
-                    // 이전/다음 달 날짜는 LightGreen, 현재 달은 white
-                    if dayNumber < 1 || dayNumber > currentMonthDays {
-                        cell.contentView.backgroundColor = UIColor(named: "LightGreen")
-                        textColor = UIColor(named: "DarkGreen") ?? .green
-                    } else {
-                        cell.contentView.backgroundColor = .white
-                        textColor = .black
-                    }
+                    cell.dateLabel.text = dateText
+                    cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
                     cell.dateLabel.textColor = textColor
+                    // 오늘 날짜가 아닐 경우, 혹시 남아있는 todayLabel 제거
+                    cell.contentView.viewWithTag(999)?.removeFromSuperview()
                 }
             } else {
                 cell.dateLabel.text = "LAYOVER"
             }
             
-            // 기존 스케줄 뷰 제거 (재사용 대비)
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
             var scheduleTextColor: UIColor = textColor
             if let validDisplayDate = displayDate {
-                // GMT 기준 포맷터를 사용하여 달력의 날짜를 문자열로 변환
                 let utcFormatter = DateFormatter()
                 utcFormatter.locale = Locale(identifier: "en_US_POSIX")
                 utcFormatter.timeZone = TimeZone(secondsFromGMT: 0)
                 utcFormatter.dateFormat = "yyyy-MM-dd"
-                // 예: 셀에 표시되는 날짜의 다음 날이 휴일인지 확인
                 if let nextDay = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
                     let holidayKey = utcFormatter.string(from: nextDay)
                     if let holiday = holidays[holidayKey] {
@@ -566,7 +553,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
                 
                 var schedulesForCell: [[String: String]] = []
-                // 스케줄 데이터에서 현재 셀 날짜에 해당하는 스케줄 추출
                 for (_, scheduleArray) in schedules {
                     for schedule in scheduleArray {
                         if let depDateStr = schedule["DepDate"],
@@ -592,7 +578,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     }
                 }
                 
-                // 스케줄 정렬 (출발일 기준)
                 schedulesForCell.sort { (s1, s2) -> Bool in
                     let depDate1 = scheduleDateFormatter.date(from: s1["DepDate"] ?? "") ?? Date.distantPast
                     let depDate2 = scheduleDateFormatter.date(from: s2["DepDate"] ?? "") ?? Date.distantPast
@@ -600,6 +585,22 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 }
                 
                 let scheduleFontSize: CGFloat = (isiPhone && isLandscape) ? 5 : 8
+                
+                // SDC 값이 있는 경우, 첫 번째 SDC 값만 날짜 셀 바로 아래에 표시
+                if let firstScheduleWithSDC = schedulesForCell.first(where: { schedule in
+                    if let sdc = schedule["SDC"], !sdc.isEmpty { return true }
+                    return false
+                }), let sdcValue = firstScheduleWithSDC["SDC"] {
+                    let sdcLabel = UILabel()
+                    sdcLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
+                    sdcLabel.textAlignment = .left
+                    sdcLabel.textColor = scheduleTextColor
+                    sdcLabel.numberOfLines = 0
+                    sdcLabel.text = "🛑 [\(sdcValue)]"
+                    cell.scheduleStackView.addArrangedSubview(sdcLabel)
+                }
+                
+                // 각 스케줄 레이블 생성 (SDC 값은 위에서 한 번만 표시)
                 for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
                     scheduleLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
@@ -667,17 +668,11 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                             scheduleText = "\(activity) \(dutyReport) - \(pureDutyDebrief)"
                         }
                     }
-                    
-                    // sdc 값이 있을 경우 줄 바꿈 후 🛑 와 함께 출력 (대소문자에 주의)
-                    if let sdcValue = schedule["SDC"], !sdcValue.isEmpty {
-                        scheduleText += "\n🛑[\(sdcValue)]"
-                    }
-                    
+                    // SDC 값은 이미 위에서 한 번만 표시했으므로 여기서는 포함하지 않음.
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
                 
-                // 스케줄이 없지만 레이오버(오버나이트) 조건인 경우 "LAYOVER" 표시
                 if schedulesForCell.isEmpty, let validDisplayDate = displayDate, self.shouldDisplayLayover(for: validDisplayDate) {
                     let layoverLabel = UILabel()
                     layoverLabel.font = UIFont.boldSystemFont(ofSize: (isiPhone && isLandscape) ? 5 : 8)
@@ -691,7 +686,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         return cell
     }
     
-    // MARK: - UICollectionViewDelegateFlowLayout: 셀 크기 설정
     func collectionView(_ collectionView: UICollectionView,
                         layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -717,7 +711,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         }
     }
     
-    // MARK: - 셀 선택 시 해당 날짜 세부 정보를 팝업으로 표시 (출발일 또는 도착일 기준 조회)
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         guard indexPath.item >= 7 else { return }
         let components = calendar.dateComponents([.year, .month], from: currentDate)
