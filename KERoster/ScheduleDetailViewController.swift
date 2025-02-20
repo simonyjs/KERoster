@@ -230,8 +230,10 @@ func fetchHeaderInfo(for airportCode: String, completion: @escaping (String) -> 
     fetchDetailedMETAR(for: airportCode) { result in
         fetchAirportInfo(for: airportCode) { airportInfo in
             let flightCat = result?.flightCategory ?? "N/A"
+            // flightCat이 "VFR"이면 ☀️, 아니면 ☁️ 이모지를 사용
+            let weatherEmoji = (flightCat == "VFR") ? "☀️" : "☁️"
             let info = airportInfo ?? "N/A"
-            let header = "[\(airportCode)] ☀️ \(flightCat) 🛫 \(info)"
+            let header = "[\(airportCode)] \(weatherEmoji) \(flightCat) 🎯 \(info)"
             completion(header)
         }
     }
@@ -492,6 +494,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let dateKey = schedule["DepDate"] ?? selectedDate
         let sortedAirports = [depAp, arrAp].sorted()
         let weatherKey = "\(dateKey)_\(sortedAirports[0])_\(sortedAirports[1])"
+        // 이미 날씨 정보가 표시되었으면 리턴
         if displayedWeatherKeys.contains(weatherKey) {
             return
         }
@@ -640,7 +643,38 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
             attributedText.append(NSAttributedString(string: detailsLine, attributes: [.font: defaultFont]))
             
-            fetchFlightAdditionalInfo(for: details, indexPath: indexPath, currentText: attributedText)
+            // 동일한 날짜에 동일한 공항 쌍일 경우, 그룹 내 마지막 스케줄에서만 추가 날씨 정보를 표시하도록 하고
+            // 첫 스케줄의 출발/도착 순서를 따르도록 수정
+            let dateKey = details["DepDate"] ?? selectedDate
+            let currentGroup = Set([depAp.uppercased(), arrAp.uppercased()])
+
+            if let firstIndexForGroup = scheduleDetailsList.firstIndex(where: { schedule in
+                guard let scheduleDate = schedule["DepDate"],
+                      let groupDep = schedule["DepAp"],
+                      let groupArr = schedule["ArrAp"] else { return false }
+                return scheduleDate == dateKey && Set([groupDep.uppercased(), groupArr.uppercased()]) == currentGroup
+            }),
+               let lastIndexForGroup = scheduleDetailsList.lastIndex(where: { schedule in
+                guard let scheduleDate = schedule["DepDate"],
+                      let groupDep = schedule["DepAp"],
+                      let groupArr = schedule["ArrAp"] else { return false }
+                return scheduleDate == dateKey && Set([groupDep.uppercased(), groupArr.uppercased()]) == currentGroup
+            }) {
+                // 현재 셀이 해당 그룹의 마지막 스케줄일 때만 날씨 정보 표시
+                if lastIndexForGroup == indexPath.row {
+                    // 그룹의 첫 스케줄을 기준으로 출발/도착 공항 순서를 결정
+                    let firstSchedule = scheduleDetailsList[firstIndexForGroup]
+                    let displayDepAp = firstSchedule["DepAp"] ?? depAp
+                    let displayArrAp = firstSchedule["ArrAp"] ?? arrAp
+                    
+                    // fetchFlightAdditionalInfo 함수에 전달할 딕셔너리 수정
+                    var modifiedDetails = details
+                    modifiedDetails["DepAp"] = displayDepAp
+                    modifiedDetails["ArrAp"] = displayArrAp
+                    
+                    fetchFlightAdditionalInfo(for: modifiedDetails, indexPath: indexPath, currentText: attributedText)
+                }
+            }
             
         } else {
             let activity = details["Activity"] ?? "N/A"

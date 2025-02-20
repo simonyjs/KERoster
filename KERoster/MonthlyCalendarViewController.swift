@@ -480,55 +480,34 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             }
             
             var dateText = ""
+            // 날짜 셀 구성 부분 (cellForItemAt 내부)
             if let validDisplayDate = displayDate {
                 let dateFormatter = DateFormatter()
                 dateFormatter.locale = Locale(identifier: "en_US_POSIX")
                 dateFormatter.dateFormat = "MMM dd"
-                dateText = dateFormatter.string(from: validDisplayDate)
+                let dateText = dateFormatter.string(from: validDisplayDate)
                 
                 let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
-                // 오늘 날짜의 "날짜 표시 부분"만 변경 (예: "20")
+                
+                // 오늘 날짜인 경우: 빨간색 둥근 사각형 배경, 하얀색 볼드 글씨로 처리
                 if Calendar.current.isDate(validDisplayDate, inSameDayAs: Date()) {
-                    // 전체 dateLabel은 "Feb 20" 등으로 출력되지만,
-                    // 오늘 날짜에 한해 overlay할 todayLabel(태그 999)을 추가해 day 부분만 변경
-                    cell.dateLabel.text = dateText  // 기존 텍스트는 그대로
-                    // 기존에 태그 999가 있다면 제거
-                    cell.contentView.viewWithTag(999)?.removeFromSuperview()
-                    
-                    let dayFormatter = DateFormatter()
-                    dayFormatter.dateFormat = "d"
-                    let dayString = dayFormatter.string(from: validDisplayDate)
-                    
-                    // todayLabel 생성 (크기는 고정, 필요에 따라 조정)
-                    let todayLabel = UILabel()
-                    todayLabel.tag = 999
-                    todayLabel.text = dayString
-                    todayLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
-                    todayLabel.textColor = .white
-                    todayLabel.textAlignment = .center
-                    todayLabel.backgroundColor = .red
-                    todayLabel.clipsToBounds = true
-                    todayLabel.translatesAutoresizingMaskIntoConstraints = false
-                    cell.contentView.addSubview(todayLabel)
-                    
-                    // todayLabel의 크기 및 위치: dateLabel의 오른쪽 부분에 오버레이하도록 제약조건 추가
-                    NSLayoutConstraint.activate([
-                        todayLabel.centerYAnchor.constraint(equalTo: cell.dateLabel.centerYAnchor),
-                        todayLabel.trailingAnchor.constraint(equalTo: cell.dateLabel.trailingAnchor),
-                        todayLabel.widthAnchor.constraint(equalToConstant: 16),
-                        todayLabel.heightAnchor.constraint(equalTo: todayLabel.widthAnchor)
-                    ])
-                    todayLabel.layer.cornerRadius = 8  // width/2
+                    cell.dateLabel.text = dateText
+                    cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
+                    cell.dateLabel.textColor = .white
+                    cell.dateLabel.backgroundColor = .red
+                    cell.dateLabel.textAlignment = .center
+                    cell.dateLabel.clipsToBounds = true
+                    cell.dateLabel.layer.cornerRadius = 4  // 필요에 따라 조정 가능
                 } else {
                     cell.dateLabel.text = dateText
                     cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
                     cell.dateLabel.textColor = textColor
-                    // 오늘 날짜가 아닐 경우, 혹시 남아있는 todayLabel 제거
-                    cell.contentView.viewWithTag(999)?.removeFromSuperview()
+                    cell.dateLabel.backgroundColor = .clear
                 }
             } else {
                 cell.dateLabel.text = "LAYOVER"
             }
+
             
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
             
