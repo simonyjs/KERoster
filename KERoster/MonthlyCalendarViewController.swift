@@ -479,7 +479,7 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 displayDate = calendar.date(from: currentComponents)
             }
             
-            var dateText = ""
+            let dateText = ""
             // 날짜 셀 구성 부분 (cellForItemAt 내부)
             if let validDisplayDate = displayDate {
                 let dateFormatter = DateFormatter()

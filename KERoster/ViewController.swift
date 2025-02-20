@@ -9,127 +9,178 @@ import UIKit
 import WebKit
 import SwiftSoup
 import Foundation
+import EventKit
 
-// SwiftSoup의 Elements 배열에 안전하게 접근할 수 있도록 확장 (인덱스 초과 방지)
+// SwiftSoup의 Elements 배열에 안전하게 접근 (인덱스 초과 방지)
 extension Elements {
     func getOrNil(_ index: Int) -> String {
-        return (self.size() > index) ? (try? self.get(index).text().trimmingCharacters(in: .whitespacesAndNewlines)) ?? "N/A" : "N/A"
+        return (self.size() > index) ? (try? self.get(index).text().trimmingCharacters(in: .whitespacesAndNewlines)) ?? "" : ""
     }
 }
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
-    // 스토리보드에서 연결된 WebView
     @IBOutlet weak var webView: WKWebView!
-    
-    // 날짜별로 여러 스케줄을 저장하는 딕셔너리 (UserDefaults에 영구 저장)
-    var schedules: [String: [[String: String]]] = [:]
-    
-    // 스토리보드에서 연결된 스케줄을 보여주는 스택뷰
     @IBOutlet weak var scheduleStackView: UIStackView!
     
-    // UserDefaults에 저장할 때 사용할 key들
+    var eventStore: EKEventStore!
+    var calendarManager: CalendarManager!
+    
+    var schedules: [String: [[String: String]]] = [:]
     let schedulesUserDefaultsKey = "schedules"
     let ownerUserDefaultsKey = "ownerInfo"
-    // 총 시간은 매월마다 달라지므로 [월: 총시간] 형태로 저장 (키: "yyyy-MM")
     let totalHoursByMonthUserDefaultsKey = "totalHoursByMonth"
-    
-    // 사용자 정보와 총 시간을 저장할 프로퍼티 선언
     var ownerInfo: String = ""
     var totalHours: String = ""
     
-    // MARK: - 헬퍼 함수: 날짜를 "yyyy-MM" 포맷의 문자열로 변환 (예: "2025-02")
+    // 저장된 이벤트 수를 추적
+    var savedEventCount = 0
+    
+    // MARK: - 디버그 로그 함수
+    func debugLog(_ message: String) {
+        print("[DEBUG] \(message)")
+    }
+    
+    // MARK: - 헬퍼 함수: 날짜 포맷 변환 ("yyyy-MM" 포맷)
     func formattedMonth(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: date)
     }
     
-    // MARK: - UIBarButtonItem 액션들
-   
-    // 0. Input 버튼: 스케줄 입력 달력 화면으로 이동 (날짜 선택 후 입력 팝업을 띄움)
-    @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        // ScheduleInputCalendarViewController: 달력에서 날짜 선택 후 스케줄 입력 팝업 호출
-        if let inputCalendarVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputCalendarViewController") as? ScheduleInputCalendarViewController {
-            navigationController?.pushViewController(inputCalendarVC, animated: true)
-        }
-    }
-    
-    // 1. iFlight 버튼: iFlight URL을 로드
-    @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
-        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
-    }
-    
-    /*
-    // CrewLink 버튼: 필요시 사용 (CrewLink URL 로드)
-    @IBAction func CrewLinkButtonTapped(_ sender: UIBarButtonItem) {
-        loadURL("https://crewlink.koreanair.com/")
-    }
-    */
-    
-    // 3. Import 버튼: 스케줄 파싱 및 가져오기
-    @IBAction func ImportButtonTapped(_ sender: UIBarButtonItem) {
-        importSchedule()
-    }
-    
-    // 4. View List 버튼: 스케줄 목록 화면으로 이동
-    @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let viewListVC = storyboard.instantiateViewController(withIdentifier: "ViewListViewController") as? ViewListViewController {
-            viewListVC.schedules = schedules // 스케줄 데이터 전달
-            navigationController?.pushViewController(viewListVC, animated: true)
-        }
-    }
-    
-    // 5. Calendar 버튼: 달력 보기 화면으로 이동
-    @IBAction func CalendarButtonTapped(_ sender: UIBarButtonItem) {
-        print("CalendarButtonTapped")
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
-            calendarVC.schedules = schedules
-            // 소유자 정보는 그대로, 총 시간은 월별 데이터에서 현재 월의 값을 전달
-            calendarVC.ownerInfo = self.ownerInfo
-            calendarVC.totalHours = self.totalHours
-            navigationController?.pushViewController(calendarVC, animated: true)
-        }
-    }
-    
-    // MARK: - View LifeCycle
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        // 웹뷰 델리게이트 설정
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
-    }
-    
+    // MARK: - UIViewController LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadSchedules() // 저장된 스케줄 불러오기
+        loadSchedules()
         
-        // 네비게이션 바 스타일 설정 (배경색, 글자색 등)
+        self.eventStore = EKEventStore()
+        self.calendarManager = CalendarManager(eventStore: self.eventStore)
+        
+        // iOS 17 이상: 캘린더 접근 권한 요청 (Full Access)
+        self.eventStore.requestFullAccessToEvents(completion: { granted, error in
+            DispatchQueue.main.async {
+                if granted {
+                    self.debugLog("캘린더 접근 권한 승인됨")
+                    // 앱 실행 시 새 캘린더 생성 프로세스를 바로 시작
+                    self.calendarManager.presentCalendarSelection(from: self) { calendar in
+                        if let cal = calendar {
+                            self.debugLog("이벤트 저장할 캘린더: \(cal.title)")
+                        } else {
+                            self.debugLog("캘린더 선택이 취소됨")
+                        }
+                    }
+                } else {
+                    self.debugLog("캘린더 접근 권한 거부됨: \(error?.localizedDescription ?? "알 수 없는 오류")")
+                }
+            }
+        })
+        
+        // 네비게이션 바 스타일 설정
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(named: "Ocean")
         appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
-        
         navigationController?.navigationBar.standardAppearance = appearance
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
         navigationController?.navigationBar.compactAppearance = appearance
         navigationController?.navigationBar.tintColor = .white
         navigationController?.navigationBar.isTranslucent = false
         
-        // 기존 저장된 스케줄을 콘솔에 출력
         printSchedulesToConsole()
+        
+        // 오른쪽 네비게이션 바 버튼 생성 (스토리보드 연결이 끊어진 경우)
+        if navigationItem.rightBarButtonItem == nil {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Import", style: .plain, target: nil, action: nil)
+        }
+        
+        let importAction = UIAction(title: "스케줄 가져오기", image: UIImage(systemName: "arrow.down.circle")) { _ in
+            self.importSchedule()
+        }
+        let exportAction = UIAction(title: "캘린더로 내보내기", image: UIImage(systemName: "arrow.up.circle")) { _ in
+            if let airports = self.loadAirportList() {
+                // 저장된 이벤트 수 초기화
+                self.savedEventCount = 0
+                for (_, scheduleEntries) in self.schedules {
+                    for entry in scheduleEntries {
+                        self.addEventToCalendar(for: entry, airports: airports)
+                    }
+                }
+                // 선택된 캘린더 이름 가져오기
+                let calendarName = self.calendarManager.selectedCalendar?.title ?? "기본 캘린더"
+                // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
+                self.showAlert(title: "캘린더 내보내기 완료", message: "저장된 캘린더: \(calendarName)\n총 저장 이벤트 수: \(self.savedEventCount)개")
+            }
+        }
+        let menu = UIMenu(title: "작업 선택", children: [importAction, exportAction])
+        navigationItem.rightBarButtonItem?.menu = menu
     }
     
-    // MARK: - WebView Delegate Methods
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        webView.navigationDelegate = self
+        webView.uiDelegate = self
+        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
+    }
     
+    // MARK: - IBAction
+    @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let inputCalendarVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputCalendarViewController") as? ScheduleInputCalendarViewController {
+            navigationController?.pushViewController(inputCalendarVC, animated: true)
+        }
+    }
+    
+    @IBAction func iflightButtonTapped(_ sender: UIBarButtonItem) {
+        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/")
+    }
+    
+    @IBAction func ViewListButtonTapped(_ sender: UIBarButtonItem) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let viewListVC = storyboard.instantiateViewController(withIdentifier: "ViewListViewController") as? ViewListViewController {
+            viewListVC.schedules = schedules
+            navigationController?.pushViewController(viewListVC, animated: true)
+        }
+    }
+    
+    @IBAction func CalendarButtonTapped(_ sender: UIBarButtonItem) {
+        debugLog("CalendarButtonTapped 호출됨")
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
+            calendarVC.schedules = schedules
+            calendarVC.ownerInfo = self.ownerInfo
+            calendarVC.totalHours = self.totalHours
+            navigationController?.pushViewController(calendarVC, animated: true)
+        }
+    }
+    
+    // 예시: UIButton 액션 - 이벤트 저장 테스트 (새 이벤트 저장)
+    @IBAction func saveEventButtonTapped(_ sender: UIButton) {
+        calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
+            guard let calendar = selectedCalendar else {
+                self.debugLog("캘린더 선택 취소됨")
+                return
+            }
+            let event = EKEvent(eventStore: self.eventStore)
+            event.title = "예시 이벤트"
+            event.startDate = Date().addingTimeInterval(3600)
+            event.endDate = event.startDate.addingTimeInterval(3600)
+            event.calendar = calendar
+            
+            self.calendarManager.saveEvent(event: event) { success, error in
+                if success {
+                    self.debugLog("이벤트 저장 성공: \(String(describing: event.title)) in \(calendar.title)")
+                    self.showAlert(title: "이벤트 저장", message: "\(event.title ?? "이벤트")가 \(calendar.title) 캘린더에 저장되었습니다.")
+                } else {
+                    self.debugLog("이벤트 저장 실패: \(error?.localizedDescription ?? "알 수 없음")")
+                    self.showAlert(title: "이벤트 저장 실패", message: error?.localizedDescription ?? "알 수 없는 오류")
+                }
+            }
+        }
+    }
+    
+    // MARK: - WebView 관련 메서드
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        // 새 창이 열리려는 경우 현재 웹뷰에서 로드
         if navigationAction.targetFrame == nil {
             webView.load(navigationAction.request)
             decisionHandler(.cancel)
@@ -139,7 +190,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        // 새 창 요청 시 URL을 로드
         if let url = navigationAction.request.url {
             webView.load(URLRequest(url: url))
         }
@@ -147,24 +197,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     func loadURL(_ urlString: String) {
-        print("loadURL 호출됨: \(urlString)")
+        debugLog("loadURL 호출됨: \(urlString)")
         if let url = URL(string: urlString) {
             let request = URLRequest(url: url)
             webView.load(request)
         } else {
-            print("잘못된 URL 형식: \(urlString)")
+            debugLog("잘못된 URL 형식: \(urlString)")
         }
     }
     
-    // MARK: - 영구 저장 기능 (UserDefaults)
-    
+    // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
     func saveSchedules() {
         do {
             let data = try JSONEncoder().encode(schedules)
             UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
-            print("스케줄 저장 성공")
+            debugLog("스케줄 저장 성공")
         } catch {
-            print("스케줄 저장 실패: \(error)")
+            debugLog("스케줄 저장 실패: \(error)")
         }
     }
     
@@ -172,35 +221,39 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                print("스케줄 불러오기 성공")
+                debugLog("스케줄 불러오기 성공")
             } catch {
-                print("스케줄 불러오기 실패: \(error)")
+                debugLog("스케줄 불러오기 실패: \(error)")
             }
         } else {
-            print("저장된 스케줄이 없습니다.")
+            debugLog("저장된 스케줄이 없습니다.")
         }
     }
     
-    // MARK: - 스케줄 가져오기 (Import) 기능
+    // MARK: - 스케줄 파싱 및 가져오기 (HTML 파싱, SwiftSoup 활용)
     func importSchedule() {
-        // ApList.json에서 공항 정보 로드 (정밀한 DST 처리를 위해 필요)
         guard let airports = loadAirportList() else {
-            print("ApList.json 로딩 실패")
+            debugLog("ApList.json 로딩 실패")
             DispatchQueue.main.async {
                 self.showAlert(title: "Import Fail", message: "공항 정보 로딩에 실패했습니다.")
             }
             return
         }
+        debugLog("ApList.json 로드 성공: \(airports.count)개의 공항 정보")
         
-        // 웹뷰의 HTML 전체를 가져와 SwiftSoup으로 파싱
-        webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { (html: Any?, error: Error?) in
+        webView.evaluateJavaScript("document.documentElement.outerHTML.toString()") { [weak self] (html: Any?, error: Error?) in
+            guard let self = self else { return }
+            if let error = error {
+                self.debugLog("JavaScript 실행 에러: \(error)")
+            }
             guard let htmlString = html as? String else {
-                print("❌ HTML 가져오기 실패")
+                self.debugLog("❌ HTML 가져오기 실패")
                 DispatchQueue.main.async {
                     self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
                 }
                 return
             }
+            self.debugLog("HTML 추출 성공")
             
             do {
                 let doc: Document = try SwiftSoup.parse(htmlString)
@@ -215,17 +268,21 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 var sequenceCounter: [String: Int] = [:]
                 let calendar = Calendar.current
                 
-                // 날짜 계산: 기본 날짜에 옵션(예: +1, -1)을 적용
                 func calculateDate(baseDate: String, option: String) -> String {
-                    guard let baseDateObj = dateFormatter.date(from: baseDate) else { return baseDate }
+                    guard let baseDateObj = dateFormatter.date(from: baseDate) else {
+                        self.debugLog("날짜 변환 실패: baseDate(\(baseDate))")
+                        return baseDate
+                    }
                     let pattern = #"([-+]\d+)"#
-                    if let regex = try? NSRegularExpression(pattern: pattern),
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
                        let match = regex.firstMatch(in: option, range: NSRange(option.startIndex..., in: option)) {
                         let matchRange = Range(match.range, in: option)!
                         let offsetString = String(option[matchRange]).replacingOccurrences(of: "+", with: "")
                         if let offset = Int(offsetString),
                            let newDate = calendar.date(byAdding: .day, value: offset, to: baseDateObj) {
-                            return dateFormatter.string(from: newDate)
+                            let result = dateFormatter.string(from: newDate)
+                            self.debugLog("calculateDate: \(baseDate) \(option) -> \(result)")
+                            return result
                         }
                     }
                     return baseDate
@@ -236,7 +293,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     if let regex = try? NSRegularExpression(pattern: pattern, options: []),
                        let match = regex.firstMatch(in: dutyDebrief, range: NSRange(dutyDebrief.startIndex..., in: dutyDebrief)),
                        let range = Range(match.range(at: 1), in: dutyDebrief) {
-                        return String(dutyDebrief[range])
+                        let result = String(dutyDebrief[range])
+                        self.debugLog("extractDutyDebriefOption: \(dutyDebrief) -> \(result)")
+                        return result
                     }
                     return ""
                 }
@@ -245,12 +304,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     let possibleOpeningParens: [Character] = ["(", "（"]
                     if let index = dutyDebrief.firstIndex(where: { possibleOpeningParens.contains($0) }) {
                         let timePart = dutyDebrief[..<index].trimmingCharacters(in: .whitespaces)
-                        return String(timePart.prefix(5))
+                        let result = String(timePart.prefix(5))
+                        self.debugLog("extractDutyDebriefTime: \(dutyDebrief) -> \(result)")
+                        return result
                     }
-                    return String(dutyDebrief.trimmingCharacters(in: .whitespaces).prefix(5))
+                    let result = String(dutyDebrief.trimmingCharacters(in: .whitespaces).prefix(5))
+                    self.debugLog("extractDutyDebriefTime: \(dutyDebrief) -> \(result)")
+                    return result
                 }
                 
-                // 소유자 정보 추출 (첫 번째 "|" 이전의 텍스트만 사용)
+                // 소유자 정보 추출
                 do {
                     if let ownerElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(4) > p > span").first() {
                         let fullOwnerText = try ownerElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -259,38 +322,38 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         } else {
                             self.ownerInfo = fullOwnerText
                         }
-                        print("사용자 정보: \(self.ownerInfo)")
+                        self.debugLog("소유자 정보 추출 성공: \(self.ownerInfo)")
                     } else {
-                        print("소유자 정보를 찾을 수 없습니다.")
+                        self.debugLog("소유자 정보를 찾을 수 없습니다.")
                     }
                 } catch {
-                    print("소유자 정보 추출 중 오류 발생: \(error)")
+                    self.debugLog("소유자 정보 추출 중 오류 발생: \(error)")
                 }
                 
                 // 총 시간 정보 추출
                 do {
                     if let hoursElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(5) > p > span").first() {
                         self.totalHours = try hoursElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
-                        print("총 시간: \(self.totalHours)")
+                        self.debugLog("총 시간 정보 추출 성공: \(self.totalHours)")
                     } else {
-                        print("총 시간 정보를 찾을 수 없습니다.")
+                        self.debugLog("총 시간 정보를 찾을 수 없습니다.")
                     }
                 } catch {
-                    print("총 시간 정보 추출 중 오류 발생: \(error)")
+                    self.debugLog("총 시간 정보 추출 중 오류 발생: \(error)")
                 }
                 
-                // UserDefaults에 소유자 정보 저장
                 UserDefaults.standard.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
                 
-                // 여기서는 각 스케줄의 출발일(DepDate)을 기준으로 월별 스케줄 개수를 집계하여
-                // 출발 스케줄이 가장 많은 달을 총 시간(totalHours)이 속한 달로 결정합니다.
                 var depMonthCount: [String: Int] = [:]
                 
-                // 각 tr 행을 순회하며 스케줄 데이터 추출
+                // 스케줄 파싱
                 for (_, row) in rows.enumerated() {
                     let columns: Elements = try row.select("td")
                     
+                    // 헤더 행은 건너뜁니다.
                     if columns.size() > 10, !(try columns[1].text().contains("Date")) {
+                        var missingFields = [String]()
+                        
                         var date = columns.getOrNil(1)
                         let activity = columns.getOrNil(2)
                         let dutyReport = columns.getOrNil(3)
@@ -304,18 +367,36 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let sdc = columns.getOrNil(14)
                         let hotel = columns.getOrNil(16)
                         
-                        // 만약 날짜가 비어있거나 "N/A"이면 이전 날짜(lastDate)를 사용
-                        if date.isEmpty || date == "N/A" {
-                            if lastDate == "Unknown" { continue }
+                        // 날짜가 누락되면 이전 날짜 사용, 없으면 로그 후 continue
+                        if date.isEmpty {
+                            if lastDate == "Unknown" {
+                                self.debugLog("날짜 정보 누락: 이전 날짜 정보도 없음")
+                                continue
+                            }
                             date = lastDate
                         } else {
                             lastDate = date
                         }
                         
-                        if activity.isEmpty && workType.isEmpty {
+                        // 항공편/비항공편에 따라 필수 필드 검사
+                        if workType == "FLY" || workType == "TVL" {
+                            if item.isEmpty { missingFields.append("Item") }
+                            if depStationTimeFull.isEmpty { missingFields.append("DepStationTime") }
+                            if arrStationTimeFull.isEmpty { missingFields.append("ArrStationTime") }
+                            if date.isEmpty { missingFields.append("Date") }
+                        } else {
+                            if dutyReport.isEmpty { missingFields.append("DutyReport") }
+                            if dutyDebrief.isEmpty { missingFields.append("DutyDebrief") }
+                            if date.isEmpty { missingFields.append("Date") }
+                            if activity.isEmpty { missingFields.append("Activity") }
+                        }
+                        
+                        if !missingFields.isEmpty {
+                            self.debugLog("비항공편 이벤트 변환 실패 - 필요한 데이터 누락: \(missingFields.joined(separator: ", "))")
                             continue
                         }
                         
+                        // 공항, 시간 등 문자열 파싱
                         func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
                             let pattern = #"([A-Z]{3})\s+(\d{2}:\d{2})(\([-+]\d+\))?"#
                             let regex = try? NSRegularExpression(pattern: pattern)
@@ -328,6 +409,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                                         String(fullString[Range(match.range(at: 2), in: fullString)!]) : "N/A"
                                     let option = match.range(at: 3).location != NSNotFound ?
                                         String(fullString[Range(match.range(at: 3), in: fullString)!]) : ""
+                                    self.debugLog("extractAirportAndTime: \(fullString) -> \(airport), \(time), \(option)")
                                     return (airport, time, option)
                                 }
                             }
@@ -346,9 +428,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let seq = (sequenceCounter[date] ?? 0) + 1
                         sequenceCounter[date] = seq
                         
-                        // ApList.json을 기반으로 로컬 시간 -> UTC 변환 수행 (정밀한 DST 처리)
-                        let depTimeUTC = (depStnTime != "N/A") ? convertLocalTimeToUTCTime(dateString: depDate, timeString: depStnTime, airportCode: depAp, airports: airports) : "N/A"
-                        let arrTimeUTC = (arrStnTime != "N/A") ? convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrStnTime, airportCode: arrAp, airports: airports) : "N/A"
+                        let depTimeUTC = (depStnTime != "") ? self.convertLocalTimeToUTCTime(dateString: depDate, timeString: depStnTime, airportCode: depAp, airports: airports) : "N/A"
+                        let arrTimeUTC = (arrStnTime != "") ? self.convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrStnTime, airportCode: arrAp, airports: airports) : "N/A"
                         
                         let scheduleEntry: [String: String] = [
                             "Seq": "\(seq)",
@@ -372,12 +453,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             "SDC": sdc,
                             "Hotel": hotel,
                             "DepStnTimeUTC": depTimeUTC,
-                            "ArrStnTimeUTC": arrTimeUTC
+                            "ArrStnTimeUTC": arrTimeUTC,
+                            "Date": date
                         ]
                         
                         extractedSchedules[date, default: []].append(scheduleEntry)
+                        self.debugLog("추출된 스케줄 추가: \(scheduleEntry)")
                         
-                        // **출발 월 기준 집계:** 각 스케줄의 DepDate를 Date 객체로 변환한 후, 해당 월("yyyy-MM")의 카운트를 증가
                         if let depDateObj = dateFormatter.date(from: depDate) {
                             let monthKey = self.formattedMonth(for: depDateObj)
                             depMonthCount[monthKey, default: 0] += 1
@@ -385,38 +467,31 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     }
                 }
                 
-                // 스케줄이 하나도 추출되지 않았다면 에러 메시지 출력
                 if extractedSchedules.isEmpty {
                     DispatchQueue.main.async {
-                        self.showAlert(
-                            title: "Import Fail",
-                            message: "NO SKD on Webview!\nPlease Go to ROSTER > ROSTER CALENDAR > ROSTER REPORT (Roster Report BUTTON @ Right Bottom).\nSelect Format to HTML then Run.\nWhen the screen changes to HTML format, CLICK the IMPORT BUTTON."
-                        )
+                        self.showAlert(title: "Import Fail", message: "NO SKD on Webview!\nPlease Go to ROSTER > ROSTER CALENDAR > ROSTER REPORT ...")
                     }
                     return
                 }
                 
-                // **출발 스케줄이 가장 많은 달을 결정:**
                 if let maxEntry = depMonthCount.max(by: { $0.value < $1.value }) {
                     let majorityMonthKey = maxEntry.key
-                    print("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
+                    self.debugLog("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
                     var monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
                     monthlyHours[majorityMonthKey] = self.totalHours
                     UserDefaults.standard.set(monthlyHours, forKey: self.totalHoursByMonthUserDefaultsKey)
-                    // 현재 totalHours도 업데이트 (예: 달력 화면으로 전달하기 위함)
                     self.totalHours = monthlyHours[majorityMonthKey] ?? ""
                 }
                 
                 DispatchQueue.main.async {
                     self.schedules.merge(extractedSchedules) { (_, new) in new }
                     self.saveSchedules()
-                    // 콘솔에 스케줄 출력
                     self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
                 }
                 
             } catch {
-                print("HTML 파싱 오류: \(error)")
+                self.debugLog("HTML 파싱 오류: \(error)")
                 DispatchQueue.main.async {
                     self.showAlert(title: "Import Fail", message: "Failed to Import schedule.(HTML parsing error)")
                 }
@@ -424,26 +499,24 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // MARK: - 콘솔에 스케줄을 출력하는 함수
+    // MARK: - 콘솔 출력, 알림, 스케줄 추가 등 기타 함수
     func printSchedulesToConsole() {
-        print("----- 저장된 스케줄 출력 -----")
+        self.debugLog("----- 저장된 스케줄 출력 -----")
         for (date, entries) in schedules {
-            print("날짜: \(date)")
+            self.debugLog("날짜: \(date)")
             for entry in entries {
-                print("스케줄: \(entry)")
+                self.debugLog("스케줄: \(entry)")
             }
         }
-        print("----- 출력 완료 -----")
+        self.debugLog("----- 출력 완료 -----")
     }
     
-    // MARK: - 알림창 표시 함수
     func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alert, animated: true, completion: nil)
+        self.present(alert, animated: true, completion: nil)
     }
     
-    // MARK: - 스케줄 추가 (예시)
     func addScheduleToStackView(date: String, activity: String) {
         let containerView = UIView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
@@ -471,5 +544,152 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         ])
         
         scheduleStackView.addArrangedSubview(containerView)
+    }
+    
+    // MARK: - 캘린더 이벤트 추가 함수
+    func addEventToCalendar(for scheduleEntry: [String: String], airports: [[String: Any]]?) {
+        let koreanTimeZone = TimeZone(identifier: "Asia/Seoul")!
+        let workType = scheduleEntry["WorkType"] ?? ""
+        
+        var eventTitle: String = ""
+        var startDate: Date?
+        var endDate: Date?
+        var eventTimeZone: TimeZone = koreanTimeZone
+        
+        if workType == "FLY" || workType == "TVL" {
+            guard let item = scheduleEntry["Item"],
+                  let depStnTime = scheduleEntry["DepStnTime"],
+                  let depAp = scheduleEntry["DepAp"],
+                  let arrAp = scheduleEntry["ArrAp"],
+                  let arrStnTime = scheduleEntry["ArrStnTime"],
+                  let depDateString = scheduleEntry["DepDate"],
+                  let arrDateString = scheduleEntry["ArrDate"] else {
+                self.debugLog("항공편 이벤트 변환 실패 - 필요한 데이터 누락")
+                return
+            }
+            eventTitle = "\(item) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime)"
+            
+            if let airports = airports,
+               let depTimeZone = timeZoneForAirport(iata: depAp, airports: airports),
+               let departureDate = dateFromLocal(dateString: depDateString, timeString: depStnTime, timeZone: depTimeZone),
+               let arrTimeZone = timeZoneForAirport(iata: arrAp, airports: airports),
+               let arrivalDate = dateFromLocal(dateString: arrDateString, timeString: arrStnTime, timeZone: arrTimeZone) {
+                startDate = departureDate
+                endDate = arrivalDate
+                eventTimeZone = depTimeZone
+                self.debugLog("항공편 이벤트 변환 성공: \(eventTitle)")
+            } else {
+                self.debugLog("공항 타임존 변환 실패")
+                return
+            }
+        } else {
+            guard let dutyReport = scheduleEntry["DutyReport"],
+                  let dutyDebrief = scheduleEntry["DutyDebrief"],
+                  let dateString = scheduleEntry["Date"],
+                  let activity = scheduleEntry["Activity"] else {
+                self.debugLog("비항공편 이벤트 변환 실패 - 필요한 데이터 누락")
+                return
+            }
+            eventTitle = "\(activity) \(dutyReport) - \(dutyDebrief)"
+            if let start = dateFromLocal(dateString: dateString, timeString: dutyReport, timeZone: koreanTimeZone),
+               let end = dateFromLocal(dateString: dateString, timeString: dutyDebrief, timeZone: koreanTimeZone) {
+                startDate = start
+                endDate = end
+                self.debugLog("비항공편 이벤트 변환 성공: \(eventTitle)")
+            } else {
+                self.debugLog("한국 시간 변환 실패")
+                return
+            }
+        }
+        
+        guard let start = startDate, let end = endDate else { return }
+        
+        let event = EKEvent(eventStore: self.eventStore)
+        event.title = eventTitle
+        event.startDate = start
+        event.endDate = end
+        event.timeZone = eventTimeZone
+        event.notes = eventTitle
+        
+        // 반드시 새로 생성한 캘린더(selectedCalendar)를 사용
+        if let calendar = self.calendarManager.selectedCalendar {
+            event.calendar = calendar
+        } else if let defaultCal = self.eventStore.defaultCalendarForNewEvents {
+            event.calendar = defaultCal
+            self.debugLog("캘린더 선택 정보가 없어 기본 캘린더 사용: \(defaultCal.title)")
+        } else {
+            self.debugLog("캘린더가 설정되어 있지 않습니다.")
+            return
+        }
+        
+        self.calendarManager.saveEvent(event: event) { success, error in
+            if success {
+                self.savedEventCount += 1
+                self.debugLog("캘린더 이벤트 저장 성공: \(event.title ?? "No Title")\n저장된 캘린더: \(event.calendar?.title ?? "N/A")\n총 저장 이벤트 수: \(self.savedEventCount)")
+            } else {
+                self.debugLog("이벤트 저장 실패: \(error?.localizedDescription ?? "알 수 없음")")
+            }
+        }
+    }
+    
+    // MARK: - 헬퍼 함수: ApList.json 파싱
+    func loadAirportList() -> [[String: Any]]? {
+        guard let path = Bundle.main.path(forResource: "ApList", ofType: "json") else {
+            debugLog("ApList.json 경로 찾기 실패")
+            return nil
+        }
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            if let jsonArray = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+                debugLog("ApList.json 파싱 성공: \(jsonArray.count)개의 공항 정보")
+                return jsonArray
+            }
+        } catch {
+            debugLog("ApList.json 로드 실패: \(error)")
+        }
+        return nil
+    }
+    
+    // MARK: - 헬퍼 함수: IATA 코드로 타임존 생성
+    func timeZoneForAirport(iata: String, airports: [[String: Any]]) -> TimeZone? {
+        guard let airport = airports.first(where: { ($0["IATA"] as? String) == iata }),
+              let utcOffset = airport["utc_offset"] as? Double else {
+            debugLog("타임존 생성 실패: IATA(\(iata))에 해당하는 정보 없음")
+            return nil
+        }
+        let seconds = Int(utcOffset * 3600)
+        debugLog("타임존 생성: IATA(\(iata)) -> offset \(utcOffset) (\(seconds)초)")
+        return TimeZone(secondsFromGMT: seconds)
+    }
+    
+    // MARK: - 헬퍼 함수: 날짜, 시간 문자열과 타임존을 사용해 Date 객체 변환
+    func dateFromLocal(dateString: String, timeString: String, timeZone: TimeZone) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MMM-yyyy HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        let combined = "\(dateString) \(timeString)"
+        if let date = formatter.date(from: combined) {
+            debugLog("날짜 변환 성공: \(combined) -> \(date)")
+            return date
+        } else {
+            debugLog("날짜 변환 실패: \(combined) (타임존: \(timeZone))")
+            return nil
+        }
+    }
+    
+    // MARK: - 헬퍼 함수: 로컬 시간 -> UTC 시간 변환
+    func convertLocalTimeToUTCTime(dateString: String, timeString: String, airportCode: String, airports: [[String: Any]]) -> String {
+        guard let timeZone = timeZoneForAirport(iata: airportCode, airports: airports),
+              let localDate = dateFromLocal(dateString: dateString, timeString: timeString, timeZone: timeZone) else {
+            debugLog("convertLocalTimeToUTCTime 실패: airportCode(\(airportCode)) - \(dateString) \(timeString)")
+            return "N/A"
+        }
+        let utcFormatter = DateFormatter()
+        utcFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        utcFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        let utcString = utcFormatter.string(from: localDate)
+        debugLog("convertLocalTimeToUTCTime 성공: \(dateString) \(timeString) -> \(utcString) (airportCode: \(airportCode))")
+        return utcString
     }
 }
