@@ -21,7 +21,7 @@ class CalendarManager {
     /// "새 캘린더 생성"을 선택하면 사용자에게 캘린더 이름을 입력받은 후 캘린더를 생성합니다.
     func presentCalendarSelection(from viewController: UIViewController, completion: @escaping (EKCalendar?) -> Void) {
         let calendars = eventStore.calendars(for: .event)
-        let alert = UIAlertController(title: "캘린더 선택", message: "이벤트를 추가할 캘린더를 선택하세요.", preferredStyle: .actionSheet)
+        let alert = UIAlertController(title: "Select Calendar", message: "Select the calendar you want to add the event.", preferredStyle: .actionSheet)
         
         for calendar in calendars {
             let action = UIAlertAction(title: calendar.title, style: .default) { _ in
@@ -33,15 +33,15 @@ class CalendarManager {
         }
         
         // 새 캘린더 생성 액션: 사용자에게 캘린더 이름 입력받기
-        let createAction = UIAlertAction(title: "새 캘린더 생성", style: .default) { _ in
-            let nameAlert = UIAlertController(title: "새 캘린더 생성", message: "캘린더 이름을 입력하세요.", preferredStyle: .alert)
+        let createAction = UIAlertAction(title: "Create a new calendar", style: .default) { _ in
+            let nameAlert = UIAlertController(title: "Create a new calendar", message: "Enter a calendar name.", preferredStyle: .alert)
             nameAlert.addTextField { textField in
-                textField.placeholder = "캘린더 이름"
+                textField.placeholder = "Calendar Name."
             }
-            nameAlert.addAction(UIAlertAction(title: "취소", style: .cancel, handler: { _ in
+            nameAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
                 completion(nil)
             }))
-            nameAlert.addAction(UIAlertAction(title: "생성", style: .default, handler: { _ in
+            nameAlert.addAction(UIAlertAction(title: "Create", style: .default, handler: { _ in
                 if let name = nameAlert.textFields?.first?.text, !name.isEmpty {
                     self.createNewCalendar(withName: name) { newCalendar in
                         if let newCal = newCalendar {

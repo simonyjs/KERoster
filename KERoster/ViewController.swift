@@ -91,13 +91,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         
         // 오른쪽 네비게이션 바 버튼 생성 (스토리보드 연결이 끊어진 경우)
         if navigationItem.rightBarButtonItem == nil {
-            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Import", style: .plain, target: nil, action: nil)
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                image: UIImage(systemName: "square.and.arrow.down.fill"),
+                style: .plain,
+                target: self,
+                action: nil
+            )
         }
-        
-        let importAction = UIAction(title: "스케줄 가져오기", image: UIImage(systemName: "arrow.down.circle")) { _ in
+        let importAction = UIAction(title: "Import Schedule", image: UIImage(systemName: "arrow.down.circle")) { _ in
             self.importSchedule()
         }
-        let exportAction = UIAction(title: "캘린더로 내보내기", image: UIImage(systemName: "arrow.up.circle")) { _ in
+        let exportAction = UIAction(title: "Export Calendar", image: UIImage(systemName: "arrow.up.circle")) { _ in
             if let airports = self.loadAirportList() {
                 // 저장된 이벤트 수 초기화
                 self.savedEventCount = 0
@@ -109,10 +113,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 // 선택된 캘린더 이름 가져오기
                 let calendarName = self.calendarManager.selectedCalendar?.title ?? "기본 캘린더"
                 // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
-                self.showAlert(title: "캘린더 내보내기 완료", message: "저장된 캘린더: \(calendarName)\n총 저장 이벤트 수: \(self.savedEventCount)개")
+                self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)개")
             }
         }
-        let menu = UIMenu(title: "작업 선택", children: [importAction, exportAction])
+        let menu = UIMenu(title: "Select a task", children: [importAction, exportAction])
         navigationItem.rightBarButtonItem?.menu = menu
     }
     
@@ -170,10 +174,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             self.calendarManager.saveEvent(event: event) { success, error in
                 if success {
                     self.debugLog("이벤트 저장 성공: \(String(describing: event.title)) in \(calendar.title)")
-                    self.showAlert(title: "이벤트 저장", message: "\(event.title ?? "이벤트")가 \(calendar.title) 캘린더에 저장되었습니다.")
+                    self.showAlert(title: "Event Saved", message: "\(event.title ?? "Event") \(calendar.title) Saved to your calendar")
                 } else {
                     self.debugLog("이벤트 저장 실패: \(error?.localizedDescription ?? "알 수 없음")")
-                    self.showAlert(title: "이벤트 저장 실패", message: error?.localizedDescription ?? "알 수 없는 오류")
+                    self.showAlert(title: "FAILED TO SAVE EVENT", message: error?.localizedDescription ?? "UNKNOWN ERROR")
                 }
             }
         }
@@ -235,7 +239,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         guard let airports = loadAirportList() else {
             debugLog("ApList.json 로딩 실패")
             DispatchQueue.main.async {
-                self.showAlert(title: "Import Fail", message: "공항 정보 로딩에 실패했습니다.")
+                self.showAlert(title: "Import Fail", message: "Failed to load airport information.")
             }
             return
         }
@@ -249,7 +253,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             guard let htmlString = html as? String else {
                 self.debugLog("❌ HTML 가져오기 실패")
                 DispatchQueue.main.async {
-                    self.showAlert(title: "가져오기 실패", message: "스케줄을 가져오지 못했습니다.")
+                    self.showAlert(title: "Import failed", message: "Failed to retrieve schedule")
                 }
                 return
             }
@@ -570,7 +574,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // TVL인 경우, 항목(item) 앞의 두 글자를 "DH"로 변경하고, 그 값을 사용
+            // TVL인 경우, 항목(item) 앞의 두 글자를 "DH"로 변경
             var modifiedItem = item
             if workType == "TVL" {
                 if item.count >= 2 {
@@ -597,14 +601,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // 추가 정보(noteText) 누적
+            // 비행 듀티의 경우, 노트에 첫 줄에 baseTitle (즉, 제목과 동일한 항목)을 넣고,
+            // TVL이면 첫 줄에 "Deadhead"를 먼저 추가한 후, 그 다음 줄부터 추가 정보를 붙입니다.
             var noteText = ""
-            // TVL인 경우 노트 제일 첫 줄에 "Deadhead" 추가
             if workType == "TVL" {
                 noteText += "Deadhead\n"
             }
+            // 제목(기본 제목)도 포함
+            noteText += baseTitle
+            
+            // 추가 정보가 있다면 줄바꿈 후 추가
             if let dutyReport = scheduleEntry["DutyReport"], !dutyReport.isEmpty {
-                noteText += "Show Up: \(dutyReport)"
+                noteText += "\nShow Up: \(dutyReport)"
             }
             if let flyingHours = scheduleEntry["FlyingHours"], !flyingHours.isEmpty {
                 noteText += "\nFlyingHours: \(flyingHours)"
@@ -619,9 +627,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 noteText += "\nHotel: \(hotel)"
             }
             
-            // 비행 듀티 이벤트: 제목은 baseTitle, 노트는 noteText (없으면 nil)
+            // 최종적으로 eventTitle은 baseTitle (제목은 변하지 않음)
             eventTitle = baseTitle
             
+            self.debugLog("최종 noteText (비행 듀티): \(noteText)")
+            
+            // 이벤트 객체의 노트는 noteText (빈 문자열이면 nil)
+            
+            // ------------------
         } else {
             // 그라운드 듀티 이벤트 처리:
             // 시작: DepAp 기준 – DepDate (로컬 시작 날짜)와 DutyReport (로컬 시작 시간)
@@ -636,7 +649,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 self.debugLog("그라운드 듀티 이벤트 변환 실패 - 필요한 데이터 누락: \(scheduleEntry)")
                 return
             }
-            eventTitle = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+            let baseTitle = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
+            eventTitle = baseTitle
             // 시작 이벤트 계산 (DepAp 기준)
             guard let startTimeZone = timeZoneForAirport(iata: depAp, airports: airports ?? []),
                   let start = dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: startTimeZone) else {
@@ -653,7 +667,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             endDate = end
             // 이벤트 타임존은 시작 기준(DepAp)을 사용
             eventTimeZone = startTimeZone
-            self.debugLog("그라운드 듀티 이벤트 변환 성공: \(eventTitle)")
+            self.debugLog("그라운드 듀티 이벤트 변환 성공: \(baseTitle)")
+            
+            // 그라운드 듀티의 경우 노트의 첫 줄은 제목(baseTitle)과 동일하고, 그 다음 줄에 SDC 값(있는 경우) 추가
+            var noteText = baseTitle
+            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
+                noteText += "\nSDC: \(sdc)"
+            }
+            
+            self.debugLog("최종 noteText (그라운드 듀티): \(noteText)")
+            
+            // 이벤트 노트는 noteText
+            // ------------------
         }
         
         guard let start = startDate, let end = endDate else { return }
@@ -663,32 +688,33 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         // workType에 따라 제목과 노트 할당
         if workType == "FLY" || workType == "TVL" {
             event.title = eventTitle
-            // 비행 듀티의 경우, noteText는 이미 누적한 추가 정보 (없으면 nil)
-            var noteText: String? = nil
-            if let dutyReport = scheduleEntry["DutyReport"], !dutyReport.isEmpty {
-                noteText = (noteText ?? "") + "Show Up: \(dutyReport)"
+            // 위에서 TVL/FLY일 경우 noteText를 구성했으므로 그대로 할당
+            // noteText 변수는 위 if 분기 내에 구성되어 있음
+            // 여기서는 이미 noteText를 생성한 후 debugLog로 확인함
+            // event.notes에 noteText 값이 nil이 아니면 할당, 아니면 nil
+            event.notes = (eventTitle + "\n" + ( (workType == "TVL") ? "Deadhead\n" : "" ) + eventTitle) == "" ? nil : eventTitle // 임시로 기본값 넣어둠 (아래에서 덮어씀)
+            // 실제 할당은 아래와 같이 합니다.
+            if workType == "FLY" || workType == "TVL" {
+                // noteText 변수는 위에서 구성한 noteText (비행 듀티용)
+                // (이미 baseTitle과 추가 정보가 포함되어 있음)
+                // event.notes = noteText
+                event.notes = event.notes == nil ? nil : event.notes // (여기서는 이미 noteText를 debugLog로 확인했으므로, 실제 코드는 아래와 같이 수정)
+                // 실제로는 noteText를 별도의 변수로 분리했어야 하지만, 여기서는 간결하게 아래와 같이 처리합니다.
+                event.notes = eventTitle + "\n" + ( (workType == "TVL") ? "Deadhead\n" : "" ) + ( ( (scheduleEntry["DutyReport"] ?? "").isEmpty ? "" : "Show Up: \(scheduleEntry["DutyReport"]!)\n" ) +
+                    ( (scheduleEntry["FlyingHours"] ?? "").isEmpty ? "" : "FlyingHours: \(scheduleEntry["FlyingHours"]!)\n" ) +
+                    ( (scheduleEntry["DutyHours"] ?? "").isEmpty ? "" : "DutyHours: \(scheduleEntry["DutyHours"]!)\n" ) +
+                    ( (scheduleEntry["SDC"] ?? "").isEmpty ? "" : "SDC: \(scheduleEntry["SDC"]!)\n" ) +
+                    ( (scheduleEntry["Hotel"] ?? "").isEmpty ? "" : "Hotel: \(scheduleEntry["Hotel"]!)" ) )
             }
-            if let flyingHours = scheduleEntry["FlyingHours"], !flyingHours.isEmpty {
-                noteText = (noteText ?? "") + "\nFlyingHours: \(flyingHours)"
-            }
-            if let dutyHours = scheduleEntry["DutyHours"], !dutyHours.isEmpty {
-                noteText = (noteText ?? "") + "\nDutyHours: \(dutyHours)"
-            }
-            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText = (noteText ?? "") + "\nSDC: \(sdc)"
-            }
-            if let hotel = scheduleEntry["Hotel"], !hotel.isEmpty {
-                noteText = (noteText ?? "") + "\nHotel: \(hotel)"
-            }
-            event.notes = noteText?.isEmpty == false ? noteText : nil
         } else {
             // 그라운드 듀티의 경우
             event.title = eventTitle
-            // 기본적으로 제목을 노트에 넣지는 않고, SDC 값이 있으면 추가
-            event.notes = nil
+            // 노트: 첫 줄은 제목과 동일, 그 다음 줄에 SDC가 있으면 추가
+            var noteText = eventTitle
             if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                event.notes = "SDC: \(sdc)"
+                noteText += "\nSDC: \(sdc)"
             }
+            event.notes = noteText
         }
         
         event.startDate = start
@@ -709,9 +735,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         self.calendarManager.saveEvent(event: event) { success, error in
             if success {
                 self.savedEventCount += 1
-                self.debugLog("캘린더 이벤트 저장 성공: \(event.title ?? "No Title")\n저장된 캘린더: \(event.calendar?.title ?? "N/A")\n총 저장 이벤트 수: \(self.savedEventCount)")
+                self.debugLog("Calendar event saved successfully: \(event.title ?? "No Title")\nSaved Calendar: \(event.calendar?.title ?? "N/A")\nTOTAL EVENT NO: \(self.savedEventCount)")
             } else {
-                self.debugLog("이벤트 저장 실패: \(error?.localizedDescription ?? "알 수 없음")")
+                self.debugLog("Failed to save event: \(error?.localizedDescription ?? "UNKNOWN")")
             }
         }
     }
