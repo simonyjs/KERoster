@@ -432,11 +432,10 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         if indexPath.item < 7 {
             cell.isHeader = true
             cell.dateLabel.text = daysOfWeek[indexPath.item]
-            let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
-            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: headerFontSize)
-            cell.dateLabel.textColor = .black
+            cell.dateLabel.font = UIFont.boldSystemFont(ofSize: (isiPhone && isLandscape) ? 6 : 10)
+            cell.dateLabel.textColor = .black // 헤더 셀은 항상 검정색
             cell.scheduleStackView.isHidden = true
-            cell.contentView.backgroundColor = .clear
+            cell.contentView.backgroundColor = .clear // 헤더 배경은 clear 처리
         } else {
             cell.isHeader = false
             let components = calendar.dateComponents([.year, .month], from: currentDate)
@@ -778,8 +777,10 @@ class CalendarDayCell: UICollectionViewCell {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
+        // 셀 테두리 설정
         contentView.layer.borderWidth = 0.5
         contentView.layer.borderColor = UIColor(named: "Ocean")?.cgColor
+        
         contentView.addSubview(dateLabel)
         contentView.addSubview(scheduleStackView)
         setupNormalConstraints()
@@ -787,6 +788,7 @@ class CalendarDayCell: UICollectionViewCell {
         updateLayoutForHeader()
     }
     
+    // 일반 셀의 제약조건 설정
     private func setupNormalConstraints() {
         normalConstraints = [
             dateLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
@@ -798,6 +800,7 @@ class CalendarDayCell: UICollectionViewCell {
         ]
     }
     
+    // 헤더 셀의 제약조건 설정
     private func setupHeaderConstraints() {
         headerConstraints = [
             dateLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
@@ -805,6 +808,7 @@ class CalendarDayCell: UICollectionViewCell {
         ]
     }
     
+    // 헤더 여부에 따라 레이아웃 업데이트
     private func updateLayoutForHeader() {
         if isHeader {
             NSLayoutConstraint.deactivate(normalConstraints)
@@ -818,6 +822,18 @@ class CalendarDayCell: UICollectionViewCell {
             dateLabel.textAlignment = .left
         }
         setNeedsLayout()
+    }
+    
+    // 셀 재사용 시 스타일 초기화
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        // 기본 배경색 및 텍스트 색상으로 초기화
+        contentView.backgroundColor = .clear
+        dateLabel.backgroundColor = .clear
+        dateLabel.textColor = .black
+        scheduleStackView.isHidden = false
+        // 필요 시 isHeader 값을 초기화(헤더 셀은 collectionView의 cellForItemAt에서 명시적으로 설정됨)
+        isHeader = false
     }
     
     required init?(coder: NSCoder) {
