@@ -512,14 +512,27 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
             
             var scheduleTextColor: UIColor = textColor
             if let validDisplayDate = displayDate {
+                // UTC DateFormatter (휴일 키용)
                 let utcFormatter = DateFormatter()
                 utcFormatter.locale = Locale(identifier: "en_US_POSIX")
                 utcFormatter.timeZone = TimeZone(secondsFromGMT: 0)
                 utcFormatter.dateFormat = "yyyy-MM-dd"
-                if let nextDay = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
-                    let holidayKey = utcFormatter.string(from: nextDay)
+
+                // 현지 validDisplayDate를 UTC 기준으로 보정
+                let utcCalendar = Calendar(identifier: .gregorian)
+                var utcComponents = utcCalendar.dateComponents([.year, .month, .day], from: validDisplayDate)
+                utcComponents.timeZone = TimeZone(secondsFromGMT: 0)
+                if let normalizedDate = utcCalendar.date(from: utcComponents) {
+                    // UTC 기준 날짜 문자열 생성 (dateText도 이 normalizedDate를 기반으로)
+                    let dateTextFormatter = DateFormatter()
+                    dateTextFormatter.locale = Locale(identifier: "en_US_POSIX")
+                    dateTextFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+                    dateTextFormatter.dateFormat = "MMM dd" // 원하는 형식으로 변경 가능
+                    let normalizedDateText = dateTextFormatter.string(from: normalizedDate)
+                    
+                    let holidayKey = utcFormatter.string(from: normalizedDate)
                     if let holiday = holidays[holidayKey] {
-                        cell.dateLabel.text = "[\(holiday)] " + dateText
+                        cell.dateLabel.text = normalizedDateText + " [\(holiday)]"
                         cell.contentView.backgroundColor = UIColor(named: "LightYellow")
                         cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
                         scheduleTextColor = UIColor(named: "DarkYellow") ?? .yellow
