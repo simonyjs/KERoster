@@ -37,6 +37,6 @@
         </dict>
     </dict>
     <key>NSCalendarsUsageDescription</key>
-    <string>캘린더에 이벤트를 추가하기 위해 접근 권한이 필요합니다.</string>
+    <string>Access is required to add events to your calendar.</string>
 </dict>
 </plist>

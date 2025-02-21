@@ -61,14 +61,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             DispatchQueue.main.async {
                 if granted {
                     self.debugLog("캘린더 접근 권한 승인됨")
-                    // 앱 실행 시 캘린더 선택 또는 새 캘린더 생성 창 표시
-                    self.calendarManager.presentCalendarSelection(from: self) { calendar in
-                        if let cal = calendar {
-                            self.debugLog("이벤트 저장할 캘린더: \(cal.title)")
-                        } else {
-                            self.debugLog("캘린더 선택이 취소됨")
-                        }
-                    }
+                    // 앱 실행 시 캘린더 선택 창을 띄우지 않고,
+                    // Export Calendar 버튼에서 선택하도록 변경
+                    // self.calendarManager.presentCalendarSelection(from: self) { calendar in
+                    //     if let cal = calendar {
+                    //         self.debugLog("이벤트 저장할 캘린더: \(cal.title)")
+                    //     } else {
+                    //         self.debugLog("캘린더 선택이 취소됨")
+                    //     }
+                    // }
                 } else {
                     self.debugLog("캘린더 접근 권한 거부됨: \(error?.localizedDescription ?? "알 수 없는 오류")")
                 }
@@ -102,18 +103,27 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             self.importSchedule()
         }
         let exportAction = UIAction(title: "Export Calendar", image: UIImage(systemName: "arrow.up.circle")) { _ in
-            if let airports = self.loadAirportList() {
-                // 저장된 이벤트 수 초기화
-                self.savedEventCount = 0
-                for (_, scheduleEntries) in self.schedules {
-                    for entry in scheduleEntries {
-                        self.addEventToCalendar(for: entry, airports: airports)
-                    }
+            // 캘린더 선택 창을 먼저 표시
+            self.calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
+                guard let calendar = selectedCalendar else {
+                    self.debugLog("캘린더 선택 취소됨")
+                    return
                 }
-                // 선택된 캘린더 이름 가져오기
-                let calendarName = self.calendarManager.selectedCalendar?.title ?? "기본 캘린더"
-                // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
-                self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)개")
+                // 선택된 캘린더를 저장
+                self.calendarManager.selectedCalendar = calendar
+                if let airports = self.loadAirportList() {
+                    // 저장된 이벤트 수 초기화
+                    self.savedEventCount = 0
+                    for (_, scheduleEntries) in self.schedules {
+                        for entry in scheduleEntries {
+                            self.addEventToCalendar(for: entry, airports: airports)
+                        }
+                    }
+                    // 선택된 캘린더 이름 가져오기
+                    let calendarName = calendar.title
+                    // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
+                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)개")
+                }
             }
         }
         let menu = UIMenu(title: "Select a task", children: [importAction, exportAction])
@@ -632,9 +642,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             
             self.debugLog("최종 noteText (비행 듀티): \(noteText)")
             
-            // 이벤트 객체의 노트는 noteText (빈 문자열이면 nil)
-            
-            // ------------------
         } else {
             // 그라운드 듀티 이벤트 처리:
             // 시작: DepAp 기준 – DepDate (로컬 시작 날짜)와 DutyReport (로컬 시작 시간)
@@ -676,40 +683,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
             
             self.debugLog("최종 noteText (그라운드 듀티): \(noteText)")
-            
-            // 이벤트 노트는 noteText
-            // ------------------
         }
         
         guard let start = startDate, let end = endDate else { return }
         
         // EKEvent 객체 생성 후 할당
         let event = EKEvent(eventStore: self.eventStore)
-        // workType에 따라 제목과 노트 할당
         if workType == "FLY" || workType == "TVL" {
             event.title = eventTitle
-            // 위에서 TVL/FLY일 경우 noteText를 구성했으므로 그대로 할당
-            // noteText 변수는 위 if 분기 내에 구성되어 있음
-            // 여기서는 이미 noteText를 생성한 후 debugLog로 확인함
-            // event.notes에 noteText 값이 nil이 아니면 할당, 아니면 nil
-            event.notes = (eventTitle + "\n" + ( (workType == "TVL") ? "Deadhead\n" : "" ) + eventTitle) == "" ? nil : eventTitle // 임시로 기본값 넣어둠 (아래에서 덮어씀)
-            // 실제 할당은 아래와 같이 합니다.
-            if workType == "FLY" || workType == "TVL" {
-                // noteText 변수는 위에서 구성한 noteText (비행 듀티용)
-                // (이미 baseTitle과 추가 정보가 포함되어 있음)
-                // event.notes = noteText
-                event.notes = event.notes == nil ? nil : event.notes // (여기서는 이미 noteText를 debugLog로 확인했으므로, 실제 코드는 아래와 같이 수정)
-                // 실제로는 noteText를 별도의 변수로 분리했어야 하지만, 여기서는 간결하게 아래와 같이 처리합니다.
-                event.notes = eventTitle + "\n" + ( (workType == "TVL") ? "Deadhead\n" : "" ) + ( ( (scheduleEntry["DutyReport"] ?? "").isEmpty ? "" : "Show Up: \(scheduleEntry["DutyReport"]!)\n" ) +
-                    ( (scheduleEntry["FlyingHours"] ?? "").isEmpty ? "" : "FlyingHours: \(scheduleEntry["FlyingHours"]!)\n" ) +
-                    ( (scheduleEntry["DutyHours"] ?? "").isEmpty ? "" : "DutyHours: \(scheduleEntry["DutyHours"]!)\n" ) +
-                    ( (scheduleEntry["SDC"] ?? "").isEmpty ? "" : "SDC: \(scheduleEntry["SDC"]!)\n" ) +
-                    ( (scheduleEntry["Hotel"] ?? "").isEmpty ? "" : "Hotel: \(scheduleEntry["Hotel"]!)" ) )
-            }
+            event.notes = eventTitle + "\n" + ((workType == "TVL") ? "Deadhead\n" : "") +
+                ((scheduleEntry["DutyReport"] ?? "").isEmpty ? "" : "Show Up: \(scheduleEntry["DutyReport"]!)\n") +
+                ((scheduleEntry["FlyingHours"] ?? "").isEmpty ? "" : "FlyingHours: \(scheduleEntry["FlyingHours"]!)\n") +
+                ((scheduleEntry["DutyHours"] ?? "").isEmpty ? "" : "DutyHours: \(scheduleEntry["DutyHours"]!)\n") +
+                ((scheduleEntry["SDC"] ?? "").isEmpty ? "" : "SDC: \(scheduleEntry["SDC"]!)\n") +
+                ((scheduleEntry["Hotel"] ?? "").isEmpty ? "" : "Hotel: \(scheduleEntry["Hotel"]!)")
         } else {
-            // 그라운드 듀티의 경우
             event.title = eventTitle
-            // 노트: 첫 줄은 제목과 동일, 그 다음 줄에 SDC가 있으면 추가
             var noteText = eventTitle
             if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
                 noteText += "\nSDC: \(sdc)"
