@@ -607,8 +607,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                               let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
                               let depDate = scheduleDateFormatter.date(from: depDateStr),
                               let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
-                        
-                        let isOvernight = depDate > arrDate
+
+                        let isOvernight = !calendar.isDate(depDate, inSameDayAs: arrDate)
                         if isOvernight {
                             if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
