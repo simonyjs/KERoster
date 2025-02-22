@@ -53,19 +53,6 @@ class WeatherDataCache {
     }
 }
 
-/*
- // MARK: - AVWX API 공항 정보 응답 모델 (나중에 사용)
- struct AirportInfo: Decodable {
-     let name: String
-     let city: String
-     let country: String
-     let iata: String
-     let icao: String
- }
- 
- // 기존 AVWX API를 사용한 공항 정보 호출 함수는 주석 처리합니다.
- */
-
 // MARK: - AirportMapping 모델 (ApList.json 파일 형식)
 struct AirportMapping: Codable {
     let IATA: String
@@ -112,7 +99,6 @@ struct AirportInfoData: Codable {
 
 // MARK: - 공항 정보 가져오기 함수
 func fetchAirportInfo(for airportCode: String, completion: @escaping (String?) -> Void) {
-    // IATA → ICAO 변환
     guard let icao = convertIATAToICAO(airportCode) else {
         print("IATA to ICAO conversion failed for \(airportCode)")
         completion(nil)
@@ -193,7 +179,6 @@ class AWCXMLParserDelegate: NSObject, XMLParserDelegate {
 }
 
 // MARK: - 상세 METAR 정보 가져오기 (원문과 flight_category 반환)
-// METAR 결과는 오직 raw_text(원문)만 사용합니다.
 func fetchDetailedMETAR(for airportCode: String, completion: @escaping ((metarText: String?, flightCategory: String?)?) -> Void) {
     guard let icao = convertIATAToICAO(airportCode) else {
         completion(nil)
@@ -225,12 +210,10 @@ func fetchDetailedMETAR(for airportCode: String, completion: @escaping ((metarTe
 }
 
 // MARK: - 공항 헤더 정보 가져오기 함수
-// 헤더 형식: [공항코드] flight_category & 공항정보
 func fetchHeaderInfo(for airportCode: String, completion: @escaping (String) -> Void) {
     fetchDetailedMETAR(for: airportCode) { result in
         fetchAirportInfo(for: airportCode) { airportInfo in
             let flightCat = result?.flightCategory ?? "N/A"
-            // flightCat이 "VFR"이면 ☀️, 아니면 ☁️ 이모지를 사용
             let weatherEmoji = (flightCat == "VFR") ? "☀️" : "☁️"
             let info = airportInfo ?? "N/A"
             let header = "[\(airportCode)] \(weatherEmoji) \(flightCat) 🎯 \(info)"
@@ -257,50 +240,39 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let button = UIButton(type: .system)
         button.setTitle("CLOSE", for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
-        // 버튼 배경은 흰색, 텍스트는 "Ocean" 색상으로 설정
         button.backgroundColor = .white
         button.setTitleColor(UIColor(named: "Ocean"), for: .normal)
         button.layer.cornerRadius = 8
         return button
     }()
     
-    // viewDidLoad 내에서 TODAY 버튼을 항상 내비게이션 바 오른쪽에 추가
+    // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
         self.modalPresentationStyle = .automatic
 
-        // 타이틀 설정 (선택된 날짜가 있으면 함께 표시)
-        if selectedDate.isEmpty {
-            self.title = "Detail Schedule Info"
-        } else {
-            self.title = "Detail Schedule Info (\(selectedDate))"
-        }
+        self.title = selectedDate.isEmpty ? "Detail Schedule Info" : "Detail Schedule Info (\(selectedDate))"
         
         view.backgroundColor = .white
         setupTableView()
         setupCloseButton()
         
-        // TODAY 버튼 구성 (iOS 17 이상) - Filled 스타일 사용
+        // TODAY 버튼 구성 (iOS 17 이상)
         let todayButton = UIButton(type: .system)
-        var config = UIButton.Configuration.filled()        // Filled 스타일의 버튼 구성 사용
-        config.title = " TODAY "                              // 버튼 제목 (앞뒤 공백 포함)
-        config.baseBackgroundColor = UIColor(named: "LightRed")// 배경색: LightRed (Assets에 등록된 색상)
-        config.baseForegroundColor = UIColor(named: "LightWhite")// 글씨 색상: LightWhite (Assets에 등록된 색상)
-        config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3) // 내부 여백 설정
-        todayButton.configuration = config                    // 구성 적용
-        todayButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold) // 글씨 폰트 설정
-        todayButton.configuration?.cornerStyle = .capsule     // 캡슐 형태로 모서리 둥글게 처리
-        
-        // 버튼 액션 연결
+        var config = UIButton.Configuration.filled()
+        config.title = " TODAY "
+        config.baseBackgroundColor = UIColor(named: "LightRed")
+        config.baseForegroundColor = UIColor(named: "LightWhite")
+        config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3)
+        todayButton.configuration = config
+        todayButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        todayButton.configuration?.cornerStyle = .capsule
         todayButton.addTarget(self, action: #selector(scrollToToday), for: .touchUpInside)
-        // 내비게이션 바 오른쪽에 커스텀 버튼 추가
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: todayButton)
     }
-
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // 모달로 프레젠트된 경우에만 CLOSE 버튼과 네비게이션 바 스타일 적용
         if self.presentingViewController != nil {
             closeButton.isHidden = false
             navigationController?.setNavigationBarHidden(false, animated: false)
@@ -308,7 +280,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             navigationController?.navigationBar.isTranslucent = false
             navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
         } else {
-            // 모달이 아니라면 CLOSE 버튼은 숨김
             closeButton.isHidden = true
         }
         
@@ -320,10 +291,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // 뷰가 완전히 나타난 후 오늘(혹은 가장 가까운) 스케줄로 자동 스크롤
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             if let indexPath = self.indexForTodayOrNearest() {
-                // .top 옵션을 사용하여 셀이 화면 최상단에 위치하도록 스크롤
                 self.tableView.scrollToRow(at: indexPath, at: .top, animated: true)
             }
         }
@@ -333,7 +302,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         super.viewDidLayoutSubviews()
         tableView.layoutIfNeeded()
         var additionalHeight: CGFloat = 20
-        // 아이패드에서는 CLOSE 버튼 높이만큼 추가하여 창이 줄어들지 않도록 함
         if UIDevice.current.userInterfaceIdiom == .pad {
             additionalHeight += closeButton.frame.height + 10
         }
@@ -371,7 +339,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            // 테이블 뷰의 상단은 CLOSE 버튼 아래쪽에서 시작하도록 offset 적용
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -428,8 +395,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
-    // MARK: - AWC API를 사용한 METAR 데이터 호출 (IATA → ICAO 변환 후 요청)
-    // METAR 결과는 오직 원문(raw_text)만 사용합니다.
+    // MARK: - METAR/TAF 데이터 호출 관련 (동일 로직)
     func fetchMETAR(for airportCode: String, completion: @escaping (String?) -> Void) {
         guard let icao = convertIATAToICAO(airportCode) else {
             print("IATA to ICAO 변환 실패: \(airportCode)")
@@ -467,7 +433,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }.resume()
     }
     
-    // MARK: - AWC API를 사용한 TAF 데이터 호출 (IATA → ICAO 변환 후 요청)
     func fetchTAF(for airportCode: String, completion: @escaping (String?) -> Void) {
         guard let icao = convertIATAToICAO(airportCode) else {
             print("IATA to ICAO 변환 실패: \(airportCode)")
@@ -508,24 +473,14 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }.resume()
     }
     
-    // MARK: - 비행 관련 추가 날씨 정보 가져오기 (공항 헤더 정보 포함)
-    // 출력 형식:
-    // [출발공항] flight_category & 공항정보
-    // METAR: (출발 METAR 원문)
-    // TAF: (출발 TAF)
-    // [도착공항] flight_category & 공항정보
-    // METAR: (도착 METAR 원문)
-    // TAF: (도착 TAF)
+    // MARK: - 비행 관련 추가 날씨 정보 가져오기
     func fetchFlightAdditionalInfo(for schedule: [String: String], indexPath: IndexPath, currentText: NSAttributedString) {
         guard let depAp = schedule["DepAp"], let arrAp = schedule["ArrAp"] else { return }
         
         let dateKey = schedule["DepDate"] ?? selectedDate
         let sortedAirports = [depAp, arrAp].sorted()
         let weatherKey = "\(dateKey)_\(sortedAirports[0])_\(sortedAirports[1])"
-        // 이미 날씨 정보가 표시되었으면 리턴
-        if displayedWeatherKeys.contains(weatherKey) {
-            return
-        }
+        if displayedWeatherKeys.contains(weatherKey) { return }
         displayedWeatherKeys.insert(weatherKey)
         
         let dispatchGroup = DispatchGroup()
@@ -591,7 +546,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                     let combined = NSMutableAttributedString(attributedString: currentText)
                     combined.append(additionalAttr)
                     cell.textLabel?.attributedText = combined
-                    
                     self.tableView.beginUpdates()
                     self.tableView.endUpdates()
                     self.preferredContentSize = CGSize(width: self.view.frame.width,
@@ -611,7 +565,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let details = scheduleDetailsList[indexPath.row]
         
-        // 날짜 포매터 설정
         let inputFormatter = DateFormatter()
         inputFormatter.dateFormat = "dd-MMM-yyyy"
         inputFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -625,7 +578,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let depDateFormatted = inputFormatter.date(from: depDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? depDateOriginal
         let arrDateFormatted = inputFormatter.date(from: arrDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? arrDateOriginal
         
-        // 오늘 스케줄 여부 판단 (DepDate 기준)
         let isToday: Bool = {
             if let depDateStr = details["DepDate"],
                let scheduleDate = inputFormatter.date(from: depDateStr) {
@@ -634,17 +586,13 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             return false
         }()
         
-        // 오늘 스케줄이면 기본 폰트 크기를 1.5배로 사용
         let defaultFont = isToday ? UIFont.systemFont(ofSize: 14 * 1.5) : UIFont.systemFont(ofSize: 14)
         let boldFont = isToday ? UIFont.boldSystemFont(ofSize: 20 * 1.5) : UIFont.boldSystemFont(ofSize: 20)
-        // 오늘 스케줄이면 텍스트 색상을 LightDark로 사용, 아니라면 기본 색상 (여기서는 label 색상)
-        let textColor: UIColor = isToday ? (UIColor(named: "LightDark") ?? .black) : UIColor.label
+        let textColor: UIColor = isToday ? (UIColor(named: "LightDark") ?? UIColor.black) : UIColor.label
         
-        // 셀 배경색: 오늘 스케줄이면 LightYellow, 아니면 기본값 (clear)
-        cell.backgroundColor = isToday ? UIColor(named: "LightYellow") : .clear
+        cell.backgroundColor = isToday ? UIColor(named: "LightYellow") : UIColor.clear
         
         let workType = details["WorkType"] ?? "N/A"
-        
         let attributedText = NSMutableAttributedString()
         
         if workType == "FLY" || workType == "TVL" {
@@ -666,12 +614,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 }
             }
             
-            let dateLine: String
-            if depDateFormatted == arrDateFormatted {
-                dateLine = "📅 \(depDateFormatted)"
-            } else {
-                dateLine = "📅 \(depDateFormatted) ~ \(arrDateFormatted)"
-            }
+            let dateLine: String = (depDateFormatted == arrDateFormatted) ? "📅 \(depDateFormatted)" : "📅 \(depDateFormatted) ~ \(arrDateFormatted)"
             attributedText.append(NSAttributedString(string: dateLine, attributes: [
                 .font: defaultFont,
                 .foregroundColor: textColor
@@ -679,7 +622,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             
             let departureStr = "\(depTimeLocal) \(depAp)"
             let arrivalStr = "\(arrTimeLocal) \(arrAp)"
-            
             let flightLine = "\n\(transportIcon) "
             attributedText.append(NSAttributedString(string: flightLine, attributes: [
                 .font: defaultFont,
@@ -699,10 +641,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 .foregroundColor: textColor
             ]))
             
-            // 동일한 날짜에 동일한 공항 쌍인 경우, 그룹 내 마지막 스케줄에서만 추가 날씨 정보를 표시
             let dateKey = details["DepDate"] ?? selectedDate
             let currentGroup = Set([depAp.uppercased(), arrAp.uppercased()])
-            
             if let firstIndexForGroup = scheduleDetailsList.firstIndex(where: { schedule in
                 guard let scheduleDate = schedule["DepDate"],
                       let groupDep = schedule["DepAp"],
@@ -719,11 +659,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                     let firstSchedule = scheduleDetailsList[firstIndexForGroup]
                     let displayDepAp = firstSchedule["DepAp"] ?? depAp
                     let displayArrAp = firstSchedule["ArrAp"] ?? arrAp
-                    
                     var modifiedDetails = details
                     modifiedDetails["DepAp"] = displayDepAp
                     modifiedDetails["ArrAp"] = displayArrAp
-                    
                     fetchFlightAdditionalInfo(for: modifiedDetails, indexPath: indexPath, currentText: attributedText)
                 }
             }
@@ -732,7 +670,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             let activity = details["Activity"] ?? "N/A"
             let dutyReport = details["DutyReport"] ?? "N/A"
             let dutyDebrief = details["DutyDebrief"] ?? "N/A"
-            
             var pureDutyDebrief = dutyDebrief
             if let parenIndex = dutyDebrief.firstIndex(of: "(") {
                 pureDutyDebrief = String(dutyDebrief[..<parenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -773,7 +710,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         cell.textLabel?.lineBreakMode = .byWordWrapping
         return cell
     }
-
     
     // MARK: - UITableViewDelegate Methods
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -811,60 +747,36 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     // MARK: - 글로벌 스케줄 업데이트 (UserDefaults)
+    /// 수정된 업데이트 함수 – imported schedules와 manual schedules를 분리하여 저장합니다.
     func updateGlobalSchedulesFromDetails() {
         guard !selectedDate.isEmpty else { return }
         
-        var globalSchedules: [String: [[String: String]]] = [:]
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
-            do {
-                globalSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-            } catch {
-                print("글로벌 스케줄 로드 실패: \(error)")
-            }
-        }
+        var updatedImported: [String: [[String: String]]] = [:]
+        var updatedManual: [String: [[String: String]]] = [:]
         
-        var updatedGroup: [String: [[String: String]]] = [:]
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy"
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         
         for schedule in scheduleDetailsList {
             if let depDate = schedule["DepDate"] {
-                updatedGroup[depDate, default: []].append(schedule)
-            }
-        }
-        
-        let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMM yyyy"
-        monthFormatter.locale = Locale(identifier: "en_US_POSIX")
-        let selectedMonth = selectedDate
-        
-        for key in globalSchedules.keys {
-            if let date = dateFormatter.date(from: key) {
-                let keyMonth = monthFormatter.string(from: date)
-                if keyMonth == selectedMonth {
-                    if let newValue = updatedGroup[key] {
-                        globalSchedules[key] = newValue
-                        updatedGroup.removeValue(forKey: key)
-                    } else {
-                        globalSchedules.removeValue(forKey: key)
-                    }
-                }
-            }
-        }
-        
-        for (key, value) in updatedGroup {
-            if let date = dateFormatter.date(from: key) {
-                let keyMonth = monthFormatter.string(from: date)
-                if keyMonth == selectedMonth {
-                    globalSchedules[key] = value
+                // WorkType이 "FLY" 또는 "TVL"인 경우는 imported schedule로 처리하고,
+                // 그 외(예: "OTHER" 또는 수동 입력)는 manual schedule로 처리합니다.
+                if let workType = schedule["WorkType"], (workType == "FLY" || workType == "TVL") {
+                    updatedImported[depDate, default: []].append(schedule)
+                } else {
+                    updatedManual[depDate, default: []].append(schedule)
                 }
             }
         }
         
         do {
-            let data = try JSONEncoder().encode(globalSchedules)
-            UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
+            let importedData = try JSONEncoder().encode(updatedImported)
+            UserDefaults.standard.set(importedData, forKey: schedulesUserDefaultsKey)
+            
+            let manualData = try JSONEncoder().encode(updatedManual)
+            UserDefaults.standard.set(manualData, forKey: "manualSchedules")
+            
             print("글로벌 스케줄 저장 성공")
         } catch {
             print("글로벌 스케줄 저장 실패: \(error)")
@@ -902,9 +814,6 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     // MARK: - 오늘(또는 가장 가까운) 스케줄 인덱스 찾기
-    /// 스케줄 리스트를 순회하여 오늘 날짜와 동일한 스케줄이 있다면 해당 인덱스를 반환합니다.
-    /// 만약 오늘 날짜 스케줄이 없다면, 오늘 이후의 첫 번째 스케줄을 반환하고,
-    /// 모든 스케줄이 오늘 이전인 경우 마지막 스케줄의 인덱스를 반환합니다.
     func indexForTodayOrNearest() -> IndexPath? {
         let today = Date()
         let dateFormatter = DateFormatter()
@@ -915,11 +824,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         for (index, schedule) in scheduleDetailsList.enumerated() {
             if let dateString = schedule["DepDate"],
                let scheduleDate = dateFormatter.date(from: dateString) {
-                // 오늘 날짜와 동일한 경우 바로 반환
                 if Calendar.current.isDate(scheduleDate, inSameDayAs: today) {
                     return IndexPath(row: index, section: 0)
                 }
-                // 오늘 이후인 첫 스케줄을 후보로 지정
                 if scheduleDate > today, nearestIndex == nil {
                     nearestIndex = index
                 }
@@ -928,20 +835,17 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         if let index = nearestIndex {
             return IndexPath(row: index, section: 0)
         }
-        // 모든 스케줄이 오늘 이전인 경우 마지막 스케줄 인덱스 반환
         if !scheduleDetailsList.isEmpty {
             return IndexPath(row: scheduleDetailsList.count - 1, section: 0)
         }
         return nil
     }
     
-    // MARK: - TODAY 버튼 액션 (내비게이션 바 버튼)
+    // MARK: - TODAY 버튼 액션
     @objc func scrollToToday() {
         if let indexPath = indexForTodayOrNearest() {
-            // .top 옵션을 사용하여 셀이 화면 최상단에 위치하도록 스크롤
             tableView.scrollToRow(at: indexPath, at: .top, animated: true)
         } else {
-            // 오늘의 스케줄 및 가까운 스케줄이 없는 경우 알림 표시
             let alert = UIAlertController(title: "ALERT", message: "There are no scheduled events for today or later.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             present(alert, animated: true, completion: nil)
