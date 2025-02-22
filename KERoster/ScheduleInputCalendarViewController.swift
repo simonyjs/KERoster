@@ -19,7 +19,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
     // 저장된 스케줄 데이터 (날짜 키: "dd-MMM-yyyy")
     var schedules: [String: [[String: String]]] = [:]
 
-    // UserDefaults에 저장할 때 사용할 key
+    // UserDefaults에 저장할 때 사용할 키 (imported schedules는 "schedules", 수동 입력 스케줄은 "manualSchedules")
     let schedulesUserDefaultsKey = "schedules"
 
     // MARK: - UI Elements
@@ -27,7 +27,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
     // 상단 달 컨트롤 뷰 (월 이동 버튼, 월 라벨)
     let monthControlView: UIView = {
         let view = UIView()
-        view.backgroundColor = .clear
+        view.backgroundColor = UIColor.clear
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -56,7 +56,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         let label = UILabel()
         label.font = UIFont.scaledBoldFont(ofSize: 20)
         label.textAlignment = .center
-        label.textColor = .black
+        label.textColor = UIColor.black
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -80,7 +80,8 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         layout.scrollDirection = .vertical
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.translatesAutoresizingMaskIntoConstraints = false
-        cv.backgroundColor = .white
+        cv.backgroundColor = UIColor.white
+        // CalendarDayCell는 별도 파일에서 단 한 번만 선언되어 있다고 가정합니다.
         cv.register(CalendarDayCell.self, forCellWithReuseIdentifier: "dayCell")
         cv.isScrollEnabled = false
         return cv
@@ -102,7 +103,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
     // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = UIColor.white
         navigationItem.title = "Add Schedule By DATE"
 
         // 상단 달 컨트롤 뷰 추가
@@ -125,7 +126,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         updateLayoutForOrientation(size: view.bounds.size)
         updateMonthLabel()
 
-        // 저장된 스케줄 불러오기
+        // 저장된 스케줄 불러오기 (imported schedules와 manual schedules 병합)
         loadSchedules()
 
         // 휴일 정보 불러오기 (현재 달 기준)
@@ -148,17 +149,41 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         NotificationCenter.default.removeObserver(self)
     }
 
-    // MARK: - 스케줄 불러오기
+    // MARK: - 스케줄 불러오기 (imported + manual schedules 병합)
     func loadSchedules() {
+        var importedSchedules = [String: [[String: String]]]()
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
-                schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                print("스케줄 불러오기 성공")
+                importedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+                print("Successfully loaded imported schedules")
             } catch {
-                print("스케줄 불러오기 실패: \(error)")
+                print("Failed to load imported schedules: \(error)")
             }
         } else {
-            print("저장된 스케줄이 없습니다.")
+            print("No imported schedules found.")
+        }
+
+        var manualSchedules = [String: [[String: String]]]()
+        if let manualData = UserDefaults.standard.data(forKey: "manualSchedules") {
+            do {
+                manualSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: manualData)
+                print("Successfully loaded manual schedules")
+            } catch {
+                print("Failed to load manual schedules: \(error)")
+            }
+        } else {
+            print("No manual schedules found.")
+        }
+
+        // 두 데이터를 병합 (동일 날짜의 스케줄은 배열로 합치기)
+        schedules = importedSchedules
+        for (dateKey, manualArray) in manualSchedules {
+            if var existingArray = schedules[dateKey] {
+                existingArray.append(contentsOf: manualArray)
+                schedules[dateKey] = existingArray
+            } else {
+                schedules[dateKey] = manualArray
+            }
         }
     }
 
@@ -226,15 +251,15 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             cell.dateLabel.text = daysOfWeek[indexPath.item]
             let headerFontSize: CGFloat = (isiPhone && isLandscape) ? 6 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: headerFontSize)
-            cell.dateLabel.textColor = .black
+            cell.dateLabel.textColor = UIColor.black
             cell.scheduleStackView.isHidden = true
-            cell.contentView.backgroundColor = .clear
+            cell.contentView.backgroundColor = UIColor.clear
         } else {
             cell.isHeader = false
             // 재사용 문제로 기존 스택뷰의 서브뷰 제거
             cell.scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
-            // 날짜 계산 (MonthlyCalendarViewController와 동일한 방식)
+            // 날짜 계산 (월간 캘린더와 동일한 방식)
             let components = calendar.dateComponents([.year, .month], from: currentDate)
             guard let firstDayOfMonth = calendar.date(from: components) else { return cell }
             let weekday = calendar.component(.weekday, from: firstDayOfMonth)
@@ -247,7 +272,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             let currentMonthDays = currentMonthRange.count
 
             var displayDate: Date?
-            var textColor: UIColor = .black
+            var textColor: UIColor = UIColor.black
 
             if dayNumber < 1 {
                 // 이전 달 날짜
@@ -255,7 +280,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                    let previousRange = calendar.range(of: .day, in: .month, for: previousMonth) {
                     let day = previousRange.count + dayNumber
                     cell.contentView.backgroundColor = UIColor(named: "LightGreen")
-                    textColor = UIColor(named: "DarkGreen") ?? .green
+                    textColor = UIColor(named: "DarkGreen") ?? UIColor.green
                     var prevComponents = calendar.dateComponents([.year, .month], from: previousMonth)
                     prevComponents.day = day
                     displayDate = calendar.date(from: prevComponents)
@@ -264,7 +289,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                 // 다음 달 날짜
                 let day = dayNumber - currentMonthDays
                 cell.contentView.backgroundColor = UIColor(named: "LightGreen")
-                textColor = UIColor(named: "DarkGreen") ?? .green
+                textColor = UIColor(named: "DarkGreen") ?? UIColor.green
                 if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
                     var nextComponents = calendar.dateComponents([.year, .month], from: nextMonth)
                     nextComponents.day = day
@@ -272,14 +297,14 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                 }
             } else {
                 // 현재 달 날짜
-                cell.contentView.backgroundColor = .white
-                textColor = .black
+                cell.contentView.backgroundColor = UIColor.white
+                textColor = UIColor.black
                 var currentComponents = calendar.dateComponents([.year, .month], from: currentDate)
                 currentComponents.day = dayNumber
                 displayDate = calendar.date(from: currentComponents)
             }
 
-            // displayDate를 안전하게 추출
+            // displayDate 안전하게 추출
             guard let validDisplayDate = displayDate else {
                 cell.dateLabel.text = "LAYOVER"
                 return cell
@@ -299,9 +324,9 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             if let adjustedDate = calendar.date(byAdding: .day, value: 1, to: validDisplayDate) {
                 let holidayKey = utcFormatter.string(from: adjustedDate)
                 if let holiday = holidays[holidayKey] {
-                    cell.dateLabel.text = "[\(holiday)] " + dateText
+                    cell.dateLabel.text = dateText + " [\(holiday)]"
                     cell.contentView.backgroundColor = UIColor(named: "LightYellow")
-                    cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .yellow
+                    cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? UIColor.yellow
                 } else {
                     cell.dateLabel.text = dateText
                     cell.dateLabel.textColor = textColor
@@ -313,11 +338,11 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             let dateFontSize: CGFloat = (isiPhone && isLandscape) ? 7 : 10
             cell.dateLabel.font = UIFont.boldSystemFont(ofSize: dateFontSize)
 
-            // 스케줄 필터링 (월간 캘린더와 동일한 방식)
+            // 스케줄 필터링 (날짜 비교)
             let scheduleDateFormatter = DateFormatter()
             scheduleDateFormatter.locale = Locale(identifier: "en_US_POSIX")
             scheduleDateFormatter.dateFormat = "dd-MMM-yyyy"
-            
+
             var schedulesForCell: [[String: String]] = []
             for (_, scheduleArray) in schedules {
                 for schedule in scheduleArray {
@@ -347,11 +372,6 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
             }
             
             // 스케줄 요약 표시
-            // - FLY: ✈️ 출발공항 - 도착공항
-            // - TVL: 📌 출발공항 - 도착공항
-            // (여러 건이면 줄바꿈)
-            // - 기타: 만약 activity가 "DO"이면 "🏠"만 표시, 아니라면 count하여 "🏢(n)" 표시
-            // - 레이오버 조건 충족 시 (스케줄이 없으면서) "LAYOVER" 표시
             if !schedulesForCell.isEmpty || self.shouldDisplayLayover(for: validDisplayDate) {
                 var flightSummaries: [String] = []
                 var dutyCount = 0
@@ -368,7 +388,6 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                         let arrAp = schedule["ArrAp"] ?? "N/A"
                         flightSummaries.append("📌 \(depAp) - \(arrAp)")
                     } else {
-                        // 기타 스케줄
                         let activity = schedule["Activity"] ?? ""
                         if activity == "DO" {
                             doActivityFound = true
@@ -378,22 +397,18 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                     }
                 }
                 
-                // 요약 문자열 구성
                 var summaryComponents: [String] = []
                 if !flightSummaries.isEmpty {
-                    // 비행 스케줄은 줄바꿈으로 구분
                     summaryComponents.append(flightSummaries.joined(separator: "\n"))
                 }
                 if doActivityFound {
-                    summaryComponents.append("🏠")
+                    summaryComponents.append("🏠(\(dutyCount))")
                 } else if dutyCount > 0 {
                     summaryComponents.append("🏢(\(dutyCount))")
                 }
-                // 레이오버 표시: 스케줄이 없으면서 레이오버 조건이 충족되는 경우
                 if schedulesForCell.isEmpty && self.shouldDisplayLayover(for: validDisplayDate) {
                     summaryComponents.append("LAYOVER")
                 }
-                
                 let summaryText = summaryComponents.joined(separator: "\n")
                 let scheduleLabel = UILabel()
                 let scheduleFontSize: CGFloat = (isiPhone && isLandscape) ? 5 : 8
@@ -417,11 +432,15 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         let interItemSpacing = flowLayout.minimumInteritemSpacing
         let totalHorizontalSpacing = sectionInset.left + sectionInset.right + interItemSpacing * 6
         let cellWidth = floor((collectionView.frame.width - totalHorizontalSpacing) / 7)
+        let isLandscape = view.bounds.width > view.bounds.height
+        let isiPhone = UIDevice.current.userInterfaceIdiom == .phone
+        let headerRowHeight: CGFloat = (isiPhone && isLandscape) ? 20 : 30
+
         if indexPath.item < 7 {
-            return CGSize(width: cellWidth, height: 30)
+            return CGSize(width: cellWidth, height: headerRowHeight)
         } else {
             let lineSpacing = flowLayout.minimumLineSpacing
-            let totalVerticalSpacing = flowLayout.sectionInset.top + flowLayout.sectionInset.bottom + 30 + lineSpacing * 5
+            let totalVerticalSpacing = flowLayout.sectionInset.top + flowLayout.sectionInset.bottom + headerRowHeight + lineSpacing * 5
             let availableHeight = collectionView.frame.height - totalVerticalSpacing
             let cellHeight = availableHeight / 6
             return CGSize(width: cellWidth, height: cellHeight)
@@ -463,9 +482,23 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
 
         guard let selectedDate = displayDate else { return }
 
-        // 선택된 날짜에 대해 ScheduleInputFormViewController를 모달로 띄움
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MMM-yyyy"
+        let selectedDateString = formatter.string(from: selectedDate)
+
+        var filteredSchedules = [[String: String]]()
+        for (_, scheduleArray) in schedules {
+            for schedule in scheduleArray {
+                if let depDate = schedule["DepDate"], depDate == selectedDateString {
+                    filteredSchedules.append(schedule)
+                } else if let arrDate = schedule["ArrDate"], arrDate == selectedDateString {
+                    filteredSchedules.append(schedule)
+                }
+            }
+        }
+
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let inputFormVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputFormViewController") as? ScheduleInputFormViewController {
+        if let inputFormVC = storyboard.instantiateViewController(withIdentifier: "ScheduleInputFormModifiedViewController") as? ScheduleInputFormModifiedViewController {
             inputFormVC.selectedDate = selectedDate
             inputFormVC.modalPresentationStyle = .formSheet
             present(inputFormVC, animated: true, completion: nil)
@@ -507,18 +540,18 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         let urlString = "https://www.googleapis.com/calendar/v3/calendars/\(calendarId)/events?key=\(apiKey)&orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)"
 
         guard let url = URL(string: urlString) else {
-            print("URL 생성 실패")
+            print("Failed to create URL")
             return
         }
 
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             guard let self = self else { return }
             if let error = error {
-                print("API 요청 오류: \(error.localizedDescription)")
+                print("API request error: \(error.localizedDescription)")
                 return
             }
             guard let data = data else {
-                print("데이터 없음")
+                print("No data returned")
                 return
             }
             if let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
@@ -535,7 +568,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                     self.collectionView.reloadData()
                 }
             } else {
-                print("JSON 응답 형식 오류")
+                print("JSON response format error")
             }
         }
         task.resume()
@@ -548,7 +581,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
         collectionView.reloadData()
     }
 
-    // MARK: - Layover 여부 확인 (MonthlyCalendarViewController와 동일한 로직)
+    // MARK: - Layover 여부 확인 (동일한 로직)
     func shouldDisplayLayover(for date: Date) -> Bool {
         var allSchedules: [[String: String]] = []
         for (_, scheduleArray) in schedules {

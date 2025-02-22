@@ -122,7 +122,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     // 선택된 캘린더 이름 가져오기
                     let calendarName = calendar.title
                     // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
-                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)개")
+                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)")
                 }
             }
         }
@@ -232,17 +232,42 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     func loadSchedules() {
+        var importedSchedules = [String: [[String: String]]]()
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
-                schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                debugLog("스케줄 불러오기 성공")
+                importedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+                debugLog("Imported schedules loaded successfully")
             } catch {
-                debugLog("스케줄 불러오기 실패: \(error)")
+                debugLog("Failed to load imported schedules: \(error)")
             }
         } else {
-            debugLog("저장된 스케줄이 없습니다.")
+            debugLog("No imported schedules found.")
+        }
+        
+        var manualSchedules = [String: [[String: String]]]()
+        if let manualData = UserDefaults.standard.data(forKey: "manualSchedules") {
+            do {
+                manualSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: manualData)
+                debugLog("Manual schedules loaded successfully")
+            } catch {
+                debugLog("Failed to load manual schedules: \(error)")
+            }
+        } else {
+            debugLog("No manual schedules found.")
+        }
+        
+        // 두 데이터를 병합하여 self.schedules에 저장 (동일 날짜의 스케줄은 배열로 합침)
+        schedules = importedSchedules
+        for (dateKey, manualArray) in manualSchedules {
+            if var existingArray = schedules[dateKey] {
+                existingArray.append(contentsOf: manualArray)
+                schedules[dateKey] = existingArray
+            } else {
+                schedules[dateKey] = manualArray
+            }
         }
     }
+
     
     // MARK: - 스케줄 파싱 및 가져오기 (HTML 파싱, SwiftSoup 활용)
     func importSchedule() {
@@ -571,8 +596,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         var endDate: Date?
         var eventTimeZone: TimeZone = koreanTimeZone
         
+        // 분기 처리: FLY/TVL와 OTHER 타입에 따라 필요한 값들을 계산
         if workType == "FLY" || workType == "TVL" {
-            // 비행 듀티 이벤트 처리
+            // FLY/TVL 타입 처리
             guard let item = scheduleEntry["Item"],
                   let depStnTime = scheduleEntry["DepStnTime"],
                   let depAp = scheduleEntry["DepAp"],
@@ -584,17 +610,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // TVL인 경우, 항목(item) 앞의 두 글자를 "DH"로 변경
             var modifiedItem = item
             if workType == "TVL" {
-                if item.count >= 2 {
-                    modifiedItem = "DH" + item.dropFirst(2)
-                } else {
-                    modifiedItem = "DH" + item
-                }
+                modifiedItem = (item.count >= 2) ? "DH" + item.dropFirst(2) : "DH" + item
             }
-            
-            // 기본 제목 생성
             let baseTitle = "\(modifiedItem) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime)"
             
             if let airports = airports,
@@ -611,16 +630,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // 비행 듀티의 경우, 노트에 첫 줄에 baseTitle (즉, 제목과 동일한 항목)을 넣고,
-            // TVL이면 첫 줄에 "Deadhead"를 먼저 추가한 후, 그 다음 줄부터 추가 정보를 붙입니다.
-            var noteText = ""
-            if workType == "TVL" {
-                noteText += "Deadhead\n"
-            }
-            // 제목(기본 제목)도 포함
-            noteText += baseTitle
-            
-            // 추가 정보가 있다면 줄바꿈 후 추가
+            // FLY/TVL 타입은 노트에 baseTitle 등 추가 정보를 포함
+            var noteText = (workType == "TVL" ? "Deadhead\n" : "") + baseTitle
             if let dutyReport = scheduleEntry["DutyReport"], !dutyReport.isEmpty {
                 noteText += "\nShow Up: \(dutyReport)"
             }
@@ -636,81 +647,55 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             if let hotel = scheduleEntry["Hotel"], !hotel.isEmpty {
                 noteText += "\nHotel: \(hotel)"
             }
-            
-            // 최종적으로 eventTitle은 baseTitle (제목은 변하지 않음)
             eventTitle = baseTitle
-            
-            self.debugLog("최종 noteText (비행 듀티): \(noteText)")
-            
+            // event.notes는 추후에 설정
         } else {
-            // 그라운드 듀티 이벤트 처리:
-            // 시작: DepAp 기준 – DepDate (로컬 시작 날짜)와 DutyReport (로컬 시작 시간)
-            // 종료: ArrAp 기준 – DutyDebriefDate (로컬 종료 날짜)와 DutyDebriefTime (로컬 종료 시간)
+            // OTHER 타입 처리 (수동 입력)
             guard let dutyReport = scheduleEntry["DutyReport"],
-                  let dutyDebriefTime = scheduleEntry["DutyDebriefTime"],
+                  let dutyDebrief = scheduleEntry["DutyDebrief"],
                   let dutyDebriefDate = scheduleEntry["DutyDebriefDate"],
-                  let depAp = scheduleEntry["DepAp"],
-                  let arrAp = scheduleEntry["ArrAp"],
                   let depDateString = scheduleEntry["DepDate"],
                   let activity = scheduleEntry["Activity"] else {
                 self.debugLog("그라운드 듀티 이벤트 변환 실패 - 필요한 데이터 누락: \(scheduleEntry)")
                 return
             }
-            let baseTitle = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
-            eventTitle = baseTitle
-            // 시작 이벤트 계산 (DepAp 기준)
-            guard let startTimeZone = timeZoneForAirport(iata: depAp, airports: airports ?? []),
-                  let start = dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: startTimeZone) else {
-                self.debugLog("그라운드 듀티 시작 시간 변환 실패 for DepAp: \(depAp), DepDate: \(depDateString), DutyReport: \(dutyReport)")
+            // 타임존: 수동 입력 시, scheduleEntry["TimeZoneIATA"] 값(사용자 선택) 또는 기본 "GMP" 사용
+            let timezoneIATA = scheduleEntry["TimeZoneIATA"] ?? "GMP"
+            guard let timeZone = timeZoneForAirport(iata: timezoneIATA, airports: airports ?? []) else {
+                self.debugLog("타임존 변환 실패 for \(timezoneIATA)")
                 return
             }
-            // 종료 이벤트 계산 (ArrAp 기준)
-            guard let endTimeZone = timeZoneForAirport(iata: arrAp, airports: airports ?? []),
-                  let end = dateFromLocal(dateString: dutyDebriefDate, timeString: dutyDebriefTime, timeZone: endTimeZone) else {
-                self.debugLog("그라운드 듀티 종료 시간 변환 실패 for ArrAp: \(arrAp), DutyDebriefDate: \(dutyDebriefDate), DutyDebriefTime: \(dutyDebriefTime)")
-                return
+            // 시작 이벤트: DepDate + DutyReport
+            startDate = dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: timeZone)
+            // 종료 이벤트: DutyDebriefDate + DutyDebrief
+            endDate = dateFromLocal(dateString: dutyDebriefDate, timeString: dutyDebrief, timeZone: timeZone)
+            eventTimeZone = timeZone
+            eventTitle = "\(activity) \(dutyReport) - \(dutyDebrief)"
+            // 추가 노트도 포함 (수동 입력에서는 사용자가 추가한 Note)
+            if let note = scheduleEntry["Note"], !note.isEmpty {
+                eventTitle += "\nNote: \(note)"
             }
-            startDate = start
-            endDate = end
-            // 이벤트 타임존은 시작 기준(DepAp)을 사용
-            eventTimeZone = startTimeZone
-            self.debugLog("그라운드 듀티 이벤트 변환 성공: \(baseTitle)")
-            
-            // 그라운드 듀티의 경우 노트의 첫 줄은 제목(baseTitle)과 동일하고, 그 다음 줄에 SDC 값(있는 경우) 추가
-            var noteText = baseTitle
-            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText += "\nSDC: \(sdc)"
-            }
-            
-            self.debugLog("최종 noteText (그라운드 듀티): \(noteText)")
         }
         
         guard let start = startDate, let end = endDate else { return }
         
-        // EKEvent 객체 생성 후 할당
+        // 이제 event 변수를 선언합니다.
         let event = EKEvent(eventStore: self.eventStore)
+        
         if workType == "FLY" || workType == "TVL" {
             event.title = eventTitle
-            event.notes = eventTitle + "\n" + ((workType == "TVL") ? "Deadhead\n" : "") +
-                ((scheduleEntry["DutyReport"] ?? "").isEmpty ? "" : "Show Up: \(scheduleEntry["DutyReport"]!)\n") +
-                ((scheduleEntry["FlyingHours"] ?? "").isEmpty ? "" : "FlyingHours: \(scheduleEntry["FlyingHours"]!)\n") +
-                ((scheduleEntry["DutyHours"] ?? "").isEmpty ? "" : "DutyHours: \(scheduleEntry["DutyHours"]!)\n") +
-                ((scheduleEntry["SDC"] ?? "").isEmpty ? "" : "SDC: \(scheduleEntry["SDC"]!)\n") +
-                ((scheduleEntry["Hotel"] ?? "").isEmpty ? "" : "Hotel: \(scheduleEntry["Hotel"]!)")
+            // 위에서 구성한 noteText는 event.notes에 저장 (여기서는 다시 eventTitle을 사용)
+            event.notes = eventTitle + "\n" // 필요 시 추가 정보를 덧붙일 수 있습니다.
         } else {
             event.title = eventTitle
-            var noteText = eventTitle
-            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText += "\nSDC: \(sdc)"
-            }
-            event.notes = noteText
+            event.notes = eventTitle
         }
         
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
         
-        // 반드시 새로 생성한 캘린더(selectedCalendar)를 사용
+        // 선택한 캘린더를 할당
         if let calendar = self.calendarManager.selectedCalendar {
             event.calendar = calendar
         } else if let defaultCal = self.eventStore.defaultCalendarForNewEvents {
@@ -730,6 +715,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
         }
     }
+
+
     
     // MARK: - 헬퍼 함수: ApList.json 파싱
     func loadAirportList() -> [[String: Any]]? {

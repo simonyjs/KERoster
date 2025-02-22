@@ -236,16 +236,38 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     // MARK: - 영구 저장소 (UserDefaults) 관련 함수
     
     /// UserDefaults에 저장된 schedules 데이터를 불러옵니다.
-    private func loadSchedules() {
+    func loadSchedules() {
+        // 기존에 저장된 imported schedules 불러오기
+        var importedSchedules = [String: [[String: String]]]()
         if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
             do {
-                schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
-                print("영구 저장소에서 스케줄 데이터를 불러왔습니다.")
+                importedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+                print("Imported schedules loaded successfully")
             } catch {
-                print("스케줄 불러오기 실패: \(error)")
+                print("Failed to load imported schedules: \(error)")
             }
-        } else {
-            print("영구 저장소에 저장된 스케줄 데이터가 없습니다.")
+        }
+        
+        // 수동 입력된 스케줄 불러오기
+        var manualSchedules = [String: [[String: String]]]()
+        if let manualData = UserDefaults.standard.data(forKey: "manualSchedules") {
+            do {
+                manualSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: manualData)
+                print("Manual schedules loaded successfully")
+            } catch {
+                print("Failed to load manual schedules: \(error)")
+            }
+        }
+        
+        // 두 데이터를 병합 (동일 날짜의 스케줄은 배열로 합치기)
+        schedules = importedSchedules
+        for (dateKey, manualArray) in manualSchedules {
+            if var existingArray = schedules[dateKey] {
+                existingArray.append(contentsOf: manualArray)
+                schedules[dateKey] = existingArray
+            } else {
+                schedules[dateKey] = manualArray
+            }
         }
     }
 }

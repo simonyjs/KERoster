@@ -8,10 +8,10 @@
 import UIKit
 
 // 만약 ScheduleEditDelegate가 이미 다른 파일에 선언되어 있다면 아래 코드를 제거하세요.
-//protocol ScheduleEditDelegate: AnyObject {
-//    func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int)
-//    func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
-//}
+// protocol ScheduleEditDelegate: AnyObject {
+//     func scheduleEditViewController(_ controller: ScheduleEditViewController, didSaveSchedule schedule: [String: String], at index: Int)
+//     func scheduleEditViewController(_ controller: ScheduleEditViewController, didDeleteScheduleAt index: Int)
+// }
 
 class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     
@@ -32,12 +32,13 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     let dutyHoursTextField = UITextField()    // Duty Hours
     
     // MARK: - OTHER 타입 UI 요소
-    // OTHER 타입에서는 종료 날짜(endDateTextField)를 추가합니다.
+    // OTHER 타입에서는 시작 날짜, 종료 날짜, ACTIVITY, DUTY START, DUTY END, 그리고 추가 노트를 입력받습니다.
     let dateTextField = UITextField()         // 시작 날짜
     let endDateTextField = UITextField()        // 종료 날짜
     let activityTextField = UITextField()       // ACTIVITY
     let dutyReportTextField = UITextField()     // DUTY 시작 시간
     let dutyDebriefTextField = UITextField()    // DUTY 종료 시간
+    let noteTextField = UITextField()           // 추가 노트
     
     // 메인 스택뷰 (모든 UI 요소를 담음)
     let mainStackView = UIStackView()
@@ -144,7 +145,7 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
         mainStackView.addArrangedSubview(deleteButton)
     }
     
-    /// FLY/TVL 전용 UI 구성 – 입력 형식은 "yyyy-MM-dd"로 표시 (저장된 날짜는 "dd-MMM-yyyy"이므로 변환)
+    /// FLY/TVL 전용 UI 구성 – 입력 형식은 "yyyy-MM-dd"로 표시 (저장된 날짜는 "dd-MMM-yyyy"로 변환)
     func setupFlyTVLUI() {
         configure(textField: depDateTextField, placeholder: "yyyy-MM-dd", text: convertStoredDateToInput(schedule["DepDate"]))
         configure(textField: arrDateTextField, placeholder: "yyyy-MM-dd", text: convertStoredDateToInput(schedule["ArrDate"]))
@@ -172,22 +173,29 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
     }
     
     /// OTHER 타입 UI 구성 – 입력 형식은 "yyyy-MM-dd"로 표시
-    /// 시작 날짜와 종료 날짜, 액티비티, DUTY START, DUTY END를 입력받습니다.
+    /// 시작 날짜, 종료 날짜, ACTIVITY, DUTY START, DUTY END, 그리고 추가 노트를 입력받음
     func setupOtherUI() {
-        // 변경: 입력 형식은 "yyyy-MM-dd" (placeholder 수정)
         configure(textField: dateTextField, placeholder: "yyyy-MM-dd", text: convertStoredDateToInput(schedule["DepDate"]))
         configure(textField: endDateTextField, placeholder: "yyyy-MM-dd", text: convertStoredDateToInput(schedule["DutyDebriefDate"]))
         configure(textField: activityTextField, placeholder: "ACTIVITY", text: schedule["Activity"])
         configure(textField: dutyReportTextField, placeholder: "DUTY START", text: schedule["DutyReport"])
         configure(textField: dutyDebriefTextField, placeholder: "DUTY END", text: schedule["DutyDebrief"])
         
+        // Note 필드 설정
+        noteTextField.placeholder = "Enter additional note (optional)"
+        noteTextField.text = schedule["Note"]
+        noteTextField.borderStyle = .roundedRect
+        noteTextField.textColor = .black
+        noteTextField.delegate = self
+        
         let dateStack = createLabeledField(labelText: "START DATE", textField: dateTextField)
         let endDateStack = createLabeledField(labelText: "END DATE", textField: endDateTextField)
         let activityStack = createLabeledField(labelText: "ACTIVITY", textField: activityTextField)
         let reportStack = createLabeledField(labelText: "DUTY START", textField: dutyReportTextField)
         let debriefStack = createLabeledField(labelText: "DUTY END", textField: dutyDebriefTextField)
+        let noteStack = createLabeledField(labelText: "NOTE", textField: noteTextField)
         
-        [dateStack, endDateStack, activityStack, reportStack, debriefStack].forEach {
+        [dateStack, endDateStack, activityStack, reportStack, debriefStack, noteStack].forEach {
             mainStackView.addArrangedSubview($0)
         }
     }
@@ -242,7 +250,6 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
         var updatedSchedule = schedule
         
         if currentWorkType == "FLY" || currentWorkType == "TVL" {
-            // FLY/TVL 타입은 기존 값 그대로 저장 (입력은 "yyyy-MM-dd")
             guard let depDateInput = depDateTextField.text,
                   let depDate = inputDF.date(from: depDateInput) else {
                 showAlert(title: "Invalid Date", message: "Please enter a valid departure date in format yyyy-MM-dd.")
@@ -263,7 +270,6 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
             updatedSchedule["FlyingHours"] = flyingHoursTextField.text
             updatedSchedule["DutyHours"] = dutyHoursTextField.text
         } else {
-            // OTHER 타입: 시작 날짜, 종료 날짜, 액티비티, DUTY START, DUTY END 처리
             guard let startDateInput = dateTextField.text,
                   let startDate = inputDF.date(from: startDateInput) else {
                 showAlert(title: "Invalid Date", message: "Please enter a valid start date in format yyyy-MM-dd.")
@@ -274,7 +280,6 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
                 showAlert(title: "Invalid Date", message: "Please enter a valid end date in format yyyy-MM-dd.")
                 return
             }
-            // 추가: 종료 날짜가 시작 날짜보다 이전이면 오류 처리
             let dayDiff = Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 0
             if dayDiff < 0 {
                 showAlert(title: "Invalid Date", message: "End date cannot be before start date.")
@@ -296,8 +301,19 @@ class ScheduleEditViewController: UIViewController, UITextFieldDelegate {
                 showAlert(title: "Invalid Time", message: "Please enter a valid duty end time in format HH:mm.")
                 return
             }
-            // 수동 입력 시 종료 시간은 단순히 hh:mm 형식만 저장 (("+n") 부분 제거)
             updatedSchedule["DutyDebrief"] = endTime
+            
+            // Note 수정: 입력된 추가 노트 저장
+            if let note = noteTextField.text, !note.isEmpty {
+                updatedSchedule["Note"] = note
+            } else {
+                updatedSchedule["Note"] = ""
+            }
+        }
+        
+        // FLY/TVL 타입은 타임존 정보가 필요 없으므로 빈 문자열 처리
+        if currentWorkType == "FLY" || currentWorkType == "TVL" {
+            updatedSchedule["TimeZoneIATA"] = ""
         }
         
         delegate?.scheduleEditViewController(self, didSaveSchedule: updatedSchedule, at: scheduleIndex)

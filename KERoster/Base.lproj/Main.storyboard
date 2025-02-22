@@ -141,6 +141,21 @@
             </objects>
             <point key="canvasLocation" x="-909" y="-4"/>
         </scene>
+        <!--Schedule Input Form Modified View Controller-->
+        <scene sceneID="Y4k-sZ-IIH">
+            <objects>
+                <viewController storyboardIdentifier="ScheduleInputFormModifiedViewController" id="A3N-fp-woa" customClass="ScheduleInputFormModifiedViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="FYU-2i-7gu">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="4UD-M0-l6l"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="YVn-wj-FBt" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-1634" y="696"/>
+        </scene>
         <!--Schedule Input Form View Controller-->
         <scene sceneID="Qnp-Kr-CG9">
             <objects>
