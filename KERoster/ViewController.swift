@@ -122,7 +122,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     // 선택된 캘린더 이름 가져오기
                     let calendarName = calendar.title
                     // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
-                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)개")
+                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)")
                 }
             }
         }
@@ -165,6 +165,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             calendarVC.ownerInfo = self.ownerInfo
             calendarVC.totalHours = self.totalHours
             navigationController?.pushViewController(calendarVC, animated: true)
+        }
+    }
+    
+    @IBAction func infoButtonTapped(_ sender: UIBarButtonItem) {
+        if let url = URL(string: "https://pinnate-century-46a.notion.site/KERoster-1973143fe5db80588f62d8959e7c0fcc?pvs=74") {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
         }
     }
     
