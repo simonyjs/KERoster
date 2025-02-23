@@ -61,15 +61,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             DispatchQueue.main.async {
                 if granted {
                     self.debugLog("캘린더 접근 권한 승인됨")
-                    // 앱 실행 시 캘린더 선택 창을 띄우지 않고,
-                    // Export Calendar 버튼에서 선택하도록 변경
-                    // self.calendarManager.presentCalendarSelection(from: self) { calendar in
-                    //     if let cal = calendar {
-                    //         self.debugLog("이벤트 저장할 캘린더: \(cal.title)")
-                    //     } else {
-                    //         self.debugLog("캘린더 선택이 취소됨")
-                    //     }
-                    // }
                 } else {
                     self.debugLog("캘린더 접근 권한 거부됨: \(error?.localizedDescription ?? "알 수 없는 오류")")
                 }
@@ -90,7 +81,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         
         printSchedulesToConsole()
         
-        // 오른쪽 네비게이션 바 버튼 생성 (스토리보드 연결이 끊어진 경우)
+        // 오른쪽 네비게이션 바 버튼 (스토리보드 연결이 안되어 있으면 생성)
         if navigationItem.rightBarButtonItem == nil {
             navigationItem.rightBarButtonItem = UIBarButtonItem(
                 image: UIImage(systemName: "square.and.arrow.down.fill"),
@@ -102,7 +93,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let importAction = UIAction(title: "Import Schedule", image: UIImage(systemName: "arrow.down.circle")) { _ in
             self.importSchedule()
         }
-        // 달력 내보내기 시 최신 데이터를 가져오도록 수정
         let exportAction = UIAction(title: "Export Calendar", image: UIImage(systemName: "arrow.up.circle")) { _ in
             self.loadSchedules() // 최신 스케줄 불러오기
             self.calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
@@ -123,7 +113,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
             }
         }
-
+        
         let menu = UIMenu(title: "Select a task", children: [importAction, exportAction])
         navigationItem.rightBarButtonItem?.menu = menu
     }
@@ -172,7 +162,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
-    // 예시: UIButton 액션 - 이벤트 저장 테스트 (새 이벤트 저장)
     @IBAction func saveEventButtonTapped(_ sender: UIButton) {
         calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
             guard let calendar = selectedCalendar else {
@@ -225,7 +214,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
-    //saveTapped() 실행 시 schedules 데이터가 갱신되지 않거나 UserDefaults에 저장되지 않는 문제
     func saveSchedules() {
         do {
             let data = try JSONEncoder().encode(schedules)
@@ -370,7 +358,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 for (_, row) in rows.enumerated() {
                     let columns: Elements = try row.select("td")
                     
-                    // 헤더 행은 건너뜁니다.
                     if columns.size() > 10, !(try columns[1].text().contains("Date")) {
                         var missingFields = [String]()
                         
@@ -387,7 +374,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         let sdc = columns.getOrNil(14)
                         let hotel = columns.getOrNil(16)
                         
-                        // 날짜가 누락되면 이전 날짜 사용, 없으면 로그 후 continue
                         if date.isEmpty {
                             if lastDate == "Unknown" {
                                 self.debugLog("날짜 정보 누락: 이전 날짜 정보도 없음")
@@ -398,7 +384,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             lastDate = date
                         }
                         
-                        // 비행 / 그라운드 듀티에 따라 필수 필드 검사
                         if workType == "FLY" || workType == "TVL" {
                             if item.isEmpty { missingFields.append("Item") }
                             if depStationTimeFull.isEmpty { missingFields.append("DepStationTime") }
@@ -411,13 +396,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             if activity.isEmpty { missingFields.append("Activity") }
                         }
                         
-                        // 누락된 필드가 있으면 구체적으로 로그를 남기고 해당 행은 건너뜁니다.
                         if !missingFields.isEmpty {
                             self.debugLog("이벤트 변환 실패 - 누락된 필드: \(missingFields.joined(separator: ", ")) (행: \(try columns.text()))")
                             continue
                         }
                         
-                        // 공항, 시간 등 문자열 파싱
                         func extractAirportAndTime(_ fullString: String) -> (String, String, String) {
                             let pattern = #"([A-Z]{3})\s+(\d{2}:\d{2})(\([-+]\d+\))?"#
                             let regex = try? NSRegularExpression(pattern: pattern)
@@ -567,7 +550,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         scheduleStackView.addArrangedSubview(containerView)
     }
     
-    // MARK: - 캘린더 이벤트 추가 함수
+    // MARK: - 캘린더 이벤트 추가 함수 (중복 검사 및 노트 업데이트 포함)
     func addEventToCalendar(for scheduleEntry: [String: String], airports: [[String: Any]]?) {
         let koreanTimeZone = TimeZone(identifier: "Asia/Seoul")!
         let workType = scheduleEntry["WorkType"] ?? ""
@@ -576,6 +559,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         var startDate: Date?
         var endDate: Date?
         var eventTimeZone: TimeZone = koreanTimeZone
+        var noteText: String = ""
         
         if workType == "FLY" || workType == "TVL" {
             // 비행 듀티 이벤트 처리
@@ -590,7 +574,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // TVL인 경우, 항목(item) 앞의 두 글자를 "DH"로 변경
             var modifiedItem = item
             if workType == "TVL" {
                 if item.count >= 2 {
@@ -600,9 +583,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
             }
             
-            // 기본 제목 생성
+            // 기본 제목 생성 및 타임존, 날짜 변환
             let baseTitle = "\(modifiedItem) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime)"
-            
             if let airports = airports,
                let depTimeZone = timeZoneForAirport(iata: depAp, airports: airports),
                let departureDate = dateFromLocal(dateString: depDateString, timeString: depStnTime, timeZone: depTimeZone),
@@ -617,41 +599,39 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             
-            // 비행 듀티의 경우, 노트에 첫 줄에 baseTitle (즉, 제목과 동일한 항목)을 넣고,
-            // TVL이면 첫 줄에 "Deadhead"를 먼저 추가한 후, 그 다음 줄부터 추가 정보를 붙입니다.
-            var noteText = ""
-            if workType == "TVL" {
-                noteText += "Deadhead\n"
-            }
-            // 제목(기본 제목)도 포함
-            noteText += baseTitle
+            // 기본 노트 생성 (TVL인 경우 "Deadhead" 추가)
+            let baseNote = generateBaseNote(for: scheduleEntry,
+                                            workType: workType,
+                                            modifiedItem: modifiedItem,
+                                            depStnTime: depStnTime,
+                                            depAp: depAp,
+                                            arrAp: arrAp,
+                                            arrStnTime: arrStnTime)
+            eventTitle = baseTitle // 제목은 기본 제목으로 설정
+            noteText = baseNote
             
-            // 추가 정보가 있다면 줄바꿈 후 추가
-            if let dutyReport = scheduleEntry["DutyReport"], !dutyReport.isEmpty {
-                noteText += "\nShow Up: \(dutyReport)"
+            // 동일 날짜에 출발, 도착 공항이 같은 이벤트 검사
+            if let start = startDate, let end = endDate, let selectedCal = calendarManager.selectedCalendar {
+                let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
+                let existingEvents = eventStore.events(matching: predicate)
+                var duplicateEvent: EKEvent?
+                for event in existingEvents {
+                    if let notes = event.notes, notes.contains("DEP:\(depAp) ARR:\(arrAp)") {
+                        duplicateEvent = event
+                        break
+                    }
+                }
+                if let existingEvent = duplicateEvent {
+                    self.debugLog("⚠️ 중복 일정 발견! 기존 이벤트의 노트 업데이트: \(eventTitle)")
+                    updateEventNotes(existingEvent, with: scheduleEntry)
+                    return
+                }
             }
-            if let flyingHours = scheduleEntry["FlyingHours"], !flyingHours.isEmpty {
-                noteText += "\nFlyingHours: \(flyingHours)"
-            }
-            if let dutyHours = scheduleEntry["DutyHours"], !dutyHours.isEmpty {
-                noteText += "\nDutyHours: \(dutyHours)"
-            }
-            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText += "\nSDC: \(sdc)"
-            }
-            if let hotel = scheduleEntry["Hotel"], !hotel.isEmpty {
-                noteText += "\nHotel: \(hotel)"
-            }
-            
-            // 최종적으로 eventTitle은 baseTitle (제목은 변하지 않음)
-            eventTitle = baseTitle
             
             self.debugLog("최종 noteText (비행 듀티): \(noteText)")
             
         } else {
-            // 그라운드 듀티 이벤트 처리:
-            // 시작: DepAp 기준 – DepDate (로컬 시작 날짜)와 DutyReport (로컬 시작 시간)
-            // 종료: ArrAp 기준 – DutyDebriefDate (로컬 종료 날짜)와 DutyDebriefTime (로컬 종료 시간)
+            // 그라운드 듀티 이벤트 처리
             guard let dutyReport = scheduleEntry["DutyReport"],
                   let dutyDebriefTime = scheduleEntry["DutyDebriefTime"],
                   let dutyDebriefDate = scheduleEntry["DutyDebriefDate"],
@@ -664,13 +644,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
             let baseTitle = "\(activity) \(dutyReport) - \(dutyDebriefTime)"
             eventTitle = baseTitle
-            // 시작 이벤트 계산 (DepAp 기준)
             guard let startTimeZone = timeZoneForAirport(iata: depAp, airports: airports ?? []),
                   let start = dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: startTimeZone) else {
                 self.debugLog("그라운드 듀티 시작 시간 변환 실패 for DepAp: \(depAp), DepDate: \(depDateString), DutyReport: \(dutyReport)")
                 return
             }
-            // 종료 이벤트 계산 (ArrAp 기준)
             guard let endTimeZone = timeZoneForAirport(iata: arrAp, airports: airports ?? []),
                   let end = dateFromLocal(dateString: dutyDebriefDate, timeString: dutyDebriefTime, timeZone: endTimeZone) else {
                 self.debugLog("그라운드 듀티 종료 시간 변환 실패 for ArrAp: \(arrAp), DutyDebriefDate: \(dutyDebriefDate), DutyDebriefTime: \(dutyDebriefTime)")
@@ -678,45 +656,25 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
             startDate = start
             endDate = end
-            // 이벤트 타임존은 시작 기준(DepAp)을 사용
             eventTimeZone = startTimeZone
             self.debugLog("그라운드 듀티 이벤트 변환 성공: \(baseTitle)")
             
-            // 그라운드 듀티의 경우 노트의 첫 줄은 제목(baseTitle)과 동일하고, 그 다음 줄에 SDC 값(있는 경우) 추가
-            var noteText = baseTitle
+            var baseNote = baseTitle
             if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText += "\nSDC: \(sdc)"
+                baseNote += "\nSDC: \(sdc)"
             }
-            
-            self.debugLog("최종 noteText (그라운드 듀티): \(noteText)")
+            noteText = baseNote
         }
         
         guard let start = startDate, let end = endDate else { return }
         
-        // EKEvent 객체 생성 후 할당
         let event = EKEvent(eventStore: self.eventStore)
-        if workType == "FLY" || workType == "TVL" {
-            event.title = eventTitle
-            event.notes = eventTitle + "\n" + ((workType == "TVL") ? "Deadhead\n" : "") +
-                ((scheduleEntry["DutyReport"] ?? "").isEmpty ? "" : "Show Up: \(scheduleEntry["DutyReport"]!)\n") +
-                ((scheduleEntry["FlyingHours"] ?? "").isEmpty ? "" : "FlyingHours: \(scheduleEntry["FlyingHours"]!)\n") +
-                ((scheduleEntry["DutyHours"] ?? "").isEmpty ? "" : "DutyHours: \(scheduleEntry["DutyHours"]!)\n") +
-                ((scheduleEntry["SDC"] ?? "").isEmpty ? "" : "SDC: \(scheduleEntry["SDC"]!)\n") +
-                ((scheduleEntry["Hotel"] ?? "").isEmpty ? "" : "Hotel: \(scheduleEntry["Hotel"]!)")
-        } else {
-            event.title = eventTitle
-            var noteText = eventTitle
-            if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
-                noteText += "\nSDC: \(sdc)"
-            }
-            event.notes = noteText
-        }
-        
+        event.title = eventTitle
+        event.notes = noteText
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
         
-        // 반드시 새로 생성한 캘린더(selectedCalendar)를 사용
         if let calendar = self.calendarManager.selectedCalendar {
             event.calendar = calendar
         } else if let defaultCal = self.eventStore.defaultCalendarForNewEvents {
@@ -796,5 +754,76 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let utcString = utcFormatter.string(from: localDate)
         debugLog("convertLocalTimeToUTCTime 성공: \(dateString) \(timeString) -> \(utcString) (airportCode: \(airportCode))")
         return utcString
+    }
+    
+    // MARK: - 헬퍼 함수: 기존 이벤트의 Notes 업데이트 (변경 사항만 추가)
+    func updateEventNotes(_ event: EKEvent, with entry: [String: String]) {
+        let updatedSection = generateUpdatedInfo(for: entry)
+        let marker = "\n----\n"
+        
+        var currentNotes = event.notes ?? ""
+        
+        if let markerRange = currentNotes.range(of: marker) {
+            // marker가 있다면 marker 이후의 내용을 업데이트 정보로 교체
+            currentNotes = String(currentNotes[..<markerRange.upperBound]) + updatedSection
+        } else {
+            // marker가 없으면 기존 노트를 그대로 두고 marker와 업데이트 정보를 추가
+            currentNotes += marker + updatedSection
+        }
+        
+        event.notes = currentNotes
+        do {
+            try eventStore.save(event, span: .thisEvent)
+            debugLog("✅ 기존 일정의 노트에 변경 사항 업데이트 완료")
+        } catch {
+            debugLog("❌ 노트 업데이트 실패: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - 헬퍼 함수: 변경된 실제 정보만 생성 (업데이트 정보)
+    func generateUpdatedInfo(for entry: [String: String]) -> String {
+        let actualDepTime = entry["ActualDepTime"] ?? "N/A"
+        let actualArrTime = entry["ActualArrTime"] ?? "N/A"
+        let actualFlyingHours = entry["ActualFlyingHours"] ?? "N/A"
+        let actualDutyHours = entry["ActualDutyHours"] ?? "N/A"
+        
+        return """
+        Actual Departure: \(actualDepTime)
+        Actual Arrival: \(actualArrTime)
+        Actual Flying Hours: \(actualFlyingHours)
+        Actual Duty Hours: \(actualDutyHours)
+        """
+    }
+    
+    // MARK: - 헬퍼 함수: 기본 노트 생성 (캘린더 이벤트 생성 시 사용)
+    func generateBaseNote(for scheduleEntry: [String: String],
+                          workType: String,
+                          modifiedItem: String,
+                          depStnTime: String,
+                          depAp: String,
+                          arrAp: String,
+                          arrStnTime: String) -> String {
+        let baseTitle = "\(modifiedItem) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime)"
+        var noteText = ""
+        if workType == "TVL" {
+            noteText += "Deadhead\n"
+        }
+        noteText += baseTitle
+        if let dutyReport = scheduleEntry["DutyReport"], !dutyReport.isEmpty {
+            noteText += "\nShow Up: \(dutyReport)"
+        }
+        if let flyingHours = scheduleEntry["FlyingHours"], !flyingHours.isEmpty {
+            noteText += "\nFlyingHours: \(flyingHours)"
+        }
+        if let dutyHours = scheduleEntry["DutyHours"], !dutyHours.isEmpty {
+            noteText += "\nDutyHours: \(dutyHours)"
+        }
+        if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
+            noteText += "\nSDC: \(sdc)"
+        }
+        if let hotel = scheduleEntry["Hotel"], !hotel.isEmpty {
+            noteText += "\nHotel: \(hotel)"
+        }
+        return noteText
     }
 }
