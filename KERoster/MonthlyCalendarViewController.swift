@@ -199,7 +199,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadSchedules()
+        loadSchedules() // 최신 스케줄을 불러옴
+        collectionView.reloadData() // UI 업데이트
         if let monthlyHours = UserDefaults.standard.dictionary(forKey: totalHoursByMonthUserDefaultsKey) as? [String: String] {
             let currentMonthKey = formattedMonth(for: currentDate)
             self.totalHours = monthlyHours[currentMonthKey] ?? ""

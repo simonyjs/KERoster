@@ -102,30 +102,28 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let importAction = UIAction(title: "Import Schedule", image: UIImage(systemName: "arrow.down.circle")) { _ in
             self.importSchedule()
         }
+        // 달력 내보내기 시 최신 데이터를 가져오도록 수정
         let exportAction = UIAction(title: "Export Calendar", image: UIImage(systemName: "arrow.up.circle")) { _ in
-            // 캘린더 선택 창을 먼저 표시
+            self.loadSchedules() // 최신 스케줄 불러오기
             self.calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
                 guard let calendar = selectedCalendar else {
                     self.debugLog("캘린더 선택 취소됨")
                     return
                 }
-                // 선택된 캘린더를 저장
                 self.calendarManager.selectedCalendar = calendar
                 if let airports = self.loadAirportList() {
-                    // 저장된 이벤트 수 초기화
                     self.savedEventCount = 0
                     for (_, scheduleEntries) in self.schedules {
                         for entry in scheduleEntries {
                             self.addEventToCalendar(for: entry, airports: airports)
                         }
                     }
-                    // 선택된 캘린더 이름 가져오기
                     let calendarName = calendar.title
-                    // 내보내기 작업 완료 후 알림 표시 (캘린더 이름과 저장된 이벤트 수 포함)
                     self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)")
                 }
             }
         }
+
         let menu = UIMenu(title: "Select a task", children: [importAction, exportAction])
         navigationItem.rightBarButtonItem?.menu = menu
     }
@@ -227,13 +225,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
+    //saveTapped() 실행 시 schedules 데이터가 갱신되지 않거나 UserDefaults에 저장되지 않는 문제
     func saveSchedules() {
         do {
             let data = try JSONEncoder().encode(schedules)
-            UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
-            debugLog("스케줄 저장 성공")
+            UserDefaults.standard.set(data, forKey: "schedules")
+            UserDefaults.standard.synchronize()
+            print("스케줄 저장 성공")
         } catch {
-            debugLog("스케줄 저장 실패: \(error)")
+            print("스케줄 저장 실패: \(error)")
         }
     }
     
