@@ -26,6 +26,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     var eventStore: EKEventStore!
     var calendarManager: CalendarManager!
     
+    // 스케줄 데이터: 날짜별로 스케줄 배열 저장
     var schedules: [String: [[String: String]]] = [:]
     let schedulesUserDefaultsKey = "schedules"
     let ownerUserDefaultsKey = "ownerInfo"
@@ -35,6 +36,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     // 저장된 이벤트 수를 추적
     var savedEventCount = 0
+    
+    // 스케줄의 고유 ID(날짜와 Activity 조합)와 캘린더 이벤트 식별자를 매핑하는 딕셔너리
+    var scheduleEventMapping: [String: String] = [:]
     
     // MARK: - 디버그 로그 함수
     func debugLog(_ message: String) {
@@ -46,6 +50,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: date)
+    }
+    
+    // MARK: - 고유 ID 생성 함수 (날짜와 Activity 값을 조합)
+    func generateUniqueID(for schedule: [String: String]) -> String {
+        let date = schedule["Date"] ?? ""
+        let activity = schedule["Activity"] ?? ""
+        return "\(date)_\(activity)"
     }
     
     // MARK: - UIViewController LifeCycle
@@ -103,6 +114,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 self.calendarManager.selectedCalendar = calendar
                 if let airports = self.loadAirportList() {
                     self.savedEventCount = 0
+                    // 모든 스케줄에 대해 캘린더 이벤트 추가 (기존 이벤트 중복 체크 포함)
                     for (_, scheduleEntries) in self.schedules {
                         for entry in scheduleEntries {
                             self.addEventToCalendar(for: entry, airports: airports)
@@ -487,8 +499,34 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     self.totalHours = monthlyHours[majorityMonthKey] ?? ""
                 }
                 
+                // ★ 기존 스케줄과 새로 불러온 스케줄 비교 및 업데이트 ★
                 DispatchQueue.main.async {
-                    self.schedules.merge(extractedSchedules) { (_, new) in new }
+                    // extractedSchedules의 날짜별로 처리
+                    for (date, newEntries) in extractedSchedules {
+                        // 새 스케줄의 고유 ID 집합 (Date + Activity)
+                        let newUniqueIDs = Set(newEntries.map { self.generateUniqueID(for: $0) })
+                        if let existingEntries = self.schedules[date] {
+                            // 기존 스케줄 중, 새로 불러온 스케줄과 고유 ID가 일치하지 않는 항목은 변경되었으므로 삭제 처리
+                            for existing in existingEntries {
+                                let existingUniqueID = self.generateUniqueID(for: existing)
+                                if !newUniqueIDs.contains(existingUniqueID) {
+                                    // 캘린더 이벤트 삭제 (매핑을 이용)
+                                    if let eventID = self.scheduleEventMapping[existingUniqueID],
+                                       let event = self.eventStore.event(withIdentifier: eventID) {
+                                        do {
+                                            try self.eventStore.remove(event, span: .thisEvent)
+                                            self.debugLog("기존 캘린더 이벤트 삭제: \(event.title ?? "No Title")")
+                                            self.scheduleEventMapping.removeValue(forKey: existingUniqueID)
+                                        } catch {
+                                            self.debugLog("캘린더 이벤트 삭제 실패: \(error.localizedDescription)")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // 해당 날짜의 스케줄을 새로 업데이트 (기존 스케줄은 덮어씀)
+                        self.schedules[date] = newEntries
+                    }
                     self.saveSchedules()
                     self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
@@ -560,6 +598,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         var endDate: Date?
         var eventTimeZone: TimeZone = koreanTimeZone
         var noteText: String = ""
+        
+        // 새로 추가하는 스케줄의 고유 ID (Date와 Activity 조합)
+        let uniqueID = generateUniqueID(for: scheduleEntry)
         
         if workType == "FLY" || workType == "TVL" {
             // 비행 듀티 이벤트 처리
@@ -689,6 +730,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             if success {
                 self.savedEventCount += 1
                 self.debugLog("Calendar event saved successfully: \(event.title ?? "No Title")\nSaved Calendar: \(event.calendar?.title ?? "N/A")\nTOTAL EVENT NO: \(self.savedEventCount)")
+                // 이벤트 저장 성공 시, 고유 ID와 이벤트 식별자 매핑 업데이트
+                self.scheduleEventMapping[uniqueID] = event.eventIdentifier
             } else {
                 self.debugLog("Failed to save event: \(error?.localizedDescription ?? "UNKNOWN")")
             }
