@@ -249,7 +249,7 @@ struct NextFlightWidgetEntryView: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-            .padding(8)
+            .padding(2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // containerBackground API를 사용해 투명하게 처리
