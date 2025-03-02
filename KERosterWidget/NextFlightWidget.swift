@@ -54,7 +54,8 @@ struct NextFlightTimelineProvider: TimelineProvider {
         let now = Date()
         if let nextFlight = loadNextFlight() {
             let entry = nextFlight
-            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now.addingTimeInterval(300)
+            //업데이트 주기 1분으로 설정
+            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 1, to: now) ?? now.addingTimeInterval(60)
             let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
             completion(timeline)
         } else {
@@ -136,7 +137,7 @@ struct NextFlightWidgetEntryView: View {
     /// 날짜를 "EEEE, dd-MMM" 형식으로 포맷하는 함수
     func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, dd-MMM"
+        formatter.dateFormat = "EEE, YYYY-MM-dd"
         return formatter.string(from: date)
     }
     
@@ -239,7 +240,7 @@ struct NextFlightWidgetEntryView: View {
                             .font(timeLabelFont)
                             .foregroundColor(.gray)
                         Text(formatRemainingTime(entry.remainingTime))
-                            .font(timeValueFont)
+                            .font(timeLabelFont)
                             .bold()
                             .padding(4)
                             .background(Color.blue.opacity(0.2))
