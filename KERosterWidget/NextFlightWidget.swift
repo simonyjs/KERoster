@@ -54,7 +54,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
         let now = Date()
         if let nextFlight = loadNextFlight() {
             let entry = nextFlight
-            //업데이트 주기 1분으로 설정
+            // 업데이트 주기 1분으로 설정
             let nextUpdate = Calendar.current.date(byAdding: .minute, value: 1, to: now) ?? now.addingTimeInterval(60)
             let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
             completion(timeline)
@@ -134,7 +134,7 @@ struct NextFlightWidgetEntryView: View {
         }
     }
     
-    /// 날짜를 "EEEE, dd-MMM" 형식으로 포맷하는 함수
+    /// 날짜를 "EEE, YYYY-MM-dd" 형식으로 포맷하는 함수
     func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE, YYYY-MM-dd"
@@ -152,8 +152,16 @@ struct NextFlightWidgetEntryView: View {
         return .system(size: captionSize * multiplier)
     }
     
+    // 출발/도착 공항 폰트 (기존보다 1.2배 크게 조정)
     var mainTitleFont: Font {
-        widgetFamily == .systemSmall ? .headline : .title
+        let baseSize = UIFont.preferredFont(forTextStyle: .title1).pointSize
+        return .system(size: baseSize * 1.2, weight: .bold)
+    }
+    
+    // 출발/도착 시간 폰트: 기존 airportTimeFont의 크기를 절반으로 (baseSize * 1.2 / 3)
+    var airportTimeFont: Font {
+        let baseSize = UIFont.preferredFont(forTextStyle: .title1).pointSize
+        return .system(size: baseSize * 1.2 / 3)
     }
     
     var subTitleFont: Font {
@@ -174,53 +182,71 @@ struct NextFlightWidgetEntryView: View {
             Color.clear
                 .ignoresSafeArea()
             
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {  // 기존 4에서 0.5배로 2로 변경
                 // 날짜 표시 (다크/라이트 모드에 따라 색상 조절)
                 Text(formatDate(entry.departureDate))
                     .font(dateFont)
                     .bold()
                     .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 
                 if let item = entry.item, !item.isEmpty {
                     Text(item)
                         .font(itemFont)
                         .bold()
                         .foregroundColor(.blue)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
                 
-                HStack(spacing: 4) {
-                    VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 2) {  // 기존 4에서 0.5배로 2로 변경
+                    VStack(alignment: .leading, spacing: 1) {  // 기존 2에서 1로 변경
+                        // 출발 공항 텍스트 (mainTitleFont 적용)
                         Text(entry.departure)
                             .font(mainTitleFont)
                             .bold()
                             .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
+                        // 출발 시간 텍스트: airportTimeFont 적용 (현재 크기의 절반)
                         Text(entry.depStnTime ?? "--:--")
-                            .font(subTitleFont)
+                            .font(airportTimeFont)
                             .foregroundColor(.gray)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                     }
                     Spacer()
                     Image(systemName: "airplane")
                         .foregroundColor(.blue)
                         .font(widgetFamily == .systemSmall ? .caption : .title2)
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 1) {  // 기존 2에서 1로 변경
+                        // 도착 공항 텍스트 (mainTitleFont 적용)
                         Text(entry.arrival)
                             .font(mainTitleFont)
                             .bold()
                             .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
+                        // 도착 시간 텍스트: airportTimeFont 적용 (현재 크기의 절반)
                         Text(entry.arrStnTime ?? "--:--")
-                            .font(subTitleFont)
+                            .font(airportTimeFont)
                             .foregroundColor(.gray)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                     }
                 }
                 
                 // 하단: 좌측은 DutyReport 영역, 우측은 Time to Departure 영역을 양쪽으로 배분
                 HStack {
                     if let duty = entry.dutyReport, !duty.isEmpty {
-                        VStack(spacing: 2) {
+                        VStack(spacing: 1) {  // 기존 2에서 1로 변경
                             Text("Show Up")
                                 .font(timeLabelFont)
                                 .foregroundColor(.gray)
+                                .lineLimit(1)
+                                .minimumScaleFactor(1)
                             Text(duty)
                                 .font(timeLabelFont)
                                 .bold()
@@ -228,6 +254,8 @@ struct NextFlightWidgetEntryView: View {
                                 .background(Color.blue.opacity(0.2))
                                 .foregroundColor(colorScheme == .dark ? .white : .blue)
                                 .clipShape(Capsule())
+                                .lineLimit(1)
+                                .minimumScaleFactor(1)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
@@ -235,10 +263,12 @@ struct NextFlightWidgetEntryView: View {
                         Spacer().frame(maxWidth: .infinity)
                     }
                     
-                    VStack(spacing: 2) {
-                        Text("Time to Departure")
+                    VStack(spacing: 1) {  // 기존 2에서 1로 변경
+                        Text("Time to DEP")
                             .font(timeLabelFont)
                             .foregroundColor(.gray)
+                            .lineLimit(1)
+                            .minimumScaleFactor(1)
                         Text(formatRemainingTime(entry.remainingTime))
                             .font(timeLabelFont)
                             .bold()
@@ -246,15 +276,19 @@ struct NextFlightWidgetEntryView: View {
                             .background(Color.blue.opacity(0.2))
                             .foregroundColor(colorScheme == .dark ? .white : .blue)
                             .clipShape(Capsule())
+                            .lineLimit(1)
+                            .minimumScaleFactor(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-            .padding(2)
+            .padding(0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // containerBackground API를 사용해 투명하게 처리
         .containerBackground(.clear, for: .widget)
+        // 동적 폰트 크기 제한 (예: .medium으로 고정)
+        .environment(\.dynamicTypeSize, .medium)
     }
 }
 
