@@ -14,6 +14,16 @@
 		382093F62D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382093F52D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift */; };
 		384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */; };
 		3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */; };
+		3871E4BF2D73F49800850BB1 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3871E4BE2D73F49800850BB1 /* WidgetKit.framework */; };
+		3871E4C12D73F49800850BB1 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3871E4C02D73F49800850BB1 /* SwiftUI.framework */; };
+		3871E4C42D73F49800850BB1 /* KERosterWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4C32D73F49800850BB1 /* KERosterWidgetBundle.swift */; };
+		3871E4C62D73F49800850BB1 /* KERosterWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4C52D73F49800850BB1 /* KERosterWidgetLiveActivity.swift */; };
+		3871E4CA2D73F49800850BB1 /* AppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4C92D73F49800850BB1 /* AppIntent.swift */; };
+		3871E4CC2D73F49A00850BB1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3871E4CB2D73F49A00850BB1 /* Assets.xcassets */; };
+		3871E4D02D73F49A00850BB1 /* KERosterWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3871E4BC2D73F49800850BB1 /* KERosterWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3871E4D52D73F7DC00850BB1 /* KERosterWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4C72D73F49800850BB1 /* KERosterWidget.swift */; };
+		3871E4D72D73FAFE00850BB1 /* NextFlightWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4D62D73FAFE00850BB1 /* NextFlightWidget.swift */; };
+		3871E4D82D73FAFE00850BB1 /* NextFlightWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3871E4D62D73FAFE00850BB1 /* NextFlightWidget.swift */; };
 		3872B6042D65366F00154B50 /* ApList.json in Resources */ = {isa = PBXBuildFile; fileRef = 3872B6032D65366F00154B50 /* ApList.json */; };
 		3872B6062D670BD300154B50 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3872B6052D670BD300154B50 /* CalendarManager.swift */; };
 		38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */; };
@@ -32,6 +42,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3871E4CE2D73F49A00850BB1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 38E192AD2D4109B2006BDDDF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3871E4BB2D73F49800850BB1;
+			remoteInfo = KERosterWidgetExtension;
+		};
 		38E192CF2D4109B5006BDDDF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 38E192AD2D4109B2006BDDDF /* Project object */;
@@ -48,6 +65,20 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		3871E4D12D73F49B00850BB1 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3871E4D02D73F49A00850BB1 /* KERosterWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputViewController.swift; sourceTree = "<group>"; };
 		381027932D60DD0E00E67459 /* Airport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Airport.swift; sourceTree = "<group>"; };
@@ -56,6 +87,18 @@
 		382093F52D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputFormViewController.swift; sourceTree = "<group>"; };
 		384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewListViewController.swift; sourceTree = "<group>"; };
 		3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthlyCalendarViewController.swift; sourceTree = "<group>"; };
+		3871E4BC2D73F49800850BB1 /* KERosterWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KERosterWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3871E4BE2D73F49800850BB1 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		3871E4C02D73F49800850BB1 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		3871E4C32D73F49800850BB1 /* KERosterWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterWidgetBundle.swift; sourceTree = "<group>"; };
+		3871E4C52D73F49800850BB1 /* KERosterWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterWidgetLiveActivity.swift; sourceTree = "<group>"; };
+		3871E4C72D73F49800850BB1 /* KERosterWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterWidget.swift; sourceTree = "<group>"; };
+		3871E4C92D73F49800850BB1 /* AppIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntent.swift; sourceTree = "<group>"; };
+		3871E4CB2D73F49A00850BB1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3871E4CD2D73F49A00850BB1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3871E4D62D73FAFE00850BB1 /* NextFlightWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextFlightWidget.swift; sourceTree = "<group>"; };
+		3871E4D92D73FE9600850BB1 /* KERoster.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KERoster.entitlements; sourceTree = "<group>"; };
+		3871E4DA2D73FED800850BB1 /* KERosterWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KERosterWidgetExtension.entitlements; sourceTree = "<group>"; };
 		3872B6032D65366F00154B50 /* ApList.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = ApList.json; sourceTree = "<group>"; };
 		3872B6052D670BD300154B50 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
 		38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDetailViewController.swift; sourceTree = "<group>"; };
@@ -76,6 +119,15 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		3871E4B92D73F49800850BB1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3871E4C12D73F49800850BB1 /* SwiftUI.framework in Frameworks */,
+				3871E4BF2D73F49800850BB1 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		38E192B22D4109B2006BDDDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -102,12 +154,38 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3871E4BD2D73F49800850BB1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3871E4BE2D73F49800850BB1 /* WidgetKit.framework */,
+				3871E4C02D73F49800850BB1 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3871E4C22D73F49800850BB1 /* KERosterWidget */ = {
+			isa = PBXGroup;
+			children = (
+				3871E4C32D73F49800850BB1 /* KERosterWidgetBundle.swift */,
+				3871E4C52D73F49800850BB1 /* KERosterWidgetLiveActivity.swift */,
+				3871E4C72D73F49800850BB1 /* KERosterWidget.swift */,
+				3871E4C92D73F49800850BB1 /* AppIntent.swift */,
+				3871E4CB2D73F49A00850BB1 /* Assets.xcassets */,
+				3871E4CD2D73F49A00850BB1 /* Info.plist */,
+				3871E4D62D73FAFE00850BB1 /* NextFlightWidget.swift */,
+			);
+			path = KERosterWidget;
+			sourceTree = "<group>";
+		};
 		38E192AC2D4109B2006BDDDF = {
 			isa = PBXGroup;
 			children = (
+				3871E4DA2D73FED800850BB1 /* KERosterWidgetExtension.entitlements */,
 				38E192B72D4109B2006BDDDF /* KERoster */,
 				38E192D12D4109B5006BDDDF /* KERosterTests */,
 				38E192DB2D4109B5006BDDDF /* KERosterUITests */,
+				3871E4C22D73F49800850BB1 /* KERosterWidget */,
+				3871E4BD2D73F49800850BB1 /* Frameworks */,
 				38E192B62D4109B2006BDDDF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,6 +196,7 @@
 				38E192B52D4109B2006BDDDF /* KERoster.app */,
 				38E192CE2D4109B5006BDDDF /* KERosterTests.xctest */,
 				38E192D82D4109B5006BDDDF /* KERosterUITests.xctest */,
+				3871E4BC2D73F49800850BB1 /* KERosterWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +204,7 @@
 		38E192B72D4109B2006BDDDF /* KERoster */ = {
 			isa = PBXGroup;
 			children = (
+				3871E4D92D73FE9600850BB1 /* KERoster.entitlements */,
 				3872B6032D65366F00154B50 /* ApList.json */,
 				381027932D60DD0E00E67459 /* Airport.swift */,
 				38E192B82D4109B3006BDDDF /* AppDelegate.swift */,
@@ -167,6 +247,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3871E4BB2D73F49800850BB1 /* KERosterWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3871E4D42D73F49B00850BB1 /* Build configuration list for PBXNativeTarget "KERosterWidgetExtension" */;
+			buildPhases = (
+				3871E4B82D73F49800850BB1 /* Sources */,
+				3871E4B92D73F49800850BB1 /* Frameworks */,
+				3871E4BA2D73F49800850BB1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KERosterWidgetExtension;
+			productName = KERosterWidgetExtension;
+			productReference = 3871E4BC2D73F49800850BB1 /* KERosterWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		38E192B42D4109B2006BDDDF /* KERoster */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 38E192E22D4109B5006BDDDF /* Build configuration list for PBXNativeTarget "KERoster" */;
@@ -174,10 +271,12 @@
 				38E192B12D4109B2006BDDDF /* Sources */,
 				38E192B22D4109B2006BDDDF /* Frameworks */,
 				38E192B32D4109B2006BDDDF /* Resources */,
+				3871E4D12D73F49B00850BB1 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				3871E4CF2D73F49A00850BB1 /* PBXTargetDependency */,
 			);
 			name = KERoster;
 			packageProductDependencies = (
@@ -236,6 +335,9 @@
 				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
+					3871E4BB2D73F49800850BB1 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 					38E192B42D4109B2006BDDDF = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -268,11 +370,20 @@
 				38E192B42D4109B2006BDDDF /* KERoster */,
 				38E192CD2D4109B5006BDDDF /* KERosterTests */,
 				38E192D72D4109B5006BDDDF /* KERosterUITests */,
+				3871E4BB2D73F49800850BB1 /* KERosterWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		3871E4BA2D73F49800850BB1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3871E4CC2D73F49A00850BB1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		38E192B32D4109B2006BDDDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -301,6 +412,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3871E4B82D73F49800850BB1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3871E4CA2D73F49800850BB1 /* AppIntent.swift in Sources */,
+				3871E4C62D73F49800850BB1 /* KERosterWidgetLiveActivity.swift in Sources */,
+				3871E4D82D73FAFE00850BB1 /* NextFlightWidget.swift in Sources */,
+				3871E4D52D73F7DC00850BB1 /* KERosterWidget.swift in Sources */,
+				3871E4C42D73F49800850BB1 /* KERosterWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		38E192B12D4109B2006BDDDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -315,6 +438,7 @@
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
 				382093F42D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift in Sources */,
 				381027942D60DD0E00E67459 /* Airport.swift in Sources */,
+				3871E4D72D73FAFE00850BB1 /* NextFlightWidget.swift in Sources */,
 				382093F62D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift in Sources */,
 				3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */,
 				3872B6062D670BD300154B50 /* CalendarManager.swift in Sources */,
@@ -341,6 +465,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3871E4CF2D73F49A00850BB1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3871E4BB2D73F49800850BB1 /* KERosterWidgetExtension */;
+			targetProxy = 3871E4CE2D73F49A00850BB1 /* PBXContainerItemProxy */;
+		};
 		38E192D02D4109B5006BDDDF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 38E192B42D4109B2006BDDDF /* KERoster */;
@@ -373,6 +502,62 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		3871E4D22D73F49B00850BB1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 28;
+				DEVELOPMENT_TEAM = 94X9X7M6N2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KERosterWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3871E4D32D73F49B00850BB1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 28;
+				DEVELOPMENT_TEAM = 94X9X7M6N2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KERosterWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		38E192E02D4109B5006BDDDF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -495,10 +680,12 @@
 		38E192E32D4109B5006BDDDF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -525,10 +712,12 @@
 		38E192E42D4109B5006BDDDF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -631,6 +820,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3871E4D42D73F49B00850BB1 /* Build configuration list for PBXNativeTarget "KERosterWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3871E4D22D73F49B00850BB1 /* Debug */,
+				3871E4D32D73F49B00850BB1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		38E192B02D4109B2006BDDDF /* Build configuration list for PBXProject "KERoster" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

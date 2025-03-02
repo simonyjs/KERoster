@@ -227,18 +227,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
     func saveSchedules() {
-        do {
-            let data = try JSONEncoder().encode(schedules)
-            UserDefaults.standard.set(data, forKey: "schedules")
-            UserDefaults.standard.synchronize()
-            print("스케줄 저장 성공")
-        } catch {
-            print("스케줄 저장 실패: \(error)")
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+            do {
+                let data = try JSONEncoder().encode(schedules)
+                sharedDefaults.set(data, forKey: "schedules")
+                sharedDefaults.synchronize()
+                print("스케줄 저장 성공")
+            } catch {
+                print("스케줄 저장 실패: \(error)")
+            }
+        } else {
+            print("공유 UserDefaults 생성 실패")
         }
     }
-    
+
     func loadSchedules() {
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
                 debugLog("스케줄 불러오기 성공")
