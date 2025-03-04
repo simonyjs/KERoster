@@ -9,10 +9,10 @@ import WidgetKit
 import SwiftUI
 import UIKit
 
-// MARK: - NextFlightEntry 정의 (두 번째, 세 번째 항공편 정보를 위한 필드 추가)
+// MARK: - NextFlightEntry 정의 (이전, 현재, 다음 항공편 정보를 위한 필드)
 struct NextFlightEntry: TimelineEntry {
     let date: Date
-    // 첫 번째 항공편 정보
+    // 현재(가장 빠른) 항공편 정보
     let flightNumber: String
     let departure: String
     let arrival: String
@@ -23,23 +23,23 @@ struct NextFlightEntry: TimelineEntry {
     let item: String?
     let dutyReport: String?
     
-    // 두 번째 항공편 정보
-    let secondFlightNumber: String?
-    let secondDeparture: String?
-    let secondArrival: String?
-    let secondDepartureDate: Date?
-    let secondDepStnTime: String?
-    let secondArrStnTime: String?
-    let secondItem: String?
+    // 이전 항공편 정보 (과거 항공편)
+    let previousFlightNumber: String?
+    let previousDeparture: String?
+    let previousArrival: String?
+    let previousDepartureDate: Date?
+    let previousDepStnTime: String?
+    let previousArrStnTime: String?
+    let previousItem: String?
     
-    // 세 번째 항공편 정보
-    let thirdFlightNumber: String?
-    let thirdDeparture: String?
-    let thirdArrival: String?
-    let thirdDepartureDate: Date?
-    let thirdDepStnTime: String?
-    let thirdArrStnTime: String?
-    let thirdItem: String?
+    // 다음 항공편 정보 (현재 항공편 이후)
+    let nextFlightNumber: String?
+    let nextDeparture: String?
+    let nextArrival: String?
+    let nextDepartureDate: Date?
+    let nextDepStnTime: String?
+    let nextArrStnTime: String?
+    let nextItem: String?
 }
 
 // MARK: - 타임라인 프로바이더 정의
@@ -56,20 +56,20 @@ struct NextFlightTimelineProvider: TimelineProvider {
             arrStnTime: "08:00",
             item: "KE017",
             dutyReport: "Duty Report",
-            secondFlightNumber: "KE081",
-            secondDeparture: "ICN",
-            secondArrival: "JFK",
-            secondDepartureDate: Date().addingTimeInterval(86400 * 10 + 3600), // 10일 1시간 후
-            secondDepStnTime: "14:00",
-            secondArrStnTime: "20:00",
-            secondItem: "KE081",
-            thirdFlightNumber: "KE901",
-            thirdDeparture: "ICN",
-            thirdArrival: "CDG",
-            thirdDepartureDate: Date().addingTimeInterval(86400 * 11 + 1800), // 11일 0.5시간 후
-            thirdDepStnTime: "16:00",
-            thirdArrStnTime: "22:00",
-            thirdItem: "KE901"
+            previousFlightNumber: "KE001",
+            previousDeparture: "SFO",
+            previousArrival: "ICN",
+            previousDepartureDate: Date().addingTimeInterval(-3600),
+            previousDepStnTime: "10:00",
+            previousArrStnTime: "18:00",
+            previousItem: "KE001",
+            nextFlightNumber: "KE081",
+            nextDeparture: "ICN",
+            nextArrival: "JFK",
+            nextDepartureDate: Date().addingTimeInterval(86400 * 10 + 3600), // 10일 1시간 후
+            nextDepStnTime: "14:00",
+            nextArrStnTime: "20:00",
+            nextItem: "KE081"
         )
     }
     
@@ -79,7 +79,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<NextFlightEntry>) -> Void) {
         let now = Date()
-        if let entry = loadUpcomingFlights() {
+        if let entry = loadFlights() {
             let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now.addingTimeInterval(1800)
             let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
             completion(timeline)
@@ -90,8 +90,8 @@ struct NextFlightTimelineProvider: TimelineProvider {
         }
     }
     
-    // 스케줄 데이터를 불러와 가장 빠른 항공편, 두 번째 항공편, 세 번째 항공편 정보를 결합하여 엔트리를 생성
-    func loadUpcomingFlights() -> NextFlightEntry? {
+    // 스케줄 데이터를 불러와 이전, 현재, 다음 항공편 정보를 결합하여 엔트리를 생성
+    func loadFlights() -> NextFlightEntry? {
         guard let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
               let data = sharedDefaults.data(forKey: "schedules") else {
             print("스케줄 데이터가 저장되어 있지 않음")
@@ -104,7 +104,9 @@ struct NextFlightTimelineProvider: TimelineProvider {
             let formatter = DateFormatter()
             formatter.dateFormat = "dd-MMM-yyyy HH:mm"
             formatter.locale = Locale(identifier: "en_US_POSIX")
-            var candidates: [NextFlightEntry] = []
+            
+            var pastFlights: [NextFlightEntry] = []
+            var upcomingFlights: [NextFlightEntry] = []
             
             for (_, flights) in schedules {
                 for flight in flights {
@@ -115,71 +117,82 @@ struct NextFlightTimelineProvider: TimelineProvider {
                           let depDateStr = flight["DepDate"],
                           let departureDate = formatter.date(from: "\(depDateStr) \(depTimeStr)") else { continue }
                     
-                    if departureDate > now {
-                        let remaining = departureDate.timeIntervalSince(now)
-                        let entry = NextFlightEntry(
-                            date: now,
-                            flightNumber: flight["FlightNumber"] ?? flight["Item"] ?? "N/A",
-                            departure: flight["DepAp"] ?? "N/A",
-                            arrival: flight["ArrAp"] ?? "N/A",
-                            departureDate: departureDate,
-                            remainingTime: remaining,
-                            depStnTime: depTimeStr,
-                            arrStnTime: flight["ArrStnTime"],
-                            item: flight["Item"],
-                            dutyReport: flight["DutyReport"],
-                            secondFlightNumber: nil,
-                            secondDeparture: nil,
-                            secondArrival: nil,
-                            secondDepartureDate: nil,
-                            secondDepStnTime: nil,
-                            secondArrStnTime: nil,
-                            secondItem: nil,
-                            thirdFlightNumber: nil,
-                            thirdDeparture: nil,
-                            thirdArrival: nil,
-                            thirdDepartureDate: nil,
-                            thirdDepStnTime: nil,
-                            thirdArrStnTime: nil,
-                            thirdItem: nil
-                        )
-                        candidates.append(entry)
+                    let remaining = departureDate.timeIntervalSince(now)
+                    
+                    let entry = NextFlightEntry(
+                        date: now,
+                        flightNumber: flight["FlightNumber"] ?? flight["Item"] ?? "N/A",
+                        departure: flight["DepAp"] ?? "N/A",
+                        arrival: flight["ArrAp"] ?? "N/A",
+                        departureDate: departureDate,
+                        remainingTime: remaining,
+                        depStnTime: depTimeStr,
+                        arrStnTime: flight["ArrStnTime"],
+                        item: flight["Item"],
+                        dutyReport: flight["DutyReport"],
+                        previousFlightNumber: nil,
+                        previousDeparture: nil,
+                        previousArrival: nil,
+                        previousDepartureDate: nil,
+                        previousDepStnTime: nil,
+                        previousArrStnTime: nil,
+                        previousItem: nil,
+                        nextFlightNumber: nil,
+                        nextDeparture: nil,
+                        nextArrival: nil,
+                        nextDepartureDate: nil,
+                        nextDepStnTime: nil,
+                        nextArrStnTime: nil,
+                        nextItem: nil
+                    )
+                    
+                    if departureDate <= now {
+                        pastFlights.append(entry)
+                    } else {
+                        upcomingFlights.append(entry)
                     }
                 }
             }
-            let sortedCandidates = candidates.sorted(by: { $0.departureDate < $1.departureDate })
-            guard let firstFlight = sortedCandidates.first else {
+            // 정렬: 과거 항공편은 최신순, 이후 항공편은 가장 빠른 순으로
+            pastFlights.sort { $0.departureDate > $1.departureDate }
+            upcomingFlights.sort { $0.departureDate < $1.departureDate }
+            
+            guard let currentFlight = upcomingFlights.first else {
+                // 다가오는 항공편이 없다면 nil 반환
                 return nil
             }
-            let secondFlight = sortedCandidates.count > 1 ? sortedCandidates[1] : nil
-            let thirdFlight = sortedCandidates.count > 2 ? sortedCandidates[2] : nil
             
-            // 첫 번째, 두 번째, 세 번째 항공편 정보를 결합하여 엔트리 생성
+            // 이전 항공편: 과거 항공편 중 가장 최근의 것
+            let previousFlight = pastFlights.first
+            // 다음 항공편: 현재 항공편 이후의 항공편 중 첫번째
+            let nextFlight = upcomingFlights.count > 1 ? upcomingFlights[1] : nil
+            
+            // 현재 항공편 정보를 기본으로, 이전, 다음 항공편 정보를 채워서 엔트리 생성
             let combinedEntry = NextFlightEntry(
                 date: now,
-                flightNumber: firstFlight.flightNumber,
-                departure: firstFlight.departure,
-                arrival: firstFlight.arrival,
-                departureDate: firstFlight.departureDate,
-                remainingTime: firstFlight.remainingTime,
-                depStnTime: firstFlight.depStnTime,
-                arrStnTime: firstFlight.arrStnTime,
-                item: firstFlight.item,
-                dutyReport: firstFlight.dutyReport,
-                secondFlightNumber: secondFlight?.flightNumber,
-                secondDeparture: secondFlight?.departure,
-                secondArrival: secondFlight?.arrival,
-                secondDepartureDate: secondFlight?.departureDate,
-                secondDepStnTime: secondFlight?.depStnTime,
-                secondArrStnTime: secondFlight?.arrStnTime,
-                secondItem: secondFlight?.item,
-                thirdFlightNumber: thirdFlight?.flightNumber,
-                thirdDeparture: thirdFlight?.departure,
-                thirdArrival: thirdFlight?.arrival,
-                thirdDepartureDate: thirdFlight?.departureDate,
-                thirdDepStnTime: thirdFlight?.depStnTime,
-                thirdArrStnTime: thirdFlight?.arrStnTime,
-                thirdItem: thirdFlight?.item
+                flightNumber: currentFlight.flightNumber,
+                departure: currentFlight.departure,
+                arrival: currentFlight.arrival,
+                departureDate: currentFlight.departureDate,
+                remainingTime: currentFlight.remainingTime,
+                depStnTime: currentFlight.depStnTime,
+                arrStnTime: currentFlight.arrStnTime,
+                item: currentFlight.item,
+                dutyReport: currentFlight.dutyReport,
+                previousFlightNumber: previousFlight?.flightNumber,
+                previousDeparture: previousFlight?.departure,
+                previousArrival: previousFlight?.arrival,
+                previousDepartureDate: previousFlight?.departureDate,
+                previousDepStnTime: previousFlight?.depStnTime,
+                previousArrStnTime: previousFlight?.arrStnTime,
+                previousItem: previousFlight?.item,
+                nextFlightNumber: nextFlight?.flightNumber,
+                nextDeparture: nextFlight?.departure,
+                nextArrival: nextFlight?.arrival,
+                nextDepartureDate: nextFlight?.departureDate,
+                nextDepStnTime: nextFlight?.depStnTime,
+                nextArrStnTime: nextFlight?.arrStnTime,
+                nextItem: nextFlight?.item
             )
             
             return combinedEntry
@@ -278,7 +291,7 @@ struct NextFlightWidgetEntryView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 2) {
-                    // 상단 영역: 첫 번째 항공편 정보
+                    // 상단 영역: 현재(가장 빠른) 항공편 정보
                     if widgetFamily == .systemLarge {
                         Text(formatDate(entry.departureDate))
                             .font(.system(size: 40, weight: .bold))
@@ -348,7 +361,7 @@ struct NextFlightWidgetEntryView: View {
                                 Text(duty)
                                     .font(timeLabelFont)
                                     .bold()
-                                    .padding(4)
+                                    .padding(0)
                                     .background(Color.blue.opacity(0.2))
                                     .foregroundColor(colorScheme == .dark ? .white : .blue)
                                     .clipShape(Capsule())
@@ -367,7 +380,7 @@ struct NextFlightWidgetEntryView: View {
                             Text(formatRemainingTime(remaining))
                                 .font(timeLabelFont)
                                 .bold()
-                                .padding(4)
+                                .padding(0)
                                 .background(Color.blue.opacity(0.2))
                                 .foregroundColor(colorScheme == .dark ? .white : .blue)
                                 .clipShape(Capsule())
@@ -376,18 +389,21 @@ struct NextFlightWidgetEntryView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     
-                    // 하단 영역: systemLarge 위젯에서 두 번째와 세 번째 항공편 정보를 두 칼럼으로 표시
-                    if widgetFamily == .systemLarge && (entry.secondDepartureDate != nil || entry.thirdDepartureDate != nil) {
+                    // 하단 영역: systemLarge 위젯에서 이전 비행과 다음 비행 정보를 좌우로 표시
+                    if widgetFamily == .systemLarge && (entry.previousDepartureDate != nil || entry.nextDepartureDate != nil) {
                         Divider()
                         HStack {
-                            // 왼쪽 셀: 두 번째 항공편 정보
-                            if let secondDate = entry.secondDepartureDate {
+                            // 왼쪽 셀: 이전 비행 정보
+                            if let previousDate = entry.previousDepartureDate {
                                 VStack(spacing: 2) {
-                                    Text(formatDate(secondDate))
+                                    Text("Previous FLT")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(formatDate(previousDate))
                                         .font(.caption)
                                         .multilineTextAlignment(.center)
-                                    if let secondItem = entry.secondItem, !secondItem.isEmpty {
-                                        Text(secondItem)
+                                    if let previousItem = entry.previousItem, !previousItem.isEmpty {
+                                        Text(previousItem)
                                             .font(.caption)
                                             .bold()
                                             .foregroundColor(.blue)
@@ -395,11 +411,11 @@ struct NextFlightWidgetEntryView: View {
                                     }
                                     HStack {
                                         VStack(spacing: 1) {
-                                            Text(entry.secondDeparture ?? "N/A")
+                                            Text(entry.previousDeparture ?? "N/A")
                                                 .font(.headline)
                                                 .bold()
                                                 .multilineTextAlignment(.center)
-                                            Text(entry.secondDepStnTime ?? "--:--")
+                                            Text(entry.previousDepStnTime ?? "--:--")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .multilineTextAlignment(.center)
@@ -407,11 +423,11 @@ struct NextFlightWidgetEntryView: View {
                                         Image(systemName: "airplane")
                                             .foregroundColor(.blue)
                                         VStack(spacing: 1) {
-                                            Text(entry.secondArrival ?? "N/A")
+                                            Text(entry.previousArrival ?? "N/A")
                                                 .font(.headline)
                                                 .bold()
                                                 .multilineTextAlignment(.center)
-                                            Text(entry.secondArrStnTime ?? "--:--")
+                                            Text(entry.previousArrStnTime ?? "--:--")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .multilineTextAlignment(.center)
@@ -423,14 +439,17 @@ struct NextFlightWidgetEntryView: View {
                                 Spacer().frame(maxWidth: .infinity)
                             }
                             
-                            // 오른쪽 셀: 세 번째 항공편 정보
-                            if let thirdDate = entry.thirdDepartureDate {
+                            // 오른쪽 셀: 다음 비행 정보
+                            if let nextDate = entry.nextDepartureDate {
                                 VStack(spacing: 2) {
-                                    Text(formatDate(thirdDate))
+                                    Text("Next FLT")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(formatDate(nextDate))
                                         .font(.caption)
                                         .multilineTextAlignment(.center)
-                                    if let thirdItem = entry.thirdItem, !thirdItem.isEmpty {
-                                        Text(thirdItem)
+                                    if let nextItem = entry.nextItem, !nextItem.isEmpty {
+                                        Text(nextItem)
                                             .font(.caption)
                                             .bold()
                                             .foregroundColor(.blue)
@@ -438,11 +457,11 @@ struct NextFlightWidgetEntryView: View {
                                     }
                                     HStack {
                                         VStack(spacing: 1) {
-                                            Text(entry.thirdDeparture ?? "N/A")
+                                            Text(entry.nextDeparture ?? "N/A")
                                                 .font(.headline)
                                                 .bold()
                                                 .multilineTextAlignment(.center)
-                                            Text(entry.thirdDepStnTime ?? "--:--")
+                                            Text(entry.nextDepStnTime ?? "--:--")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .multilineTextAlignment(.center)
@@ -450,11 +469,11 @@ struct NextFlightWidgetEntryView: View {
                                         Image(systemName: "airplane")
                                             .foregroundColor(.blue)
                                         VStack(spacing: 1) {
-                                            Text(entry.thirdArrival ?? "N/A")
+                                            Text(entry.nextArrival ?? "N/A")
                                                 .font(.headline)
                                                 .bold()
                                                 .multilineTextAlignment(.center)
-                                            Text(entry.thirdArrStnTime ?? "--:--")
+                                            Text(entry.nextArrStnTime ?? "--:--")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .multilineTextAlignment(.center)
@@ -486,7 +505,7 @@ struct NextFlightWidget: Widget {
             NextFlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Next Flight")
-        .description("Displays upcoming flight details for FLY/TVL work types with real-time countdown. Large widget shows second and third flights side by side.")
+        .description("Displays current, previous and next flight details with real-time countdown. Large widget shows previous flight on the left and next flight on the right.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
