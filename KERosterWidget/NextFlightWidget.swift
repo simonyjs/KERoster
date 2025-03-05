@@ -236,7 +236,8 @@ struct NextFlightWidgetEntryView: View {
     
     // 수정된 폰트들
     var dateFont: Font {
-        widgetFamily == .systemSmall ? .caption2 : .caption.bold()
+        // 스몰, 미디엄에서는 동일한 폰트 사용
+        .caption.bold()
     }
     
     var itemFont: Font {
@@ -249,13 +250,13 @@ struct NextFlightWidgetEntryView: View {
         return .system(size: baseSize, weight: .bold)
     }
     
-    // 기존 airportTimeFont를 systemLarge일 경우 1.2배 크기로 줄임
+    // airportTimeFont: systemLarge와 달리 미디엄/스몰은 기본값 사용
     var airportTimeFont: Font {
         if widgetFamily == .systemLarge {
             let baseSize = UIFont.preferredFont(forTextStyle: .title1).pointSize * 1.2 * fontMultiplier * 1.2
             return .system(size: baseSize, weight: .bold)
         } else {
-            let baseSize = UIFont.preferredFont(forTextStyle: .title1).pointSize * 1.2 / 2 * fontMultiplier
+            let baseSize = UIFont.preferredFont(forTextStyle: .title1).pointSize * 0.6 * fontMultiplier
             return .system(size: baseSize, weight: .bold)
         }
     }
@@ -281,213 +282,438 @@ struct NextFlightWidgetEntryView: View {
     }
     
     var body: some View {
-        // TimelineView를 사용해 실시간 카운트다운 구현 (1초마다 업데이트)
         TimelineView(.periodic(from: Date(), by: 1)) { context in
             let now = context.date
             let remaining = entry.departureDate.timeIntervalSince(now)
             
             ZStack {
-                Color.clear
-                    .ignoresSafeArea()
+                Color.clear.ignoresSafeArea()
                 
-                VStack(spacing: 2) {
-                    // 상단 영역: 현재(가장 빠른) 항공편 정보
-                    if widgetFamily == .systemLarge {
+                if widgetFamily == .systemMedium {
+                    // 중간 위젯: 좌측은 스몰 위젯 모양, 우측은 Next FLT 정보
+                    HStack(spacing: 0) {
+                        // 좌측: 스몰 위젯과 동일한 상단 영역 ~ DutyReport/Time to DEP
+                        VStack(spacing: 2) {
+                            Text(formatDate(entry.departureDate))
+                                .font(dateFont)
+                                .bold()
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                            
+                            if let item = entry.item, !item.isEmpty {
+                                Text(item)
+                                    .font(itemFont)
+                                    .bold()
+                                    .foregroundColor(.blue)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
+                            
+                            HStack(spacing: 2) {
+                                VStack(alignment: .center, spacing: 1) {
+                                    Text(entry.departure)
+                                        .font(mainTitleFont)
+                                        .bold()
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.55)
+                                    Text(entry.depStnTime ?? "--:--")
+                                        .font(airportTimeFont)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                }
+                                Spacer()
+                                Image(systemName: "airplane")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+                                Spacer()
+                                VStack(alignment: .center, spacing: 1) {
+                                    Text(entry.arrival)
+                                        .font(mainTitleFont)
+                                        .bold()
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                    Text(entry.arrStnTime ?? "--:--")
+                                        .font(airportTimeFont)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                }
+                            }
+                            
+                            HStack {
+                                if let duty = entry.dutyReport, !duty.isEmpty {
+                                    VStack(spacing: 1) {
+                                        Text("Show Up")
+                                            .font(timeLabelFont)
+                                            .foregroundColor(.gray)
+                                            .lineLimit(1)
+                                        Text(duty)
+                                            .font(timeLabelFont)
+                                            .bold()
+                                            .padding(.horizontal, 8) // 좌우 패딩 추가
+                                            .background(Color.blue.opacity(0.2))
+                                            .foregroundColor(colorScheme == .dark ? .white : .blue)
+                                            .clipShape(Capsule())
+                                            .lineLimit(1)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    Spacer().frame(maxWidth: .infinity)
+                                }
+                                
+                                VStack(spacing: 1) {
+                                    Text("Time to DEP")
+                                        .font(timeLabelFont)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                    Text(formatRemainingTime(remaining))
+                                        .font(timeLabelFont)
+                                        .bold()
+                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .background(Color.blue.opacity(0.2))
+                                        .foregroundColor(colorScheme == .dark ? .white : .blue)
+                                        .clipShape(Capsule())
+                                        .lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        }
+                        .padding(0)
+                        .frame(maxWidth: .infinity)
+                        
+                        Divider()
+                        
+                        // 우측: Next FLT 정보
+                        VStack(spacing: 2) {
+                            if let nextDate = entry.nextDepartureDate {
+                                Text("Next FLT")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text(formatDate(nextDate))
+                                    .font(.caption)
+                                    .multilineTextAlignment(.center)
+                                if let nextItem = entry.nextItem, !nextItem.isEmpty {
+                                    Text(nextItem)
+                                        .font(.caption)
+                                        .bold()
+                                        .foregroundColor(.blue)
+                                        .multilineTextAlignment(.center)
+                                }
+                                HStack {
+                                    VStack(spacing: 1) {
+                                        Text(entry.nextDeparture ?? "N/A")
+                                            .font(.headline)
+                                            .bold()
+                                            .multilineTextAlignment(.center)
+                                        Text(entry.nextDepStnTime ?? "--:--")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    Image(systemName: "airplane")
+                                        .foregroundColor(.blue)
+                                    VStack(spacing: 1) {
+                                        Text(entry.nextArrival ?? "N/A")
+                                            .font(.headline)
+                                            .bold()
+                                            .multilineTextAlignment(.center)
+                                        Text(entry.nextArrStnTime ?? "--:--")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                }
+                            } else {
+                                Spacer()
+                            }
+                        }
+                        .padding(0)
+                        .frame(maxWidth: .infinity)
+                    }
+                } else if widgetFamily == .systemLarge {
+                    // 기존 systemLarge 모양 그대로
+                    VStack(spacing: 2) {
                         Text(formatDate(entry.departureDate))
                             .font(.system(size: 40, weight: .bold))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
-                    } else {
+                        
+                        if let item = entry.item, !item.isEmpty {
+                            Text(item)
+                                .font(itemFont)
+                                .bold()
+                                .foregroundColor(.blue)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                        }
+                        
+                        HStack(spacing: 2) {
+                            VStack(alignment: .center, spacing: 1) {
+                                Text(entry.departure)
+                                    .font(mainTitleFont)
+                                    .bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.55)
+                                Text(entry.depStnTime ?? "--:--")
+                                    .font(airportTimeFont)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
+                            Spacer()
+                            Image(systemName: "airplane")
+                                .foregroundColor(.blue)
+                                .font(.title2)
+                            Spacer()
+                            VStack(alignment: .center, spacing: 1) {
+                                Text(entry.arrival)
+                                    .font(mainTitleFont)
+                                    .bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                Text(entry.arrStnTime ?? "--:--")
+                                    .font(airportTimeFont)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
+                        }
+                        
+                        HStack {
+                            if let duty = entry.dutyReport, !duty.isEmpty {
+                                VStack(spacing: 1) {
+                                    Text("Show Up")
+                                        .font(timeLabelFont)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                    Text(duty)
+                                        .font(timeLabelFont)
+                                        .bold()
+                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .background(Color.blue.opacity(0.2))
+                                        .foregroundColor(colorScheme == .dark ? .white : .blue)
+                                        .clipShape(Capsule())
+                                        .lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                Spacer().frame(maxWidth: .infinity)
+                            }
+                            
+                            VStack(spacing: 1) {
+                                Text("Time to DEP")
+                                    .font(timeLabelFont)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                Text(formatRemainingTime(remaining))
+                                    .font(timeLabelFont)
+                                    .bold()
+                                    .padding(.horizontal, 8) // 좌우 패딩 추가
+                                    .background(Color.blue.opacity(0.2))
+                                    .foregroundColor(colorScheme == .dark ? .white : .blue)
+                                    .clipShape(Capsule())
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                        
+                        // 하단 영역: systemLarge에서 이전, 다음 항공편 정보를 좌우로 표시
+                        if entry.previousDepartureDate != nil || entry.nextDepartureDate != nil {
+                            Divider()
+                            HStack {
+                                if let previousDate = entry.previousDepartureDate {
+                                    VStack(spacing: 2) {
+                                        Text("Previous FLT")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(formatDate(previousDate))
+                                            .font(.caption)
+                                            .multilineTextAlignment(.center)
+                                        if let previousItem = entry.previousItem, !previousItem.isEmpty {
+                                            Text(previousItem)
+                                                .font(.caption)
+                                                .bold()
+                                                .foregroundColor(.blue)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        HStack {
+                                            VStack(spacing: 1) {
+                                                Text(entry.previousDeparture ?? "N/A")
+                                                    .font(.headline)
+                                                    .bold()
+                                                    .multilineTextAlignment(.center)
+                                                Text(entry.previousDepStnTime ?? "--:--")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            Image(systemName: "airplane")
+                                                .foregroundColor(.blue)
+                                            VStack(spacing: 1) {
+                                                Text(entry.previousArrival ?? "N/A")
+                                                    .font(.headline)
+                                                    .bold()
+                                                    .multilineTextAlignment(.center)
+                                                Text(entry.previousArrStnTime ?? "--:--")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                } else {
+                                    Spacer().frame(maxWidth: .infinity)
+                                }
+                                
+                                if let nextDate = entry.nextDepartureDate {
+                                    VStack(spacing: 2) {
+                                        Text("Next FLT")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(formatDate(nextDate))
+                                            .font(.caption)
+                                            .multilineTextAlignment(.center)
+                                        if let nextItem = entry.nextItem, !nextItem.isEmpty {
+                                            Text(nextItem)
+                                                .font(.caption)
+                                                .bold()
+                                                .foregroundColor(.blue)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        HStack {
+                                            VStack(spacing: 1) {
+                                                Text(entry.nextDeparture ?? "N/A")
+                                                    .font(.headline)
+                                                    .bold()
+                                                    .multilineTextAlignment(.center)
+                                                Text(entry.nextDepStnTime ?? "--:--")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            Image(systemName: "airplane")
+                                                .foregroundColor(.blue)
+                                            VStack(spacing: 1) {
+                                                Text(entry.nextArrival ?? "N/A")
+                                                    .font(.headline)
+                                                    .bold()
+                                                    .multilineTextAlignment(.center)
+                                                Text(entry.nextArrStnTime ?? "--:--")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                } else {
+                                    Spacer().frame(maxWidth: .infinity)
+                                }
+                            }
+                        }
+                    }
+                    .padding(0)
+                } else {
+                    // systemSmall: 기존 스몰 위젯 모양 그대로
+                    VStack(spacing: 2) {
                         Text(formatDate(entry.departureDate))
                             .font(dateFont)
                             .bold()
                             .foregroundColor(colorScheme == .dark ? .white : .black)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
-                    }
-                    
-                    if let item = entry.item, !item.isEmpty {
-                        Text(item)
-                            .font(itemFont)
-                            .bold()
-                            .foregroundColor(.blue)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                    }
-                    
-                    HStack(spacing: 2) {
-                        VStack(alignment: .center, spacing: 1) {
-                            Text(entry.departure)
-                                .font(mainTitleFont)
+                        
+                        if let item = entry.item, !item.isEmpty {
+                            Text(item)
+                                .font(itemFont)
                                 .bold()
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.55)
-                            Text(entry.depStnTime ?? "--:--")
-                                .font(airportTimeFont)
-                                .foregroundColor(.gray)
+                                .foregroundColor(.blue)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                         }
-                        Spacer()
-                        Image(systemName: "airplane")
-                            .foregroundColor(.blue)
-                            .font(widgetFamily == .systemSmall ? .caption : .title2)
-                        Spacer()
-                        VStack(alignment: .center, spacing: 1) {
-                            Text(entry.arrival)
-                                .font(mainTitleFont)
-                                .bold()
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.5)
-                            Text(entry.arrStnTime ?? "--:--")
-                                .font(airportTimeFont)
-                                .foregroundColor(.gray)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.5)
+                        
+                        HStack(spacing: 2) {
+                            VStack(alignment: .center, spacing: 1) {
+                                Text(entry.departure)
+                                    .font(mainTitleFont)
+                                    .bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.4)
+                                Text(entry.depStnTime ?? "--:--")
+                                    .font(airportTimeFont)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
+                            Spacer()
+                            Image(systemName: "airplane")
+                                .foregroundColor(.blue)
+                                .font(.title2)
+                            Spacer()
+                            VStack(alignment: .center, spacing: 1) {
+                                Text(entry.arrival)
+                                    .font(mainTitleFont)
+                                    .bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.4)
+                                Text(entry.arrStnTime ?? "--:--")
+                                    .font(airportTimeFont)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                            }
                         }
-                    }
-                    
-                    // 중간 영역: DutyReport 및 실시간 Time to DEP 표시
-                    HStack {
-                        if let duty = entry.dutyReport, !duty.isEmpty {
+                        
+                        HStack {
+                            if let duty = entry.dutyReport, !duty.isEmpty {
+                                VStack(spacing: 1) {
+                                    Text("Show Up")
+                                        .font(timeLabelFont)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                    Text(duty)
+                                        .font(timeLabelFont)
+                                        .bold()
+                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .background(Color.blue.opacity(0.2))
+                                        .foregroundColor(colorScheme == .dark ? .white : .blue)
+                                        .clipShape(Capsule())
+                                        .lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                Spacer().frame(maxWidth: .infinity)
+                            }
+                            
                             VStack(spacing: 1) {
-                                Text("Show Up")
+                                Text("Time to DEP")
                                     .font(timeLabelFont)
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
-                                Text(duty)
+                                Text(formatRemainingTime(remaining))
                                     .font(timeLabelFont)
                                     .bold()
-                                    .padding(0)
+                                    .padding(.horizontal, 8) // 좌우 패딩 추가
                                     .background(Color.blue.opacity(0.2))
                                     .foregroundColor(colorScheme == .dark ? .white : .blue)
                                     .clipShape(Capsule())
                                     .lineLimit(1)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            Spacer().frame(maxWidth: .infinity)
-                        }
-                        
-                        VStack(spacing: 1) {
-                            Text("Time to DEP")
-                                .font(timeLabelFont)
-                                .foregroundColor(.gray)
-                                .lineLimit(1)
-                            Text(formatRemainingTime(remaining))
-                                .font(timeLabelFont)
-                                .bold()
-                                .padding(0)
-                                .background(Color.blue.opacity(0.2))
-                                .foregroundColor(colorScheme == .dark ? .white : .blue)
-                                .clipShape(Capsule())
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    }
-                    
-                    // 하단 영역: systemLarge 위젯에서 이전 비행과 다음 비행 정보를 좌우로 표시
-                    if widgetFamily == .systemLarge && (entry.previousDepartureDate != nil || entry.nextDepartureDate != nil) {
-                        Divider()
-                        HStack {
-                            // 왼쪽 셀: 이전 비행 정보
-                            if let previousDate = entry.previousDepartureDate {
-                                VStack(spacing: 2) {
-                                    Text("Previous FLT")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Text(formatDate(previousDate))
-                                        .font(.caption)
-                                        .multilineTextAlignment(.center)
-                                    if let previousItem = entry.previousItem, !previousItem.isEmpty {
-                                        Text(previousItem)
-                                            .font(.caption)
-                                            .bold()
-                                            .foregroundColor(.blue)
-                                            .multilineTextAlignment(.center)
-                                    }
-                                    HStack {
-                                        VStack(spacing: 1) {
-                                            Text(entry.previousDeparture ?? "N/A")
-                                                .font(.headline)
-                                                .bold()
-                                                .multilineTextAlignment(.center)
-                                            Text(entry.previousDepStnTime ?? "--:--")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        Image(systemName: "airplane")
-                                            .foregroundColor(.blue)
-                                        VStack(spacing: 1) {
-                                            Text(entry.previousArrival ?? "N/A")
-                                                .font(.headline)
-                                                .bold()
-                                                .multilineTextAlignment(.center)
-                                            Text(entry.previousArrStnTime ?? "--:--")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            } else {
-                                Spacer().frame(maxWidth: .infinity)
-                            }
-                            
-                            // 오른쪽 셀: 다음 비행 정보
-                            if let nextDate = entry.nextDepartureDate {
-                                VStack(spacing: 2) {
-                                    Text("Next FLT")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Text(formatDate(nextDate))
-                                        .font(.caption)
-                                        .multilineTextAlignment(.center)
-                                    if let nextItem = entry.nextItem, !nextItem.isEmpty {
-                                        Text(nextItem)
-                                            .font(.caption)
-                                            .bold()
-                                            .foregroundColor(.blue)
-                                            .multilineTextAlignment(.center)
-                                    }
-                                    HStack {
-                                        VStack(spacing: 1) {
-                                            Text(entry.nextDeparture ?? "N/A")
-                                                .font(.headline)
-                                                .bold()
-                                                .multilineTextAlignment(.center)
-                                            Text(entry.nextDepStnTime ?? "--:--")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        Image(systemName: "airplane")
-                                            .foregroundColor(.blue)
-                                        VStack(spacing: 1) {
-                                            Text(entry.nextArrival ?? "N/A")
-                                                .font(.headline)
-                                                .bold()
-                                                .multilineTextAlignment(.center)
-                                            Text(entry.nextArrStnTime ?? "--:--")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            } else {
-                                Spacer().frame(maxWidth: .infinity)
-                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                     }
+                    .padding(0)
                 }
-                .padding(0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(.clear, for: .widget)
@@ -505,7 +731,7 @@ struct NextFlightWidget: Widget {
             NextFlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Next Flight")
-        .description("Displays current, previous and next flight details with real-time countdown. Large widget shows previous flight on the left and next flight on the right.")
+        .description("Displays current, previous and next flight details with real-time countdown. The medium widget is split horizontally with the left column showing the small widget view.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
