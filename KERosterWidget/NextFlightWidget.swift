@@ -484,15 +484,41 @@ struct NextFlightWidgetEntryView: View {
                             if let flights = entry.otherFlights, !flights.isEmpty {
                                 ForEach(flights.indices, id: \.self) { index in
                                     let flight = flights[index]
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(formatDate(flight.departureDate))
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                        Text(flight.detailText())
-                                            .font(.caption)
-                                            .bold()
-                                            .foregroundColor(.primary)
+                                    
+                                    // FLY/TVL 여부 판별
+                                    let isFlight = (flight.workType == "FLY" || flight.workType == "TVL")
+                                    
+                                    // 진한 색상 (바/글씨)와 연한 배경색 지정
+                                    let barColor: Color = isFlight ? .blue : .red
+                                    let backgroundColor: Color = barColor.opacity(0.2)
+                                    
+                                    HStack(spacing: 8) {
+                                        // 왼쪽 세로 바
+                                        Rectangle()
+                                            .fill(barColor)
+                                            .frame(width: 4)
+                                        
+                                        // 텍스트 영역
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(formatDate(flight.departureDate))
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            
+                                            Text(flight.detailText())
+                                                .font(.caption)
+                                                .bold()
+                                                .foregroundColor(barColor)
+                                        }
+                                        
+                                        // Spacer를 추가해 전체 행을 채움
+                                        Spacer()
                                     }
+                                    .padding(6)
+                                    .frame(maxWidth: .infinity)   // 전체 너비로 확장
+                                    .background(backgroundColor)  // 전체 행 배경 적용
+                                    .cornerRadius(6)
+                                    
+                                    // 항목 사이 Divider
                                     if index < flights.count - 1 {
                                         Divider()
                                     }
