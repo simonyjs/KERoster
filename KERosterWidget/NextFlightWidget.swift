@@ -92,13 +92,13 @@ struct NextFlightTimelineProvider: TimelineProvider {
             arrStnTime: "08:00",
             item: "KE017",
             dutyReport: "Duty Report",
-            previousFlightNumber: "KE001",
-            previousDeparture: "SFO",
+            previousFlightNumber: "KE902",
+            previousDeparture: "CDG",
             previousArrival: "ICN",
             previousDepartureDate: Date().addingTimeInterval(-3600),
             previousDepStnTime: "10:00",
             previousArrStnTime: "18:00",
-            previousItem: "KE001",
+            previousItem: "KE902",
             nextFlightNumber: "KE081",
             nextDeparture: "ICN",
             nextArrival: "JFK",
@@ -107,9 +107,9 @@ struct NextFlightTimelineProvider: TimelineProvider {
             nextArrStnTime: "20:00",
             nextItem: "KE081",
             otherFlights: [
-                FlightInfo(flightNumber: "KE101", departure: "ICN", arrival: "FRA", departureDate: Date().addingTimeInterval(3600), depStnTime: "09:00", arrStnTime: "15:00", item: "KE101", workType: nil, activity: "Activity A"),
-                FlightInfo(flightNumber: "KE202", departure: "FRA", arrival: "LHR", departureDate: Date().addingTimeInterval(7200), depStnTime: "11:00", arrStnTime: "12:00", item: "KE202", workType: "FLY", activity: nil),
-                FlightInfo(flightNumber: "KE303", departure: "LHR", arrival: "JFK", departureDate: Date().addingTimeInterval(10800), depStnTime: "13:00", arrStnTime: "16:00", item: "KE303", workType: nil, activity: "Activity B")
+                FlightInfo(flightNumber: "KE011", departure: "ICN", arrival: "LAX", departureDate: Date().addingTimeInterval(3600), depStnTime: "09:00", arrStnTime: "15:00", item: "KE011", workType: nil, activity: "Activity A"),
+                FlightInfo(flightNumber: "KE061", departure: "LAX", arrival: "GRU", departureDate: Date().addingTimeInterval(7200), depStnTime: "11:00", arrStnTime: "12:00", item: "KE061", workType: "FLY", activity: nil),
+                FlightInfo(flightNumber: "KE121", departure: "ICN", arrival: "SYD", departureDate: Date().addingTimeInterval(10800), depStnTime: "13:00", arrStnTime: "16:00", item: "KE121", workType: nil, activity: "Activity B")
             ]
         )
     }
