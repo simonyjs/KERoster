@@ -9,10 +9,43 @@ import WidgetKit
 import SwiftUI
 import UIKit
 
-// MARK: - NextFlightEntry 정의 (이전, 현재, 다음 항공편 정보를 위한 필드)
+// MARK: - FlightInfo: 저장된 스케줄 정보를 위한 구조체 (워크타입 무관)
+struct FlightInfo: Identifiable {
+    let id = UUID()
+    let flightNumber: String
+    let departure: String
+    let arrival: String
+    let departureDate: Date
+    let depStnTime: String?
+    let arrStnTime: String?
+    let item: String?
+    // 추가 필드
+    let workType: String?
+    let activity: String?
+    
+    // 미리 세부사항 문자열을 생성하는 함수
+    func detailText() -> String {
+        // workType이 있으면 "출발공항(출발시간)-도착공항(도착시간)" 형식으로 표시
+        if let wt = workType, !wt.isEmpty {
+            let depTime = depStnTime ?? "--:--"
+            let arrTime = arrStnTime ?? "--:--"
+            return "\(departure)(\(depTime))-\(arrival)(\(arrTime))"
+        } else {
+            // workType이 없으면 activity 값을 반환 (activity가 없으면 빈 문자열 반환)
+            if let act = activity, !act.isEmpty {
+                return act
+            } else {
+                return ""
+            }
+        }
+    }
+}
+
+
+// MARK: - NextFlightEntry 정의 (이전, 현재, 다음 항공편 정보를 위한 필드 및 미디움 오른쪽 셀에 사용할 otherFlights)
 struct NextFlightEntry: TimelineEntry {
     let date: Date
-    // 현재(가장 빠른) 항공편 정보
+    // 현재(가장 빠른) 항공편 정보 (기존 워크타입 FLY/TVL 필터 적용)
     let flightNumber: String
     let departure: String
     let arrival: String
@@ -40,6 +73,9 @@ struct NextFlightEntry: TimelineEntry {
     let nextDepStnTime: String?
     let nextArrStnTime: String?
     let nextItem: String?
+    
+    // 미디움 위젯 오른쪽 셀에 표시할, 저장되어 있는 모든 스케줄 중 오늘 이후 출발하는 상위 3개 항목 (워크타입 무관)
+    let otherFlights: [FlightInfo]?
 }
 
 // MARK: - 타임라인 프로바이더 정의
@@ -50,7 +86,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
             flightNumber: "KE017",
             departure: "ICN",
             arrival: "LAX",
-            departureDate: Date().addingTimeInterval(86400 * 9 + 7200), // 9일 2시간 후
+            departureDate: Date().addingTimeInterval(86400 * 9 + 7200),
             remainingTime: 86400 * 9 + 7200,
             depStnTime: "12:00",
             arrStnTime: "08:00",
@@ -66,10 +102,15 @@ struct NextFlightTimelineProvider: TimelineProvider {
             nextFlightNumber: "KE081",
             nextDeparture: "ICN",
             nextArrival: "JFK",
-            nextDepartureDate: Date().addingTimeInterval(86400 * 10 + 3600), // 10일 1시간 후
+            nextDepartureDate: Date().addingTimeInterval(86400 * 10 + 3600),
             nextDepStnTime: "14:00",
             nextArrStnTime: "20:00",
-            nextItem: "KE081"
+            nextItem: "KE081",
+            otherFlights: [
+                FlightInfo(flightNumber: "KE101", departure: "ICN", arrival: "FRA", departureDate: Date().addingTimeInterval(3600), depStnTime: "09:00", arrStnTime: "15:00", item: "KE101", workType: nil, activity: "Activity A"),
+                FlightInfo(flightNumber: "KE202", departure: "FRA", arrival: "LHR", departureDate: Date().addingTimeInterval(7200), depStnTime: "11:00", arrStnTime: "12:00", item: "KE202", workType: "FLY", activity: nil),
+                FlightInfo(flightNumber: "KE303", departure: "LHR", arrival: "JFK", departureDate: Date().addingTimeInterval(10800), depStnTime: "13:00", arrStnTime: "16:00", item: "KE303", workType: nil, activity: "Activity B")
+            ]
         )
     }
     
@@ -90,7 +131,52 @@ struct NextFlightTimelineProvider: TimelineProvider {
         }
     }
     
-    // 스케줄 데이터를 불러와 이전, 현재, 다음 항공편 정보를 결합하여 엔트리를 생성
+    // 모든 스케줄(워크타입 무관) 정보를 불러와 정렬된 FlightInfo 배열을 반환하는 함수 (이제 loadAllSKD())
+    func loadAllSKD() -> [FlightInfo] {
+        guard let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+              let data = sharedDefaults.data(forKey: "schedules") else {
+            print("스케줄 데이터가 저장되어 있지 않음")
+            return []
+        }
+        
+        do {
+            let schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "dd-MMM-yyyy HH:mm"
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            var allFlights: [FlightInfo] = []
+            
+            for (_, flights) in schedules {
+                for flight in flights {
+                    guard let depTimeStr = flight["DepStnTime"],
+                          let depDateStr = flight["DepDate"],
+                          let departureDate = formatter.date(from: "\(depDateStr) \(depTimeStr)") else { continue }
+                    
+                    let info = FlightInfo(
+                        flightNumber: flight["FlightNumber"] ?? flight["Item"] ?? "N/A",
+                        departure: flight["DepAp"] ?? "N/A",
+                        arrival: flight["ArrAp"] ?? "N/A",
+                        departureDate: departureDate,
+                        depStnTime: depTimeStr,
+                        arrStnTime: flight["ArrStnTime"],
+                        item: flight["Item"],
+                        workType: flight["WorkType"],
+                        activity: flight["Activity"]
+                    )
+                    allFlights.append(info)
+                }
+            }
+            // 출발시간 기준 오름차순 정렬
+            allFlights.sort { $0.departureDate < $1.departureDate }
+            return allFlights
+        } catch {
+            print("스케줄 데이터 디코딩 에러: \(error)")
+            return []
+        }
+    }
+    
+    // 기존 워크타입(Fly/TVL) 필터 적용 항공편과 함께,
+    // 저장되어 있는 모든 스케줄 중 오늘 이후 출발하는 상위 3개 항목을 otherFlights에 저장하여 엔트리를 생성
     func loadFlights() -> NextFlightEntry? {
         guard let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
               let data = sharedDefaults.data(forKey: "schedules") else {
@@ -108,6 +194,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
             var pastFlights: [NextFlightEntry] = []
             var upcomingFlights: [NextFlightEntry] = []
             
+            // 워크타입(Fly/TVL) 필터 적용 항공편 계산
             for (_, flights) in schedules {
                 for flight in flights {
                     guard let workType = flight["WorkType"],
@@ -143,7 +230,8 @@ struct NextFlightTimelineProvider: TimelineProvider {
                         nextDepartureDate: nil,
                         nextDepStnTime: nil,
                         nextArrStnTime: nil,
-                        nextItem: nil
+                        nextItem: nil,
+                        otherFlights: nil
                     )
                     
                     if departureDate <= now {
@@ -153,21 +241,22 @@ struct NextFlightTimelineProvider: TimelineProvider {
                     }
                 }
             }
-            // 정렬: 과거 항공편은 최신순, 이후 항공편은 가장 빠른 순으로
+            
             pastFlights.sort { $0.departureDate > $1.departureDate }
             upcomingFlights.sort { $0.departureDate < $1.departureDate }
             
             guard let currentFlight = upcomingFlights.first else {
-                // 다가오는 항공편이 없다면 nil 반환
                 return nil
             }
             
-            // 이전 항공편: 과거 항공편 중 가장 최근의 것
             let previousFlight = pastFlights.first
-            // 다음 항공편: 현재 항공편 이후의 항공편 중 첫번째
             let nextFlight = upcomingFlights.count > 1 ? upcomingFlights[1] : nil
             
-            // 현재 항공편 정보를 기본으로, 이전, 다음 항공편 정보를 채워서 엔트리 생성
+            // loadAllSKD() 함수를 사용하여 모든 스케줄 중 오늘 이후 출발하는 항목만 필터링하고,
+            // 상위 3개 항목 추출
+            let allFlights = loadAllSKD().filter { $0.departureDate > now }
+            let threeFlights = Array(allFlights.prefix(3))
+            
             let combinedEntry = NextFlightEntry(
                 date: now,
                 flightNumber: currentFlight.flightNumber,
@@ -192,7 +281,8 @@ struct NextFlightTimelineProvider: TimelineProvider {
                 nextDepartureDate: nextFlight?.departureDate,
                 nextDepStnTime: nextFlight?.depStnTime,
                 nextArrStnTime: nextFlight?.arrStnTime,
-                nextItem: nextFlight?.item
+                nextItem: nextFlight?.item,
+                otherFlights: threeFlights
             )
             
             return combinedEntry
@@ -236,7 +326,6 @@ struct NextFlightWidgetEntryView: View {
     
     // 수정된 폰트들
     var dateFont: Font {
-        // 스몰, 미디엄에서는 동일한 폰트 사용
         .caption.bold()
     }
     
@@ -290,9 +379,10 @@ struct NextFlightWidgetEntryView: View {
                 Color.clear.ignoresSafeArea()
                 
                 if widgetFamily == .systemMedium {
-                    // 중간 위젯: 좌측은 스몰 위젯 모양, 우측은 Next FLT 정보
+                    // 미디움 위젯: 왼쪽 셀은 기존 스몰 위젯 모양 그대로,
+                    // 오른쪽 셀은 loadAllSKD()로 가져온 오늘 이후 상위 3개 스케줄을 "날짜 + 줄바꿈 + 세부사항" 형태로 표시
                     HStack(spacing: 0) {
-                        // 좌측: 스몰 위젯과 동일한 상단 영역 ~ DutyReport/Time to DEP
+                        // 왼쪽: 기존 스몰 위젯 내용
                         VStack(spacing: 2) {
                             Text(formatDate(entry.departureDate))
                                 .font(dateFont)
@@ -354,7 +444,7 @@ struct NextFlightWidgetEntryView: View {
                                         Text(duty)
                                             .font(timeLabelFont)
                                             .bold()
-                                            .padding(.horizontal, 8) // 좌우 패딩 추가
+                                            .padding(.horizontal, 8)
                                             .background(Color.blue.opacity(0.2))
                                             .foregroundColor(colorScheme == .dark ? .white : .blue)
                                             .clipShape(Capsule())
@@ -373,7 +463,7 @@ struct NextFlightWidgetEntryView: View {
                                     Text(formatRemainingTime(remaining))
                                         .font(timeLabelFont)
                                         .bold()
-                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .padding(.horizontal, 8)
                                         .background(Color.blue.opacity(0.2))
                                         .foregroundColor(colorScheme == .dark ? .white : .blue)
                                         .clipShape(Capsule())
@@ -385,54 +475,35 @@ struct NextFlightWidgetEntryView: View {
                         .padding(0)
                         .frame(maxWidth: .infinity)
                         
+                        // Divider에 좌우 간격 추가
                         Divider()
+                            .padding(.horizontal, 8)
                         
-                        // 우측: Next FLT 정보
-                        VStack(spacing: 2) {
-                            if let nextDate = entry.nextDepartureDate {
-                                Text("Next FLT")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(formatDate(nextDate))
-                                    .font(.caption)
-                                    .multilineTextAlignment(.center)
-                                if let nextItem = entry.nextItem, !nextItem.isEmpty {
-                                    Text(nextItem)
-                                        .font(.caption)
-                                        .bold()
-                                        .foregroundColor(.blue)
-                                        .multilineTextAlignment(.center)
-                                }
-                                HStack {
-                                    VStack(spacing: 1) {
-                                        Text(entry.nextDeparture ?? "N/A")
-                                            .font(.headline)
-                                            .bold()
-                                            .multilineTextAlignment(.center)
-                                        Text(entry.nextDepStnTime ?? "--:--")
+                        // 오른쪽: 저장된 모든 스케줄 중 오늘 이후 상위 3개 항목 표시 (날짜 + 줄바꿈 + 세부사항)
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let flights = entry.otherFlights, !flights.isEmpty {
+                                ForEach(flights.indices, id: \.self) { index in
+                                    let flight = flights[index]
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(formatDate(flight.departureDate))
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(flight.detailText())
                                             .font(.caption)
-                                            .foregroundColor(.gray)
-                                            .multilineTextAlignment(.center)
+                                            .bold()
+                                            .foregroundColor(.primary)
                                     }
-                                    Image(systemName: "airplane")
-                                        .foregroundColor(.blue)
-                                    VStack(spacing: 1) {
-                                        Text(entry.nextArrival ?? "N/A")
-                                            .font(.headline)
-                                            .bold()
-                                            .multilineTextAlignment(.center)
-                                        Text(entry.nextArrStnTime ?? "--:--")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                            .multilineTextAlignment(.center)
+                                    if index < flights.count - 1 {
+                                        Divider()
                                     }
                                 }
                             } else {
-                                Spacer()
+                                Text("No Schedules")
+                                    .font(.caption)
                             }
                         }
                         .padding(0)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else if widgetFamily == .systemLarge {
                     // 기존 systemLarge 모양 그대로
@@ -496,7 +567,7 @@ struct NextFlightWidgetEntryView: View {
                                     Text(duty)
                                         .font(timeLabelFont)
                                         .bold()
-                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .padding(.horizontal, 8)
                                         .background(Color.blue.opacity(0.2))
                                         .foregroundColor(colorScheme == .dark ? .white : .blue)
                                         .clipShape(Capsule())
@@ -515,7 +586,7 @@ struct NextFlightWidgetEntryView: View {
                                 Text(formatRemainingTime(remaining))
                                     .font(timeLabelFont)
                                     .bold()
-                                    .padding(.horizontal, 8) // 좌우 패딩 추가
+                                    .padding(.horizontal, 8)
                                     .background(Color.blue.opacity(0.2))
                                     .foregroundColor(colorScheme == .dark ? .white : .blue)
                                     .clipShape(Capsule())
@@ -524,7 +595,6 @@ struct NextFlightWidgetEntryView: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         
-                        // 하단 영역: systemLarge에서 이전, 다음 항공편 정보를 좌우로 표시
                         if entry.previousDepartureDate != nil || entry.nextDepartureDate != nil {
                             Divider()
                             HStack {
@@ -622,7 +692,7 @@ struct NextFlightWidgetEntryView: View {
                     }
                     .padding(0)
                 } else {
-                    // systemSmall: 기존 스몰 위젯 모양 그대로
+                    // 스몰 위젯: 기존 모양 그대로
                     VStack(spacing: 2) {
                         Text(formatDate(entry.departureDate))
                             .font(dateFont)
@@ -684,7 +754,7 @@ struct NextFlightWidgetEntryView: View {
                                     Text(duty)
                                         .font(timeLabelFont)
                                         .bold()
-                                        .padding(.horizontal, 8) // 좌우 패딩 추가
+                                        .padding(.horizontal, 8)
                                         .background(Color.blue.opacity(0.2))
                                         .foregroundColor(colorScheme == .dark ? .white : .blue)
                                         .clipShape(Capsule())
@@ -703,7 +773,7 @@ struct NextFlightWidgetEntryView: View {
                                 Text(formatRemainingTime(remaining))
                                     .font(timeLabelFont)
                                     .bold()
-                                    .padding(.horizontal, 8) // 좌우 패딩 추가
+                                    .padding(.horizontal, 8)
                                     .background(Color.blue.opacity(0.2))
                                     .foregroundColor(colorScheme == .dark ? .white : .blue)
                                     .clipShape(Capsule())
@@ -731,7 +801,7 @@ struct NextFlightWidget: Widget {
             NextFlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Next Flight")
-        .description("Displays current, previous and next flight details with real-time countdown. The medium widget is split horizontally with the left column showing the small widget view.")
+        .description("Displays current, previous and next flight details with real-time countdown. The medium widget is split horizontally with the left column showing the small widget view and the right column showing 3 upcoming schedules (all work types) separated by dividers.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
