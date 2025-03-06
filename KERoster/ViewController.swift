@@ -114,10 +114,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 self.calendarManager.selectedCalendar = calendar
                 if let airports = self.loadAirportList() {
                     self.savedEventCount = 0
-                    // 모든 스케줄에 대해 캘린더 이벤트 추가 (기존 이벤트 중복 체크 포함)
+                    // 오늘 이후 스케줄만 캘린더 이벤트로 추가
                     for (_, scheduleEntries) in self.schedules {
                         for entry in scheduleEntries {
-                            self.addEventToCalendar(for: entry, airports: airports)
+                            if let startDate = self.eventStartDate(for: entry, airports: airports),
+                               startDate > Date() {
+                                self.addEventToCalendar(for: entry, airports: airports)
+                            } else {
+                                self.debugLog("스케줄이 오늘 이전이거나 시작 시간이 불명확하여 건너뜀: \(entry)")
+                            }
                         }
                     }
                     let calendarName = calendar.title
@@ -125,7 +130,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
             }
         }
-        
         let menu = UIMenu(title: "Select a task", children: [importAction, exportAction])
         navigationItem.rightBarButtonItem?.menu = menu
     }
@@ -543,6 +547,26 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     self.showAlert(title: "Import Fail", message: "Failed to Import schedule.(HTML parsing error)")
                 }
             }
+        }
+    }
+    
+    // MARK: - 헬퍼 함수: 스케줄의 시작 시간을 Date 객체로 반환 (FLY/TVL는 DepStnTime, 그 외는 DutyReport 사용)
+    func eventStartDate(for entry: [String: String], airports: [[String: Any]]) -> Date? {
+        let workType = entry["WorkType"] ?? ""
+        if workType == "FLY" || workType == "TVL" {
+            guard let depDateString = entry["DepDate"],
+                  let depStnTime = entry["DepStnTime"],
+                  let depAp = entry["DepAp"],
+                  let depTimeZone = timeZoneForAirport(iata: depAp, airports: airports)
+            else { return nil }
+            return dateFromLocal(dateString: depDateString, timeString: depStnTime, timeZone: depTimeZone)
+        } else {
+            guard let depDateString = entry["DepDate"],
+                  let dutyReport = entry["DutyReport"],
+                  let depAp = entry["DepAp"],
+                  let startTimeZone = timeZoneForAirport(iata: depAp, airports: airports)
+            else { return nil }
+            return dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: startTimeZone)
         }
     }
     
