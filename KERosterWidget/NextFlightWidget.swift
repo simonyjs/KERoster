@@ -22,6 +22,35 @@ struct FlightInfo: Identifiable {
     // 추가 필드
     let workType: String?
     let activity: String?
+    let dutyReport: String?
+    let dutyDebrief: String?
+    
+    // 커스텀 초기라이저: dutyReport와 dutyDebrief에 기본값 nil 할당
+    init(
+        flightNumber: String,
+        departure: String,
+        arrival: String,
+        departureDate: Date,
+        depStnTime: String?,
+        arrStnTime: String?,
+        item: String?,
+        workType: String?,
+        activity: String?,
+        dutyReport: String? = nil,
+        dutyDebrief: String? = nil
+    ) {
+        self.flightNumber = flightNumber
+        self.departure = departure
+        self.arrival = arrival
+        self.departureDate = departureDate
+        self.depStnTime = depStnTime
+        self.arrStnTime = arrStnTime
+        self.item = item
+        self.workType = workType
+        self.activity = activity
+        self.dutyReport = dutyReport
+        self.dutyDebrief = dutyDebrief
+    }
     
     // 미리 세부사항 문자열을 생성하는 함수
     func detailText() -> String {
@@ -31,15 +60,23 @@ struct FlightInfo: Identifiable {
             let arrTime = arrStnTime ?? "--:--"
             return "\(departure)(\(depTime))-\(arrival)(\(arrTime))"
         } else {
-            // workType이 없으면 activity 값을 반환 (activity가 없으면 빈 문자열 반환)
+            // workType이 없으면 activity 값이 있을 경우,
+            // dutyReport와 dutyDebrief 값이 있을 때만 "activity: dutyReport-dutyDebrief" 형식으로 표시
             if let act = activity, !act.isEmpty {
-                return act
+                if let dutyReport = dutyReport,
+                   let dutyDebrief = dutyDebrief,
+                   (dutyReport != "00:00" || dutyDebrief != "23:59") {
+                    return "\(act): \(dutyReport)-\(dutyDebrief)"
+                } else {
+                    return act
+                }
             } else {
                 return ""
             }
         }
     }
 }
+
 
 
 // MARK: - NextFlightEntry 정의
@@ -172,7 +209,9 @@ struct NextFlightTimelineProvider: TimelineProvider {
                         arrStnTime: flight["ArrStnTime"],
                         item: flight["Item"],
                         workType: flight["WorkType"],
-                        activity: flight["Activity"]
+                        activity: flight["Activity"],
+                        dutyReport: flight["DutyReport"],     // 전달 추가
+                        dutyDebrief: flight["DutyDebrief"]      // 전달 추가
                     )
                     allFlights.append(info)
                 }
@@ -185,6 +224,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
             return []
         }
     }
+
     
     // 워크타입(Fly/TVL) 필터 적용 항공편과 함께,
     // 저장되어 있는 모든 스케줄 중 오늘 이후 출발하는 상위 3개는 otherFlights, 최대 6개는 allOtherFlights로 전달
@@ -913,7 +953,7 @@ struct NextFlightWidgetEntryView: View {
                         Divider()
                             .padding(.horizontal, 8)
                         
-                        // 오른쪽: allOtherFlights 에서 최대 6개 항목 표시 (기존 코드 유지)
+                        // 초대형 위젯 오른쪽 리스트 (allOtherFlights) 표시 부분 수정
                         VStack(alignment: .leading, spacing: 4) {
                             if let flights = entry.allOtherFlights, !flights.isEmpty {
                                 ForEach(flights.indices, id: \.self) { index in
@@ -932,10 +972,18 @@ struct NextFlightWidgetEntryView: View {
                                                 .font(.caption2)
                                                 .foregroundColor(.secondary)
                                             
-                                            Text(flight.detailText())
-                                                .font(.caption)
-                                                .bold()
-                                                .foregroundColor(barColor)
+                                            // 워크타입이 "FLY" 또는 "TVL"이면 지정한 형식으로 표시
+                                            if isFlight {
+                                                Text("\(flight.item ?? ""): \(flight.departure)(\(flight.depStnTime ?? "--:--"))-\(flight.arrival)(\(flight.arrStnTime ?? "--:--"))")
+                                                    .font(.caption)
+                                                    .bold()
+                                                    .foregroundColor(barColor)
+                                            } else {
+                                                Text(flight.detailText())
+                                                    .font(.caption)
+                                                    .bold()
+                                                    .foregroundColor(barColor)
+                                            }
                                         }
                                         Spacer()
                                     }
