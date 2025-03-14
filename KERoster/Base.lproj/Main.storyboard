@@ -133,6 +133,21 @@
             </objects>
             <point key="canvasLocation" x="2682" y="-2"/>
         </scene>
+        <!--Zoomable Calendar Container View Controller-->
+        <scene sceneID="acu-L5-qci">
+            <objects>
+                <viewController storyboardIdentifier="ZoomableCalendarContainerViewController" id="nah-st-OG5" customClass="ZoomableCalendarContainerViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="7po-qK-RdH">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="NwP-xq-5j4"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="7mt-QQ-CRU" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="3480" y="6"/>
+        </scene>
         <!--Schedule Input Calendar View Controller-->
         <scene sceneID="6ny-o6-prL">
             <objects>

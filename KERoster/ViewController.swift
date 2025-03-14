@@ -164,7 +164,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @IBAction func CalendarButtonTapped(_ sender: UIBarButtonItem) {
         debugLog("CalendarButtonTapped 호출됨")
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let calendarVC = storyboard.instantiateViewController(withIdentifier: "MonthlyCalendarViewController") as? MonthlyCalendarViewController {
+        if let calendarVC = storyboard.instantiateViewController(withIdentifier: "ZoomableCalendarContainerViewController") as? ZoomableCalendarContainerViewController {
             calendarVC.schedules = schedules
             calendarVC.ownerInfo = self.ownerInfo
             calendarVC.totalHours = self.totalHours
