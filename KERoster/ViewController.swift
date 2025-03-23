@@ -64,6 +64,32 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         super.viewDidLoad()
         loadSchedules()
         
+        // Info.plist에서 버전과 빌드 정보 가져오기
+        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
+            let versionText = "Ver. \(version) Build \(build)"
+            
+            // 아이콘 이미지 뷰 생성
+            let iconImageView = UIImageView(image: UIImage(systemName: "lightbulb.min.badge.exclamationmark.fill"))
+            iconImageView.tintColor = .white
+            
+            // 버전 정보를 담은 라벨 생성
+            let versionLabel = UILabel()
+            versionLabel.text = versionText
+            versionLabel.font = UIFont.systemFont(ofSize: 12)
+            versionLabel.textColor = .white
+            
+            // 아이콘과 라벨을 수평으로 배치할 스택뷰 생성
+            let containerView = UIStackView(arrangedSubviews: [iconImageView, versionLabel])
+            containerView.axis = .horizontal
+            containerView.spacing = 4
+            containerView.alignment = .center
+            containerView.sizeToFit()
+            
+            // 네비게이션 바 왼쪽에 커스텀 뷰로 추가
+            navigationItem.leftBarButtonItem = UIBarButtonItem(customView: containerView)
+        }
+        
         self.eventStore = EKEventStore()
         self.calendarManager = CalendarManager(eventStore: self.eventStore)
         
