@@ -78,7 +78,6 @@ struct FlightInfo: Identifiable {
 }
 
 
-
 // MARK: - NextFlightEntry 정의
 /// (이전, 현재, 다음 항공편 정보와 미디움/초대형 위젯에서 사용할 추가 스케줄 정보를 포함)
 struct NextFlightEntry: TimelineEntry {
@@ -88,6 +87,7 @@ struct NextFlightEntry: TimelineEntry {
     let departure: String
     let arrival: String
     let departureDate: Date
+    let arrivalDate: Date?    // 추가: 도착시간 (UTC 기준)
     let remainingTime: TimeInterval
     let depStnTime: String?
     let arrStnTime: String?
@@ -118,6 +118,7 @@ struct NextFlightEntry: TimelineEntry {
     let allOtherFlights: [FlightInfo]?
 }
 
+
 // MARK: - 타임라인 프로바이더 정의
 struct NextFlightTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> NextFlightEntry {
@@ -127,6 +128,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
             departure: "ICN",
             arrival: "LAX",
             departureDate: Date().addingTimeInterval(86400 * 9 + 7200),
+            arrivalDate: Date().addingTimeInterval(86400 * 9 + 10800),
             remainingTime: 86400 * 9 + 7200,
             depStnTime: "12:00",
             arrStnTime: "08:00",
@@ -210,8 +212,8 @@ struct NextFlightTimelineProvider: TimelineProvider {
                         item: flight["Item"],
                         workType: flight["WorkType"],
                         activity: flight["Activity"],
-                        dutyReport: flight["DutyReport"],     // 전달 추가
-                        dutyDebrief: flight["DutyDebrief"]      // 전달 추가
+                        dutyReport: flight["DutyReport"],
+                        dutyDebrief: flight["DutyDebrief"]
                     )
                     allFlights.append(info)
                 }
@@ -224,7 +226,6 @@ struct NextFlightTimelineProvider: TimelineProvider {
             return []
         }
     }
-
     
     // 워크타입(Fly/TVL) 필터 적용 항공편과 함께,
     // 저장되어 있는 모든 스케줄 중 오늘 이후 출발하는 상위 3개는 otherFlights, 최대 6개는 allOtherFlights로 전달
@@ -238,9 +239,15 @@ struct NextFlightTimelineProvider: TimelineProvider {
         do {
             let schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             let now = Date()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "dd-MMM-yyyy HH:mm"
-            formatter.locale = Locale(identifier: "en_US_POSIX")
+            let depFormatter = DateFormatter()
+            depFormatter.dateFormat = "dd-MMM-yyyy HH:mm"
+            depFormatter.locale = Locale(identifier: "en_US_POSIX")
+            
+            // 도착시간(UTC) 포매터 설정
+            let arrUTCFormatter = DateFormatter()
+            arrUTCFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+            arrUTCFormatter.locale = Locale(identifier: "en_US_POSIX")
+            arrUTCFormatter.timeZone = TimeZone(abbreviation: "UTC")
             
             var pastFlights: [NextFlightEntry] = []
             var upcomingFlights: [NextFlightEntry] = []
@@ -253,8 +260,13 @@ struct NextFlightTimelineProvider: TimelineProvider {
                     
                     guard let depTimeStr = flight["DepStnTime"],
                           let depDateStr = flight["DepDate"],
-                          let departureDate = formatter.date(from: "\(depDateStr) \(depTimeStr)") else { continue }
+                          let departureDate = depFormatter.date(from: "\(depDateStr) \(depTimeStr)") else { continue }
                     
+                    // 도착시간(UTC) 파싱
+                    guard let arrUTCStr = flight["ArrStnTimeUTC"],
+                          let arrivalDate = arrUTCFormatter.date(from: arrUTCStr) else { continue }
+                    
+                    // 초기 remainingTime은 출발까지 남은 시간로 설정 (나중에 뷰에서 분기 처리)
                     let remaining = departureDate.timeIntervalSince(now)
                     
                     let entry = NextFlightEntry(
@@ -263,6 +275,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
                         departure: flight["DepAp"] ?? "N/A",
                         arrival: flight["ArrAp"] ?? "N/A",
                         departureDate: departureDate,
+                        arrivalDate: arrivalDate,
                         remainingTime: remaining,
                         depStnTime: depTimeStr,
                         arrStnTime: flight["ArrStnTime"],
@@ -286,7 +299,9 @@ struct NextFlightTimelineProvider: TimelineProvider {
                         allOtherFlights: nil
                     )
                     
-                    if departureDate <= now {
+                    // 기존에는 departureDate를 기준으로 판단했지만,
+                    // 여기서는 도착시간(UTC)이 현재보다 지난 경우 과거 항공편으로 분류합니다.
+                    if arrivalDate <= now {
                         pastFlights.append(entry)
                     } else {
                         upcomingFlights.append(entry)
@@ -304,7 +319,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
             let previousFlight = pastFlights.first
             let nextFlight = upcomingFlights.count > 1 ? upcomingFlights[1] : nil
             
-            // loadAllSKD()로 오늘 이후 모든 스케줄을 가져와
+            // loadAllSKD()로 오늘 이후 모든 스케줄을 가져와 추가 스케줄 리스트 구성
             let allFlights = loadAllSKD().filter { $0.departureDate > now }
             let threeFlights = Array(allFlights.prefix(3))
             let sixFlights = Array(allFlights.prefix(6))
@@ -315,6 +330,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
                 departure: currentFlight.departure,
                 arrival: currentFlight.arrival,
                 departureDate: currentFlight.departureDate,
+                arrivalDate: currentFlight.arrivalDate,
                 remainingTime: currentFlight.remainingTime,
                 depStnTime: currentFlight.depStnTime,
                 arrStnTime: currentFlight.arrStnTime,
@@ -345,6 +361,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
         }
     }
 }
+
 
 // MARK: - 위젯 엔트리 뷰 정의
 struct NextFlightWidgetEntryView: View {
@@ -426,7 +443,11 @@ struct NextFlightWidgetEntryView: View {
     var body: some View {
         TimelineView(.periodic(from: Date(), by: 1)) { context in
             let now = context.date
-            let remaining = entry.departureDate.timeIntervalSince(now)
+            
+            // 현재 시간이 출발시간 이전이면 DEP, 아니라면 ARR 기준으로 남은 시간 계산
+            let isBeforeDeparture = now < entry.departureDate
+            let remaining: TimeInterval = isBeforeDeparture ? entry.departureDate.timeIntervalSince(now) : (entry.arrivalDate?.timeIntervalSince(now) ?? 0)
+            let timeLabelText = isBeforeDeparture ? "Time to DEP" : "Time to ARR"
             
             ZStack {
                 Color.clear.ignoresSafeArea()
@@ -507,7 +528,7 @@ struct NextFlightWidgetEntryView: View {
                                 }
                                 
                                 VStack(spacing: 1) {
-                                    Text("Time to DEP")
+                                    Text(timeLabelText)
                                         .font(timeLabelFont)
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
@@ -645,7 +666,7 @@ struct NextFlightWidgetEntryView: View {
                             }
                             
                             VStack(spacing: 1) {
-                                Text("Time to DEP")
+                                Text(timeLabelText)
                                     .font(timeLabelFont)
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
@@ -758,7 +779,7 @@ struct NextFlightWidgetEntryView: View {
                     }
                     .padding(0)
                 } else if widgetFamily == .systemExtraLarge {
-                    // 초대형 위젯: 왼쪽은 라지 위젯과 동일, 오른쪽은 최대 6개의 추가 스케줄을 표시
+                    // 초대형 위젯: 왼쪽은 라지 위젯과 동일, 오른쪽은 최대 6개의 추가 스케줄 표시
                     HStack(spacing: 0) {
                         // 왼쪽: 라지 위젯 레이아웃 (수정됨)
                         VStack(spacing: 2) {
@@ -778,7 +799,6 @@ struct NextFlightWidgetEntryView: View {
                             }
                             
                             HStack(spacing: 2) {
-                                // 출발공항과 출발시간에 동일한 폰트(mainTitleFont) 적용
                                 VStack(alignment: .center, spacing: 1) {
                                     Text(entry.departure)
                                         .font(mainTitleFont)
@@ -787,7 +807,7 @@ struct NextFlightWidgetEntryView: View {
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.55)
                                     Text(entry.depStnTime ?? "--:--")
-                                        .font(mainTitleFont)  // 동일한 폰트로 설정
+                                        .font(mainTitleFont)
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)
@@ -797,7 +817,6 @@ struct NextFlightWidgetEntryView: View {
                                     .foregroundColor(.blue)
                                     .font(.title2)
                                 Spacer()
-                                // 도착공항과 도착시간에도 동일한 폰트(mainTitleFont) 적용
                                 VStack(alignment: .center, spacing: 1) {
                                     Text(entry.arrival)
                                         .font(mainTitleFont)
@@ -806,14 +825,13 @@ struct NextFlightWidgetEntryView: View {
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)
                                     Text(entry.arrStnTime ?? "--:--")
-                                        .font(mainTitleFont)  // 동일하게 수정
+                                        .font(mainTitleFont)
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)
                                 }
                             }
                             
-                            // 나머지 부분은 그대로 유지
                             HStack {
                                 if let duty = entry.dutyReport, !duty.isEmpty {
                                     VStack(spacing: 1) {
@@ -836,7 +854,7 @@ struct NextFlightWidgetEntryView: View {
                                 }
                                 
                                 VStack(spacing: 1) {
-                                    Text("Time to DEP")
+                                    Text(timeLabelText)
                                         .font(timeLabelFont)
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
@@ -972,7 +990,6 @@ struct NextFlightWidgetEntryView: View {
                                                 .font(.caption2)
                                                 .foregroundColor(.secondary)
                                             
-                                            // 워크타입이 "FLY" 또는 "TVL"이면 지정한 형식으로 표시
                                             if isFlight {
                                                 Text("\(flight.item ?? ""): \(flight.departure)(\(flight.depStnTime ?? "--:--"))-\(flight.arrival)(\(flight.arrStnTime ?? "--:--"))")
                                                     .font(.caption)
@@ -1004,7 +1021,6 @@ struct NextFlightWidgetEntryView: View {
                         .padding(0)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
                 } else {
                     // 스몰 위젯: 기존 스몰 위젯 레이아웃
                     VStack(spacing: 2) {
@@ -1080,7 +1096,7 @@ struct NextFlightWidgetEntryView: View {
                             }
                             
                             VStack(spacing: 1) {
-                                Text("Time to DEP")
+                                Text(timeLabelText)
                                     .font(timeLabelFont)
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
@@ -1105,6 +1121,7 @@ struct NextFlightWidgetEntryView: View {
         }
     }
 }
+
 
 // MARK: - 위젯 정의
 struct NextFlightWidget: Widget {
