@@ -171,7 +171,7 @@ struct NextFlightTimelineProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<NextFlightEntry>) -> Void) {
         let now = Date()
         if let entry = loadFlights() {
-            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now.addingTimeInterval(1800)
+            let nextUpdate = Calendar.current.date(byAdding: .second, value: 1, to: now) ?? now.addingTimeInterval(1800)
             let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
             completion(timeline)
         } else {
