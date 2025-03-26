@@ -1,4 +1,3 @@
-//
 //  ViewController.swift
 //  KERoster
 //
@@ -525,20 +524,36 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     return
                 }
                 
-                if let maxEntry = depMonthCount.max(by: { $0.value < $1.value }) {
-                    let majorityMonthKey = maxEntry.key
-                    self.debugLog("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
-                    var monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
-                    monthlyHours[majorityMonthKey] = self.totalHours
-                    UserDefaults.standard.set(monthlyHours, forKey: self.totalHoursByMonthUserDefaultsKey)
-                    self.totalHours = monthlyHours[majorityMonthKey] ?? ""
-                }
-                
                 // ★ 덮어쓰기 방식: 기존 스케줄 데이터를 임포트된 데이터에 해당하는 날짜만 업데이트 (다른 달의 데이터는 그대로 보존) ★
                 DispatchQueue.main.async {
+                    // ★ 해당 월의 기존 스케줄 삭제 코드 삽입 시작 ★
+                    if let maxEntry = depMonthCount.max(by: { $0.value < $1.value }) {
+                        let majorityMonthKey = maxEntry.key
+                        self.debugLog("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
+                        var monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
+                        monthlyHours[majorityMonthKey] = self.totalHours
+                        UserDefaults.standard.set(monthlyHours, forKey: self.totalHoursByMonthUserDefaultsKey)
+                        self.totalHours = monthlyHours[majorityMonthKey] ?? ""
+                        
+                        let dateFormatterForKey = DateFormatter()
+                        dateFormatterForKey.dateFormat = "dd-MMM-yyyy"
+                        let keysToRemove = self.schedules.keys.filter { key in
+                            if let dateObj = dateFormatterForKey.date(from: key) {
+                                return self.formattedMonth(for: dateObj) == majorityMonthKey
+                            }
+                            return false
+                        }
+                        for key in keysToRemove {
+                            self.schedules.removeValue(forKey: key)
+                        }
+                    }
+                    // ★ 해당 월의 기존 스케줄 삭제 코드 삽입 끝 ★
+                    
+                    // 새로 파싱된 스케줄 데이터 병합
                     for (date, newEntries) in extractedSchedules {
                         self.schedules[date] = newEntries
                     }
+                    
                     self.saveSchedules()
                     self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
