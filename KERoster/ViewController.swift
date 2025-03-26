@@ -534,32 +534,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     self.totalHours = monthlyHours[majorityMonthKey] ?? ""
                 }
                 
-                // ★ 기존 스케줄과 새로 불러온 스케줄 비교 및 업데이트 ★
+                // ★ 덮어쓰기 방식: 기존 스케줄 데이터를 임포트된 데이터에 해당하는 날짜만 업데이트 (다른 달의 데이터는 그대로 보존) ★
                 DispatchQueue.main.async {
-                    // extractedSchedules의 날짜별로 처리
                     for (date, newEntries) in extractedSchedules {
-                        // 새 스케줄의 고유 ID 집합 (Date + Activity)
-                        let newUniqueIDs = Set(newEntries.map { self.generateUniqueID(for: $0) })
-                        if let existingEntries = self.schedules[date] {
-                            // 기존 스케줄 중, 새로 불러온 스케줄과 고유 ID가 일치하지 않는 항목은 변경되었으므로 삭제 처리
-                            for existing in existingEntries {
-                                let existingUniqueID = self.generateUniqueID(for: existing)
-                                if !newUniqueIDs.contains(existingUniqueID) {
-                                    // 캘린더 이벤트 삭제 (매핑을 이용)
-                                    if let eventID = self.scheduleEventMapping[existingUniqueID],
-                                       let event = self.eventStore.event(withIdentifier: eventID) {
-                                        do {
-                                            try self.eventStore.remove(event, span: .thisEvent)
-                                            self.debugLog("기존 캘린더 이벤트 삭제: \(event.title ?? "No Title")")
-                                            self.scheduleEventMapping.removeValue(forKey: existingUniqueID)
-                                        } catch {
-                                            self.debugLog("캘린더 이벤트 삭제 실패: \(error.localizedDescription)")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // 해당 날짜의 스케줄을 새로 업데이트 (기존 스케줄은 덮어씀)
                         self.schedules[date] = newEntries
                     }
                     self.saveSchedules()
