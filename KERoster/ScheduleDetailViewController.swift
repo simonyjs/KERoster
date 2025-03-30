@@ -864,9 +864,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }
         
         do {
-            let data = try JSONEncoder().encode(globalSchedules)
+            let encodedData = try JSONEncoder().encode(globalSchedules)
             if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
-                sharedDefaults.set(data, forKey: schedulesUserDefaultsKey)
+                sharedDefaults.set(encodedData, forKey: schedulesUserDefaultsKey)
                 sharedDefaults.synchronize()
             }
             print("글로벌 스케줄 저장 성공")
@@ -891,7 +891,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     // MARK: - 콘솔에 스케줄 출력 함수
     func printSchedulesToConsole() {
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey),
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey),
            let globalSchedules = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
             print("----- 저장된 스케줄 출력 -----")
             for (date, entries) in globalSchedules {
@@ -905,7 +906,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             print("글로벌 스케줄 데이터가 없습니다.")
         }
     }
-    
+
     // MARK: - 오늘(또는 가장 가까운) 스케줄 인덱스 찾기
     /// 스케줄 리스트를 순회하여 오늘 날짜와 동일한 스케줄이 있다면 해당 인덱스를 반환합니다.
     /// 만약 오늘 날짜 스케줄이 없다면, 오늘 이후의 첫 번째 스케줄을 반환하고,
