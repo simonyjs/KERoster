@@ -240,7 +240,8 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     }
     
     func loadSchedules() {
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
                 print("스케줄 로드 성공")

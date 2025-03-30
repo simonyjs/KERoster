@@ -357,13 +357,14 @@ class ScheduleInputViewController: UIViewController, UITextFieldDelegate {
             }
         }
         
-        // ★ 스케줄 저장 로직 ★
+        // 스케줄 저장 로직: 기존 저장된 스케줄 불러오기
         var savedSchedules = [String: [[String: String]]]()
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 savedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             } catch {
-                print("스케줄 로드 실패: \(error)")
+                print("Failed to load schedules: \(error)")
             }
         }
         if let depDateKey = schedule["DepDate"] {
@@ -371,7 +372,10 @@ class ScheduleInputViewController: UIViewController, UITextFieldDelegate {
         }
         do {
             let encodedData = try JSONEncoder().encode(savedSchedules)
-            UserDefaults.standard.set(encodedData, forKey: schedulesUserDefaultsKey)
+            if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+                sharedDefaults.set(encodedData, forKey: schedulesUserDefaultsKey)
+                sharedDefaults.synchronize()
+            }
             print("Saved schedule: \(savedSchedules)")
         } catch {
             print("스케줄 저장 실패: \(error)")

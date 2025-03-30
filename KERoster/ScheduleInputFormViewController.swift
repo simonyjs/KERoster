@@ -383,7 +383,7 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         
         // 스케줄 저장 로직: UserDefaults에 저장
         var savedSchedules = [String: [[String: String]]]()
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 savedSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             } catch {
@@ -395,10 +395,11 @@ class ScheduleInputFormViewController: UIViewController, UITextFieldDelegate {
         }
         do {
             let encodedData = try JSONEncoder().encode(savedSchedules)
-            UserDefaults.standard.set(encodedData, forKey: schedulesUserDefaultsKey)
-            print("Saved schedule: \(savedSchedules)")
-        } catch {
-            print("Failed to save schedule: \(error)")
+            if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {sharedDefaults.set(encodedData, forKey: schedulesUserDefaultsKey)
+                sharedDefaults.synchronize()
+            }
+            print("Saved schedule: (savedSchedules)")
+        } catch { print("스케줄 저장 실패: (error)")
         }
         
         let alert = UIAlertController(title: "Success", message: "Schedule saved successfully.", preferredStyle: .alert)

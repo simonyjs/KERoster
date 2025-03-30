@@ -237,7 +237,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     
     /// UserDefaults에 저장된 schedules 데이터를 불러옵니다.
     private func loadSchedules() {
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
                 print("영구 저장소에서 스케줄 데이터를 불러왔습니다.")

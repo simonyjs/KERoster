@@ -150,7 +150,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
 
     // MARK: - 스케줄 불러오기
     func loadSchedules() {
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
                 print("스케줄 불러오기 성공")

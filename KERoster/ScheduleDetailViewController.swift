@@ -787,7 +787,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let deleteAction = UIContextualAction(style: .destructive, title: "삭제") { [weak self] (_, _, completionHandler) in
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (_, _, completionHandler) in
             guard let self = self else { return }
             self.scheduleDetailsList.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
@@ -815,7 +815,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         guard !selectedDate.isEmpty else { return }
         
         var globalSchedules: [String: [[String: String]]] = [:]
-        if let data = UserDefaults.standard.data(forKey: schedulesUserDefaultsKey) {
+        if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+           let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 globalSchedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
             } catch {
@@ -864,12 +865,16 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         do {
             let data = try JSONEncoder().encode(globalSchedules)
-            UserDefaults.standard.set(data, forKey: schedulesUserDefaultsKey)
+            if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+                sharedDefaults.set(data, forKey: schedulesUserDefaultsKey)
+                sharedDefaults.synchronize()
+            }
             print("글로벌 스케줄 저장 성공")
         } catch {
             print("글로벌 스케줄 저장 실패: \(error)")
         }
     }
+
     
     // MARK: - (Optional) 왼쪽 설명 레이블 생성 함수
     func createLeftLabel(text: String) -> UIView {
