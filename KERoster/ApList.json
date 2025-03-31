@@ -1407,6 +1407,13 @@
       "name": "Mariscal Sucre International Airport"
   },
   {
+      "IATA": "UKB",
+      "ICAO": "RJBE",
+      "utc_offset": 9.0,
+      "dst": false,
+      "name": "Kobe Airport"
+  },
+  {
       "IATA": "ULN",
       "ICAO": "ZMUB",
       "utc_offset": 8.0,
