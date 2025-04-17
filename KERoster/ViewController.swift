@@ -758,7 +758,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         
         let event = EKEvent(eventStore: self.eventStore)
         event.title = eventTitle
-        event.notes = noteText
+        
+        // “KEROSTER” 노트에 줄바꿈 추가.
+        event.notes = "KEROSTER\n" + noteText
+        
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
