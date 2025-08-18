@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -70,14 +70,12 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		3871E4D12D73F49B00850BB1 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 13;
+			dstSubfolder = PlugIns;
 			files = (
 				3871E4D02D73F49A00850BB1 /* KERosterWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -125,35 +123,27 @@
 /* Begin PBXFrameworksBuildPhase section */
 		3871E4B92D73F49800850BB1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				3871E4C12D73F49800850BB1 /* SwiftUI.framework in Frameworks */,
 				3871E4BF2D73F49800850BB1 /* WidgetKit.framework in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192B22D4109B2006BDDDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				38E192ED2D4132EA006BDDDF /* SwiftSoup in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192CB2D4109B5006BDDDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				38E192EF2D413304006BDDDF /* SwiftSoup in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192D52D4109B5006BDDDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -263,8 +253,6 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-			);
 			name = KERosterWidgetExtension;
 			productName = KERosterWidgetExtension;
 			productReference = 3871E4BC2D73F49800850BB1 /* KERosterWidgetExtension.appex */;
@@ -339,7 +327,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1520;
-				LastUpgradeCheck = 1520;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					3871E4BB2D73F49800850BB1 = {
 						CreatedOnToolsVersion = 15.2;
@@ -358,7 +346,6 @@
 				};
 			};
 			buildConfigurationList = 38E192B02D4109B2006BDDDF /* Build configuration list for PBXProject "KERoster" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -369,6 +356,7 @@
 			packageReferences = (
 				38E192EB2D4132EA006BDDDF /* XCRemoteSwiftPackageReference "SwiftSoup" */,
 			);
+			preferredProjectObjectVersion = 90;
 			productRefGroup = 38E192B62D4109B2006BDDDF /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -384,43 +372,34 @@
 /* Begin PBXResourcesBuildPhase section */
 		3871E4BA2D73F49800850BB1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				3871E4CC2D73F49A00850BB1 /* Assets.xcassets in Resources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192B32D4109B2006BDDDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				3872B6042D65366F00154B50 /* ApList.json in Resources */,
 				38E192C82D4109B5006BDDDF /* LaunchScreen.storyboard in Resources */,
 				38E192C52D4109B5006BDDDF /* Assets.xcassets in Resources */,
 				38E192C02D4109B3006BDDDF /* Main.storyboard in Resources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192CC2D4109B5006BDDDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192D62D4109B5006BDDDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3871E4B82D73F49800850BB1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				3871E4CA2D73F49800850BB1 /* AppIntent.swift in Sources */,
 				3871E4C62D73F49800850BB1 /* KERosterWidgetLiveActivity.swift in Sources */,
@@ -428,11 +407,9 @@
 				3871E4D52D73F7DC00850BB1 /* KERosterWidget.swift in Sources */,
 				3871E4C42D73F49800850BB1 /* KERosterWidgetBundle.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192B12D4109B2006BDDDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				38A065F32D4C7F3600FC1F75 /* ScheduleDetailViewController.swift in Sources */,
 				38E192C32D4109B3006BDDDF /* KERoster.xcdatamodeld in Sources */,
@@ -451,24 +428,19 @@
 				3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */,
 				3872B6062D670BD300154B50 /* CalendarManager.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192CA2D4109B5006BDDDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				38E192D32D4109B5006BDDDF /* KERosterTests.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		38E192D42D4109B5006BDDDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				38E192DF2D4109B5006BDDDF /* KERosterUITestsLaunchTests.swift in Sources */,
 				38E192DD2D4109B5006BDDDF /* KERosterUITests.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -510,7 +482,7 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		3871E4D22D73F49B00850BB1 /* Debug */ = {
+		3871E4D22D73F49B00850BB1 /* Debug configuration for PBXNativeTarget "KERosterWidgetExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -538,7 +510,7 @@
 			};
 			name = Debug;
 		};
-		3871E4D32D73F49B00850BB1 /* Release */ = {
+		3871E4D32D73F49B00850BB1 /* Release configuration for PBXNativeTarget "KERosterWidgetExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -566,7 +538,7 @@
 			};
 			name = Release;
 		};
-		38E192E02D4109B5006BDDDF /* Debug */ = {
+		38E192E02D4109B5006BDDDF /* Debug configuration for PBXProject "KERoster" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -629,7 +601,7 @@
 			};
 			name = Debug;
 		};
-		38E192E12D4109B5006BDDDF /* Release */ = {
+		38E192E12D4109B5006BDDDF /* Release configuration for PBXProject "KERoster" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -685,13 +657,13 @@
 			};
 			name = Release;
 		};
-		38E192E32D4109B5006BDDDF /* Debug */ = {
+		38E192E32D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERoster" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
@@ -699,11 +671,13 @@
 				INFOPLIST_FILE = KERoster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERoster;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Access is required to add events to your calendar.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -711,19 +685,20 @@
 				MARKETING_VERSION = 2.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		38E192E42D4109B5006BDDDF /* Release */ = {
+		38E192E42D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERoster" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
@@ -731,11 +706,13 @@
 				INFOPLIST_FILE = KERoster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERoster;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Access is required to add events to your calendar.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -743,16 +720,16 @@
 				MARKETING_VERSION = 2.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
-		38E192E62D4109B5006BDDDF /* Debug */ = {
+		38E192E62D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERosterTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -769,10 +746,9 @@
 			};
 			name = Debug;
 		};
-		38E192E72D4109B5006BDDDF /* Release */ = {
+		38E192E72D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERosterTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -789,10 +765,9 @@
 			};
 			name = Release;
 		};
-		38E192E92D4109B5006BDDDF /* Debug */ = {
+		38E192E92D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERosterUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TBM2PMNGCY;
@@ -807,10 +782,9 @@
 			};
 			name = Debug;
 		};
-		38E192EA2D4109B5006BDDDF /* Release */ = {
+		38E192EA2D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERosterUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TBM2PMNGCY;
@@ -831,46 +805,41 @@
 		3871E4D42D73F49B00850BB1 /* Build configuration list for PBXNativeTarget "KERosterWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3871E4D22D73F49B00850BB1 /* Debug */,
-				3871E4D32D73F49B00850BB1 /* Release */,
+				3871E4D22D73F49B00850BB1 /* Debug configuration for PBXNativeTarget "KERosterWidgetExtension" */,
+				3871E4D32D73F49B00850BB1 /* Release configuration for PBXNativeTarget "KERosterWidgetExtension" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		38E192B02D4109B2006BDDDF /* Build configuration list for PBXProject "KERoster" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				38E192E02D4109B5006BDDDF /* Debug */,
-				38E192E12D4109B5006BDDDF /* Release */,
+				38E192E02D4109B5006BDDDF /* Debug configuration for PBXProject "KERoster" */,
+				38E192E12D4109B5006BDDDF /* Release configuration for PBXProject "KERoster" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		38E192E22D4109B5006BDDDF /* Build configuration list for PBXNativeTarget "KERoster" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				38E192E32D4109B5006BDDDF /* Debug */,
-				38E192E42D4109B5006BDDDF /* Release */,
+				38E192E32D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERoster" */,
+				38E192E42D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERoster" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		38E192E52D4109B5006BDDDF /* Build configuration list for PBXNativeTarget "KERosterTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				38E192E62D4109B5006BDDDF /* Debug */,
-				38E192E72D4109B5006BDDDF /* Release */,
+				38E192E62D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERosterTests" */,
+				38E192E72D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERosterTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		38E192E82D4109B5006BDDDF /* Build configuration list for PBXNativeTarget "KERosterUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				38E192E92D4109B5006BDDDF /* Debug */,
-				38E192EA2D4109B5006BDDDF /* Release */,
+				38E192E92D4109B5006BDDDF /* Debug configuration for PBXNativeTarget "KERosterUITests" */,
+				38E192EA2D4109B5006BDDDF /* Release configuration for PBXNativeTarget "KERosterUITests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */

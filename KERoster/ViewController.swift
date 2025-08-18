@@ -572,7 +572,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    // ✅ 새로 추가
+    private func extractIATAs(from route: String) -> (String?, String?) {
+        // 예) "ICN-LAX", "ICN → LAX", "ICN / LAX"
+        let pattern = #"([A-Z]{3})\s*[-→/>\s]+\s*([A-Z]{3})"#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            let range = NSRange(route.startIndex..., in: route)
+            if let m = regex.firstMatch(in: route, options: [], range: range) {
+                let dep = Range(m.range(at: 1), in: route).map { String(route[$0]) }
+                let arr = Range(m.range(at: 2), in: route).map { String(route[$0]) }
+                return (dep, arr)
+            }
+        }
+        return (nil, nil)
+    }
+    
     // MARK: - ✅ 크루리스트: "앞 2글자 제외 숫자만" + "DepDate 동일" 매칭. 불일치 시 저장 안 함.
+    // ✅ 교체: importCrewList()
     func importCrewList() {
         let targetWebView: WKWebView = self.webView
 
@@ -593,9 +609,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             do {
                 let doc = try SwiftSoup.parse(htmlString)
 
-                // 팝업 헤더(서비스 DOM에 맞게 셀렉터 유지)
-                let flightCode = try doc.select("#crewListDialog .flight_info .flight_code").first()?.text().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let popupDateString = try doc.select("#crewListDialog .flight_info .date").first()?.text().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                // 팝업 상단 정보
+                let flightCode = try doc.select("#crewListDialog .flight_info .flight_code")
+                    .first()?.text().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let popupDateString = try doc.select("#crewListDialog .flight_info .date")
+                    .first()?.text().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                // 노선(있을 수도, 없을 수도)
+                let routeText = try doc.select("#crewListDialog .flight_info .route")
+                    .first()?.text().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let (popupDepIATA, _) = self.extractIATAs(from: routeText)
 
                 let depDateFromPopup = self.normalizePopupDate(popupDateString) ?? ""
 
@@ -637,8 +659,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
 
                 // 매칭 규칙:
-                // 1) Item(스케줄의 항공편)과 flightCode(팝업 상단)의 "앞 2글자 제외한 숫자"가 동일
-                // 2) DepDate(스케줄) == depDateFromPopup(팝업)
+                // 1) Item vs flightCode: 앞 2글자 제외 후 숫자만 동일 (예: "KE626" -> "626")
+                // 2) 스케줄의 "DepDate" == 팝업의 날짜(depDateFromPopup)   (⚠️ 더 이상 Date로 fallback하지 않음)
+                // 3) 팝업에 노선 출발 IATA가 있으면 스케줄의 DepAp도 동일해야 함 (옵션 강화)
                 let crewNum = self.normalizeItemNumber(flightCode)
 
                 guard var dayEntries = self.schedules[depDateFromPopup], !dayEntries.isEmpty else {
@@ -648,17 +671,32 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
                 var matched = false
                 for idx in dayEntries.indices {
+                    // 비행/이동만 크루리스트 대상
+                    let wt = dayEntries[idx]["WorkType"] ?? ""
+                    guard wt == "FLY" || wt == "TVL" else { continue }
+
                     let itemRaw = dayEntries[idx]["Item"] ?? ""
                     let itemNum = self.normalizeItemNumber(itemRaw)
-                    let depDateInEntry = dayEntries[idx]["DepDate"] ?? dayEntries[idx]["Date"] ?? ""
 
-                    if itemNum == crewNum && depDateInEntry == depDateFromPopup {
-                        if let data = try? JSONSerialization.data(withJSONObject: crewArray, options: []),
-                           let jsonString = String(data: data, encoding: .utf8) {
-                            dayEntries[idx]["CrewList"] = jsonString
-                            matched = true
-                            self.debugLog("CrewList saved to \(itemRaw) on \(depDateFromPopup)")
-                        }
+                    // 반드시 DepDate로만 비교
+                    guard let depDateInEntry = dayEntries[idx]["DepDate"], !depDateInEntry.isEmpty else { continue }
+                    guard depDateInEntry == depDateFromPopup else { continue }
+
+                    // 출발 공항이 팝업에서 파싱되면 그것도 함께 확인
+                    if let popDep = popupDepIATA, !popDep.isEmpty {
+                        let entryDepAp = dayEntries[idx]["DepAp"] ?? ""
+                        guard entryDepAp == popDep else { continue }
+                    }
+
+                    // 편명 숫자 동일해야 최종 매칭
+                    guard itemNum == crewNum else { continue }
+
+                    // 저장
+                    if let data = try? JSONSerialization.data(withJSONObject: crewArray, options: []),
+                       let jsonString = String(data: data, encoding: .utf8) {
+                        dayEntries[idx]["CrewList"] = jsonString
+                        matched = true
+                        self.debugLog("CrewList saved to \(itemRaw) on \(depDateFromPopup)")
                     }
                 }
 
@@ -668,7 +706,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     self.showAlert(title: "Crew List Imported", message: "Saved to matching flight on \(depDateFromPopup).")
                 } else {
                     // 불일치 시 저장하지 않음
-                    self.showAlert(title: "Not Saved", message: "No matching schedule (by flight number and date).")
+                    self.showAlert(title: "Not Saved", message: "No matching schedule (by flight number, departure date, and route).")
                 }
 
             } catch {
