@@ -378,7 +378,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         guard let shared = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
               let data = shared.data(forKey: schedulesUserDefaultsKey),
               let global = try? JSONDecoder().decode([String:[[String:String]]].self, from: data),
-              var day = global[date] else { return nil }
+              let day = global[date] else { return nil }
         if let idx = day.firstIndex(where: { ($0["Item"] ?? "") == item && ($0["DepAp"] ?? "") == dep && ($0["ArrAp"] ?? "") == arr }),
            let json = day[idx]["CrewList"]?.data(using: .utf8),
            let arr = try? JSONSerialization.jsonObject(with: json, options: []) as? [[String:String]],
@@ -458,7 +458,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }.joined(separator: " ") + " "
         }
         let tableLines = [top, headerRow, midSep] + dataRows + [bottom]
-        let tableString = tableLines.joined(separator: "\n") + "\n"
+        _ = tableLines.joined(separator: "\n") + "\n"
         
         // 스타일
         let para = NSMutableParagraphStyle(); para.lineBreakMode = .byWordWrapping
