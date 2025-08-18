@@ -40,6 +40,7 @@
 		38E192DF2D4109B5006BDDDF /* KERosterUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E192DE2D4109B5006BDDDF /* KERosterUITestsLaunchTests.swift */; };
 		38E192ED2D4132EA006BDDDF /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 38E192EC2D4132EA006BDDDF /* SwiftSoup */; };
 		38E192EF2D413304006BDDDF /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 38E192EE2D413304006BDDDF /* SwiftSoup */; };
+		38EC9C592E53064B0093DBB1 /* PopupWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EC9C582E53064B0093DBB1 /* PopupWebViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -118,6 +119,7 @@
 		38E192D82D4109B5006BDDDF /* KERosterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KERosterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38E192DC2D4109B5006BDDDF /* KERosterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterUITests.swift; sourceTree = "<group>"; };
 		38E192DE2D4109B5006BDDDF /* KERosterUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KERosterUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		38EC9C582E53064B0093DBB1 /* PopupWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupWebViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -212,6 +214,7 @@
 				38E192B82D4109B3006BDDDF /* AppDelegate.swift */,
 				38E192BA2D4109B3006BDDDF /* SceneDelegate.swift */,
 				38E192BC2D4109B3006BDDDF /* ViewController.swift */,
+				38EC9C582E53064B0093DBB1 /* PopupWebViewController.swift */,
 				3872B6052D670BD300154B50 /* CalendarManager.swift */,
 				38A065F22D4C7F3600FC1F75 /* ScheduleDetailViewController.swift */,
 				381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */,
@@ -439,6 +442,7 @@
 				38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */,
 				384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */,
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
+				38EC9C592E53064B0093DBB1 /* PopupWebViewController.swift in Sources */,
 				38CD98532D84E47B00F98373 /* ZoomableCalendarContainerViewController.swift in Sources */,
 				382093F42D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift in Sources */,
 				381027942D60DD0E00E67459 /* Airport.swift in Sources */,
@@ -689,7 +693,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 45;
+				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -704,7 +708,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -721,7 +725,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 45;
+				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -736,7 +740,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
