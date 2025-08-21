@@ -956,7 +956,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         event.title = eventTitle
 
         // “KEROSTER” 노트에 줄바꿈 추가.
-        event.notes = "KEROSTER\n" + noteText
+        // 기본 노트
+        var finalNotes = "KEROSTER\n" + noteText
+
+        // 크루정보가 있으면 분리선 후 추가
+        if let crewNote = buildCrewNote(from: scheduleEntry) {
+            finalNotes += "\n----\n" + crewNote
+        }
+
+        event.notes = finalNotes
+
 
         event.startDate = start
         event.endDate = end
@@ -1114,5 +1123,34 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             noteText += "\nHotel: \(hotel)"
         }
         return noteText
+    }
+    // MARK: - CrewList 노트 빌더 (값이 있는 항목만 출력)
+    private func buildCrewNote(from entry: [String: String]) -> String? {
+        // schedules 엔트리 내 CrewList(JSON 문자열) 읽기
+        guard let json = entry["CrewList"],
+              let data = json.data(using: .utf8),
+              let arr = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [[String: String]],
+              !arr.isEmpty else {
+            return nil
+        }
+
+        let header = "Crew List (\(arr.count))"
+        let lines: [String] = arr.map { row in
+            var parts: [String] = []
+
+            // 값이 있는 항목만 순서대로 추가
+            if let name = row["Name"], !name.isEmpty { parts.append(name) }
+            if let role = row["Role"], !role.isEmpty { parts.append("Role=\(role)") }
+            if let rank = row["PostingRank"], !rank.isEmpty { parts.append("Rank=\(rank)") }
+            if let pic = row["PICCode"], !pic.isEmpty { parts.append("Code=\(pic)") }
+            if let crewID = row["CrewID"], !crewID.isEmpty { parts.append("ID=\(crewID)") }
+            if let workType = row["WorkType"], !workType.isEmpty { parts.append("Type=\(workType)") }
+            if let contact = row["Contact"], !contact.isEmpty { parts.append("Contact=\(contact)") }
+            if let sdc = row["SDC"], !sdc.isEmpty { parts.append("SDC=\(sdc)") }
+
+            return parts.isEmpty ? "• (정보 없음)" : "• " + parts.joined(separator: " • ")
+        }
+
+        return ([header] + lines).joined(separator: "\n\n")
     }
 }
