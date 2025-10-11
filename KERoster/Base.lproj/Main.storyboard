@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Tbz-gH-Bwq">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24128" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Tbz-gH-Bwq">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24063"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -17,7 +18,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <wkWebView contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Edd-Om-C6I">
-                                <rect key="frame" x="0.0" y="103" width="393" height="666"/>
+                                <rect key="frame" x="0.0" y="172" width="393" height="564"/>
                                 <color key="backgroundColor" red="0.36078431370000003" green="0.38823529410000002" blue="0.4039215686" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <wkWebViewConfiguration key="configuration">
                                     <audiovisualMediaTypes key="mediaTypesRequiringUserActionForPlayback" none="YES"/>
@@ -25,7 +26,8 @@
                                 </wkWebViewConfiguration>
                             </wkWebView>
                             <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="dlZ-d4-AKS">
-                                <rect key="frame" x="0.0" y="769" width="393" height="49"/>
+                                <rect key="frame" x="0.0" y="736" width="393" height="48"/>
+                                <color key="backgroundColor" name="Ocean"/>
                                 <items>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Tx4-pg-Fii"/>
                                     <barButtonItem title="Input" image="square.and.arrow.up.fill" catalog="system" id="nWx-Gn-64g">
@@ -56,19 +58,20 @@
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="fQL-Fu-Uxb"/>
-                                    <barButtonItem title="Info" image="info.circle.fill" catalog="system" id="s4C-zw-nr2">
+                                    <barButtonItem title="Crew" image="person.2.fill" catalog="system" id="s4C-zw-nr2">
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
-                                            <action selector="infoButtonTapped:" destination="BYZ-38-t0r" id="0xM-QI-zay"/>
+                                            <action selector="CrewButtonTapped:" destination="BYZ-38-t0r" id="WrY-kU-963"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Qch-OU-YBh"/>
                                 </items>
+                                <color key="tintColor" name="Ocean"/>
                                 <color key="barTintColor" red="0.0" green="0.32852089410000002" blue="0.57488495110000004" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                             </toolbar>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <color key="backgroundColor" name="Ocean"/>
                         <constraints>
                             <constraint firstItem="dlZ-d4-AKS" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="2a2-vo-gAC"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="dlZ-d4-AKS" secondAttribute="trailing" id="B7E-c5-QJs"/>
@@ -97,7 +100,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="03f-kr-d8m">
-                                <rect key="frame" x="0.0" y="59" width="393" height="793"/>
+                                <rect key="frame" x="0.0" y="118" width="393" height="734"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </tableView>
                         </subviews>
@@ -193,13 +196,73 @@
             </objects>
             <point key="canvasLocation" x="2682" y="697"/>
         </scene>
+        <!--Crew List By Month View Controller-->
+        <scene sceneID="48f-rq-rmt">
+            <objects>
+                <viewController storyboardIdentifier="CrewListByMonthViewController" id="3UG-w4-ARX" customClass="CrewListByMonthViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="FAV-ZE-Rqt">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="FSD-iA-ltO">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                            </tableView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="iKv-ku-Ghz"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="FSD-iA-ltO" firstAttribute="leading" secondItem="FAV-ZE-Rqt" secondAttribute="leading" id="5Rd-pN-mtP"/>
+                            <constraint firstAttribute="bottom" secondItem="FSD-iA-ltO" secondAttribute="bottom" id="9LB-hB-6rM"/>
+                            <constraint firstItem="iKv-ku-Ghz" firstAttribute="trailing" secondItem="FSD-iA-ltO" secondAttribute="trailing" id="PVl-h8-ICw"/>
+                            <constraint firstItem="FSD-iA-ltO" firstAttribute="top" secondItem="FAV-ZE-Rqt" secondAttribute="top" id="z64-aY-JoW"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="tableView" destination="FSD-iA-ltO" id="efP-bC-ZzR"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Oba-yu-NDW" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2682" y="1374"/>
+        </scene>
+        <!--Crew List Month Detail View Controller-->
+        <scene sceneID="LzQ-kA-Su2">
+            <objects>
+                <viewController storyboardIdentifier="CrewListMonthDetailViewController" id="L37-W0-ei8" customClass="CrewListMonthDetailViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="08N-xs-Ta6">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="ZSV-IN-Xi9">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                            </tableView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="UmH-Aa-A0G"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="ZSV-IN-Xi9" firstAttribute="top" secondItem="08N-xs-Ta6" secondAttribute="top" id="0fG-Qm-m90"/>
+                            <constraint firstAttribute="bottom" secondItem="ZSV-IN-Xi9" secondAttribute="bottom" id="S7c-WH-URs"/>
+                            <constraint firstItem="ZSV-IN-Xi9" firstAttribute="trailing" secondItem="UmH-Aa-A0G" secondAttribute="trailing" id="TbR-lQ-9c7"/>
+                            <constraint firstItem="ZSV-IN-Xi9" firstAttribute="leading" secondItem="UmH-Aa-A0G" secondAttribute="leading" id="mEf-tQ-LjM"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="tableView" destination="ZSV-IN-Xi9" id="uB3-Zt-W43"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="rjz-i6-i4X" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="3538.1679389312976" y="1373.943661971831"/>
+        </scene>
         <!--Navigation Controller-->
         <scene sceneID="QHP-GO-JEp">
             <objects>
                 <navigationController automaticallyAdjustsScrollViewInsets="NO" id="Tbz-gH-Bwq" sceneMemberID="viewController">
                     <toolbarItems/>
                     <navigationBar key="navigationBar" contentMode="scaleToFill" id="HAP-wd-ZIi">
-                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
+                        <rect key="frame" x="0.0" y="118" width="393" height="54"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
@@ -215,12 +278,16 @@
             <point key="canvasLocation" x="135" y="-2"/>
         </scene>
     </scenes>
+    <color key="tintColor" name="Ocean"/>
     <resources>
         <image name="airplane.departure" catalog="system" width="128" height="84"/>
         <image name="calendar" catalog="system" width="128" height="107"/>
         <image name="house.fill" catalog="system" width="128" height="104"/>
-        <image name="info.circle.fill" catalog="system" width="128" height="123"/>
-        <image name="square.and.arrow.up.fill" catalog="system" width="115" height="128"/>
+        <image name="person.2.fill" catalog="system" width="128" height="86"/>
+        <image name="square.and.arrow.up.fill" catalog="system" width="117" height="128"/>
+        <namedColor name="Ocean">
+            <color red="0.0" green="0.32899999618530273" blue="0.57499998807907104" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

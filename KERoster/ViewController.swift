@@ -91,6 +91,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             containerView.spacing = 4
             containerView.alignment = .center
             containerView.sizeToFit()
+            
+            // ⬇︎ 추가: 탭 가능 + 제스처
+            containerView.isUserInteractionEnabled = true
+            containerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInfoURL)))
 
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: containerView)
         }
@@ -108,6 +112,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 }
             }
         })
+
 
         // 네비게이션 바 스타일 설정
         let appearance = UINavigationBarAppearance()
@@ -268,7 +273,26 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         // 첫 진입 시 페이지 로드
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
     }
+    // URL 이동
+    @objc private func openInfoURL() {
+        let raw = UserDefaults.standard.string(forKey: "savedURL")
+            ?? "https://pinnate-century-46a.notion.site/KERoster-1973143fe5db80588f62d8959e7c0fcc?pvs=74"
 
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !s.lowercased().hasPrefix("http") { s = "https://" + s } // 스킴 보정
+
+        guard let url = URL(string: s) else { return }
+
+        if #available(iOS 10.0, *) {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        } else {
+            UIApplication.shared.openURL(url)
+        }
+
+        // 앱 내에서 열고 싶다면 위 3줄 대신 아래 두 줄:
+        // let safari = SFSafariViewController(url: url)
+        // present(safari, animated: true)
+    }
     // MARK: - IBAction
     @IBAction func InputButtonTapped(_ sender: UIBarButtonItem) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
@@ -300,9 +324,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    @IBAction func infoButtonTapped(_ sender: UIBarButtonItem) {
-        if let url = URL(string: "https://pinnate-century-46a.notion.site/KERoster-1973143fe5db80588f62d8959e7c0fcc?pvs=74") {
-            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    @IBAction func CrewButtonTapped(_ sender: UIBarButtonItem) {
+        let sb = UIStoryboard(name: "Main", bundle: nil)
+        if let vc = sb.instantiateViewController(withIdentifier: "CrewListByMonthViewController") as? CrewListByMonthViewController {
+            vc.schedules = schedules  // 전달
+            navigationController?.pushViewController(vc, animated: true)
         }
     }
 

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2FF801C42E9A013C0039F7A6 /* CrewListByMonthViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */; };
+		2FF801C62E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */; };
+		2FF801C82E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */; };
 		380FAEC62D5C251200BF2E33 /* ScheduleInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */; };
 		381027942D60DD0E00E67459 /* Airport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381027932D60DD0E00E67459 /* Airport.swift */; };
 		381C5CA12D4FA95D00D92F8D /* ScheduleEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */; };
@@ -62,6 +65,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListByMonthViewController.swift; sourceTree = "<group>"; };
+		2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListMonthDetailViewController.swift; sourceTree = "<group>"; };
+		2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListFlightDetailViewController.swift; sourceTree = "<group>"; };
 		380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleInputViewController.swift; sourceTree = "<group>"; };
 		381027932D60DD0E00E67459 /* Airport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Airport.swift; sourceTree = "<group>"; };
 		381C5CA02D4FA95D00D92F8D /* ScheduleEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEditViewController.swift; sourceTree = "<group>"; };
@@ -181,6 +187,9 @@
 				38E192C62D4109B5006BDDDF /* LaunchScreen.storyboard */,
 				38E192C92D4109B5006BDDDF /* Info.plist */,
 				38E192C12D4109B3006BDDDF /* KERoster.xcdatamodeld */,
+				2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */,
+				2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */,
+				2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */,
 			);
 			path = KERoster;
 			sourceTree = "<group>";
@@ -306,11 +315,14 @@
 				384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */,
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
 				38EC9C592E53064B0093DBB1 /* PopupWebViewController.swift in Sources */,
+				2FF801C42E9A013C0039F7A6 /* CrewListByMonthViewController.swift in Sources */,
 				38CD98532D84E47B00F98373 /* ZoomableCalendarContainerViewController.swift in Sources */,
+				2FF801C82E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift in Sources */,
 				382093F42D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift in Sources */,
 				381027942D60DD0E00E67459 /* Airport.swift in Sources */,
 				3871E4D72D73FAFE00850BB1 /* NextFlightWidget.swift in Sources */,
 				382093F62D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift in Sources */,
+				2FF801C62E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift in Sources */,
 				3855A9302D52020A004DCC63 /* MonthlyCalendarViewController.swift in Sources */,
 				3872B6062D670BD300154B50 /* CalendarManager.swift in Sources */,
 			);
@@ -362,7 +374,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.5;
+				MARKETING_VERSION = 2.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -389,7 +401,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.5;
+				MARKETING_VERSION = 2.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
