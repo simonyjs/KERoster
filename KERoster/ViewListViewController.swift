@@ -34,8 +34,21 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         tableView.refreshControl = refreshControl
         
         // 만약 schedules가 외부에서 전달되지 않았다면, 영구 저장소에서 불러옵니다.
-        if schedules.isEmpty {
-            loadSchedules()
+//        if schedules.isEmpty {
+//            loadSchedules()
+//        }
+        // iCloud KVS → App Group 폴백
+        NSUbiquitousKeyValueStore.default.synchronize()
+        if let json = NSUbiquitousKeyValueStore.default.string(forKey: "schedules_json"),
+           let data = json.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            schedules = decoded
+        } else if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+                  let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey),
+                  let decoded = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            schedules = decoded
+        } else {
+            schedules = [:]
         }
         
         // 스케줄 데이터를 연도 및 월별로 그룹화

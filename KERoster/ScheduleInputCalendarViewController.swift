@@ -150,6 +150,7 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
 
     // MARK: - 스케줄 불러오기
     func loadSchedules() {
+/*
         if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey) {
             do {
                 schedules = try JSONDecoder().decode([String: [[String: String]]].self, from: data)
@@ -158,6 +159,22 @@ class ScheduleInputCalendarViewController: UIViewController, UICollectionViewDel
                 print("스케줄 불러오기 실패: \(error)")
             }
         } else {
+            print("저장된 스케줄이 없습니다.")
+        }
+ */
+        NSUbiquitousKeyValueStore.default.synchronize()
+        if let json = NSUbiquitousKeyValueStore.default.string(forKey: "schedules_json"),
+           let data = json.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            schedules = decoded
+            print("✅ iCloud KVS에서 스케줄 불러오기 성공")
+        } else if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
+                  let data = sharedDefaults.data(forKey: schedulesUserDefaultsKey),
+                  let decoded = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            schedules = decoded
+            print("⚠️ iCloud KVS 없음 → App Group에서 불러옴")
+        } else {
+            schedules = [:]
             print("저장된 스케줄이 없습니다.")
         }
     }

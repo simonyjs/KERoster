@@ -9,6 +9,7 @@ import WebKit
 import SwiftSoup
 import Foundation
 import EventKit
+import WidgetKit
 
 // SwiftSoup의 Elements 배열에 안전하게 접근 (인덱스 초과 방지)
 extension Elements {
@@ -61,31 +62,36 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // MARK: - UIViewController LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadSchedules()
+        // 웹 델리게이트는 viewDidLoad에서 바로 설정 (SPA/iframe 대응)
+        webView.navigationDelegate = self
+        webView.uiDelegate = self
+        // 모든 프레임(iframe 포함)에 Ocean 배경을 칠하는 사용자 스크립트 설치
+        installOceanFooterUserScript()
+        // iCloud → 로컬(App Group) 폴백 순서로 로드
+        NSUbiquitousKeyValueStore.default.synchronize()
+        loadFromICloudKVS()
+        if self.schedules.isEmpty { loadSchedules() }
+        startObservingiCloudKVSChanges()
 
         // Info.plist에서 버전과 빌드 정보 가져오기
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
             let versionText = "Ver. \(version) Build \(build)"
 
-            // 아이콘 이미지 뷰 생성
             let iconImageView = UIImageView(image: UIImage(systemName: "lightbulb.min.badge.exclamationmark.fill"))
             iconImageView.tintColor = .white
 
-            // 버전 정보를 담은 라벨 생성
             let versionLabel = UILabel()
             versionLabel.text = versionText
             versionLabel.font = UIFont.systemFont(ofSize: 12)
             versionLabel.textColor = .white
 
-            // 아이콘과 라벨을 수평으로 배치할 스택뷰 생성
             let containerView = UIStackView(arrangedSubviews: [iconImageView, versionLabel])
             containerView.axis = .horizontal
             containerView.spacing = 4
             containerView.alignment = .center
             containerView.sizeToFit()
 
-            // 네비게이션 바 왼쪽에 커스텀 뷰로 추가
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: containerView)
         }
 
@@ -163,10 +169,103 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         navigationItem.rightBarButtonItem?.menu = menu
     }
 
+    deinit {
+        // 옵저버 정리
+        NotificationCenter.default.removeObserver(self, name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default)
+        NotificationCenter.default.removeObserver(self, name: Notification.Name("KVSUpdated"), object: nil)
+    }
+
+    // MARK: - iCloud KVS 키
+    private enum KVSKeys {
+        static let schedulesJSON = "schedules_json"
+        static let ownerInfo = "ownerInfo"
+        static let totalHoursByMonthJSON = "totalHoursByMonth_json"
+    }
+
+    // MARK: - iCloud KVS 저장/로드/옵저버
+    func saveToICloudKVS() {
+        let kvs = NSUbiquitousKeyValueStore.default
+        if let data = try? JSONEncoder().encode(self.schedules),
+           let json = String(data: data, encoding: .utf8) {
+            kvs.set(json, forKey: KVSKeys.schedulesJSON)
+        }
+        kvs.set(self.ownerInfo, forKey: KVSKeys.ownerInfo)
+
+        let monthlyStd = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
+        if let data = try? JSONEncoder().encode(monthlyStd),
+           let json = String(data: data, encoding: .utf8) {
+            kvs.set(json, forKey: KVSKeys.totalHoursByMonthJSON)
+        }
+        kvs.synchronize()
+
+        // App Group에도 미러링 (위젯 사용)
+        if let shared = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+            shared.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
+            shared.set(monthlyStd, forKey: self.totalHoursByMonthUserDefaultsKey)
+            shared.synchronize()
+        }
+
+        // 위젯 최신화
+        WidgetCenter.shared.reloadAllTimelines()
+        debugLog("iCloud KVS 저장 완료 & App Group 미러링 & 위젯 갱신")
+    }
+
+    func loadFromICloudKVS() {
+        let kvs = NSUbiquitousKeyValueStore.default
+
+        if let json = kvs.string(forKey: KVSKeys.schedulesJSON),
+           let data = json.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String: [[String: String]]].self, from: data) {
+            self.schedules = decoded
+            debugLog("iCloud KVS에서 schedules 로드")
+        }
+
+        if let json = kvs.string(forKey: KVSKeys.totalHoursByMonthJSON),
+           let data = json.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+            // 표준 UD + App Group 모두 반영
+            UserDefaults.standard.set(decoded, forKey: self.totalHoursByMonthUserDefaultsKey)
+            if let shared = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+                shared.set(decoded, forKey: self.totalHoursByMonthUserDefaultsKey)
+                shared.synchronize()
+            }
+            self.totalHours = decoded.values.first ?? self.totalHours
+        }
+
+        if let owner = kvs.string(forKey: KVSKeys.ownerInfo) {
+            self.ownerInfo = owner
+            if let shared = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+                shared.set(owner, forKey: self.ownerUserDefaultsKey)
+                shared.synchronize()
+            }
+        }
+    }
+
+    func startObservingiCloudKVSChanges() {
+        NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            self.debugLog("iCloud KVS 외부 변경 감지 → 로드 & 로컬(App Group) 캐시 저장")
+            self.loadFromICloudKVS()
+            self.saveSchedules() // App Group에도 최신화 + KVS 동기 저장
+            self.printSchedulesToConsole()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        // AppDelegate 브로드캐스트도 함께 수신(선택)
+        NotificationCenter.default.addObserver(forName: Notification.Name("KVSUpdated"),
+                                               object: nil, queue: .main) { [weak self] _ in
+            self?.loadFromICloudKVS()
+            self?.saveSchedules()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
+        // 첫 진입 시 페이지 로드
         loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
     }
 
@@ -247,7 +346,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
         return nil
     }
-
+    // 페이지 로드 완료 후 하단 메뉴(웹 콘텐츠의 푸터/바) 배경을 Ocean 색으로 강제 적용
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        injectOceanFooterCSS()
+    }
+    
     func loadURL(_ urlString: String) {
         debugLog("loadURL 호출됨: \(urlString)")
         if let url = URL(string: urlString) {
@@ -257,15 +360,119 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             debugLog("잘못된 URL 형식: \(urlString)")
         }
     }
+    
+    // MARK: - 하단 메뉴(웹 내부) 배경을 Ocean 색으로 강제 적용
+    private func injectOceanFooterCSS() {
+        let hex = webSafeOceanHex()
+        let js = """
+        (function(){
+          const OCEAN = '\(hex)';
+          function paint(el){
+            try{
+                  el.style.setProperty('background-color', OCEAN, 'important');
+                  el.style.setProperty('background-image', 'none', 'important');
+                  el.style.setProperty('backdrop-filter', 'none', 'important');
+                  el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                  el.style.setProperty('opacity', '1', 'important');
+            }catch(e){}
+          }
+          const selectors = [
+            'footer','#footer','.footer',
+            '.bottom-bar','.bottomBar','.fixed-bottom','.navbar-fixed-bottom',
+                '[class*="bottom-nav"]','[class*="BottomNav"]','[id*="bottom"]',
+                'ion-tab-bar','mat-bottom-sheet-container','mat-bottom-navigation'
+          ];
+          function run(){
+            document.querySelectorAll(selectors.join(',')).forEach(paint);
+            // 화면 하단에 고정된 바(푸터)도 탐지해서 칠함
+            Array.from(document.body.querySelectorAll('*')).forEach(el=>{
+              const st = getComputedStyle(el);
+              const h = parseInt(st.height||'0',10);
+                  if (st.position === 'fixed' && (st.bottom === '0px' || st.top === 'auto') && h >= 40 && h <= 160) {
+                paint(el);
+              }
+            });
+          }
+          run();
+          // SPA/동적 변경 대비
+          setTimeout(run, 500);
+          if (!window.__keroster_ocean_obs){
+                window.__keroster_ocean_obs = new MutationObserver(()=>setTimeout(run,0));
+                window.__keroster_ocean_obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+                document.addEventListener('visibilitychange', run, true);
+          }
+        })();
+        """
+        webView.evaluateJavaScript(js) { _, err in
+            if let err = err { self.debugLog("Ocean CSS 주입 실패: \(err.localizedDescription)") }
+            else { self.debugLog("Ocean CSS 주입 완료") }
+        }
+    }
 
+    // 모든 프레임(iframe 포함)에 자동 주입되는 WKUserScript 버전
+    private func installOceanFooterUserScript() {
+        let hex = webSafeOceanHex()
+        let src = """
+        (function(){
+          const OCEAN = '\\(hex)';
+          function paint(el){
+            try{
+              el.style.setProperty('background-color', OCEAN, 'important');
+              el.style.setProperty('background-image', 'none', 'important');
+              el.style.setProperty('backdrop-filter', 'none', 'important');
+              el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+              el.style.setProperty('opacity', '1', 'important');
+            }catch(e){}
+          }
+          const selectors = [
+            'footer','#footer','.footer',
+            '.bottom-bar','.bottomBar','.fixed-bottom','.navbar-fixed-bottom',
+            '[class*="bottom-nav"]','[class*="BottomNav"]','[id*="bottom"]',
+            'ion-tab-bar','mat-bottom-sheet-container','mat-bottom-navigation'
+          ];
+          function run(){
+            try{
+              document.querySelectorAll(selectors.join(',')).forEach(paint);
+              Array.from(document.body.querySelectorAll('*')).forEach(el=>{
+                const st = getComputedStyle(el);
+                const h = parseInt(st.height||'0',10);
+                if (st.position === 'fixed' && (st.bottom === '0px' || st.top === 'auto') && h >= 40 && h <= 160){
+                  paint(el);
+                }
+              });
+            }catch(e){}
+          }
+          run();
+          setTimeout(run, 500);
+          if (!window.__keroster_ocean_obs){
+            window.__keroster_ocean_obs = new MutationObserver(()=>setTimeout(run,0));
+            window.__keroster_ocean_obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+            document.addEventListener('visibilitychange', run, true);
+          }
+        })();
+        """
+        let us = WKUserScript(source: src, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        webView.configuration.userContentController.addUserScript(us)
+        debugLog("WKUserScript(Ocean) installed")
+    }
+    private func webSafeOceanHex() -> String {
+        // Asset의 "Ocean" 색이 있으면 우선 사용, 없으면 기본 파랑 계열로 폴백
+        let c = UIColor(named: "Ocean") ?? UIColor(red: 10/255, green: 108/255, blue: 197/255, alpha: 1)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 1
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        func hx(_ v: CGFloat) -> String { String(format: "%02X", Int(round(v*255))) }
+        return "#\(hx(r))\(hx(g))\(hx(b))"
+    }
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
     func saveSchedules() {
         if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
             do {
                 let data = try JSONEncoder().encode(schedules)
-                sharedDefaults.set(data, forKey: "schedules")
+                sharedDefaults.set(data, forKey: schedulesUserDefaultsKey)
                 sharedDefaults.synchronize()
                 print("스케줄 저장 성공")
+                // iCloud에도 동시 반영
+                self.saveToICloudKVS()
             } catch {
                 print("스케줄 저장 실패: \(error)")
             }
@@ -558,7 +765,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         self.schedules[date] = newEntries
                     }
 
-                    self.saveSchedules()
+                    self.saveSchedules()     // App Group 저장 + KVS 동기 저장
                     self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
                 }
@@ -586,7 +793,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
         return (nil, nil)
     }
-    
+
     // MARK: - ✅ 크루리스트: 편명 숫자 + 날짜(DepDate 우선, Date 폴백) + 출발지(있으면) 매칭
     func importCrewList() {
         let targetWebView: WKWebView = self.webView
@@ -736,7 +943,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             }
         }
     }
-
 
     // MARK: - CrewList 보조: 항공편 코드 숫자 정규화 (앞 2글자 제외 + 숫자만)
     private func normalizeItemNumber(_ raw: String) -> String {
@@ -894,20 +1100,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             eventTitle = baseTitle // 제목은 기본 제목으로 설정
             noteText = baseNote
 
-            // 동일 날짜에 출발, 도착 공항이 같은 이벤트 검사
+            // 동일 시간 범위에서 제목이 같은 이벤트를 중복으로 간주
             if let start = startDate, let end = endDate, let selectedCal = calendarManager.selectedCalendar {
                 let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
                 let existingEvents = eventStore.events(matching: predicate)
-                var duplicateEvent: EKEvent?
-                for event in existingEvents {
-                    if let notes = event.notes, notes.contains("DEP:\(depAp) ARR:\(arrAp)") {
-                        duplicateEvent = event
-                        break
-                    }
-                }
-                if let existingEvent = duplicateEvent {
-                    self.debugLog("⚠️ 중복 일정 발견! 기존 이벤트의 노트 업데이트: \(eventTitle)")
-                    updateEventNotes(existingEvent, with: scheduleEntry)
+                if let dup = existingEvents.first(where: { $0.title == baseTitle }) {
+                    self.debugLog("⚠️ 중복 일정 발견! 기존 이벤트의 노트 업데이트: \(baseTitle)")
+                    updateEventNotes(dup, with: scheduleEntry)
                     return
                 }
             }
@@ -956,7 +1155,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         event.title = eventTitle
 
         // “KEROSTER” 노트에 줄바꿈 추가.
-        // 기본 노트
         var finalNotes = "KEROSTER\n" + noteText
 
         // 크루정보가 있으면 분리선 후 추가
@@ -965,8 +1163,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
 
         event.notes = finalNotes
-
-
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
@@ -1039,7 +1235,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    // MARK: - 헬퍼 함수: 로컬 시간 -> UTC 시간 변환
+    // MARK: - 헬퍼 함수: 로컬 시간 → UTC 시간 문자열
     func convertLocalTimeToUTCTime(dateString: String, timeString: String, airportCode: String, airports: [[String: Any]]) -> String {
         guard let timeZone = timeZoneForAirport(iata: airportCode, airports: airports),
               let localDate = dateFromLocal(dateString: dateString, timeString: timeString, timeZone: timeZone) else {
@@ -1124,6 +1320,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
         return noteText
     }
+
     // MARK: - CrewList 노트 빌더 (값이 있는 항목만 출력)
     private func buildCrewNote(from entry: [String: String]) -> String? {
         // schedules 엔트리 내 CrewList(JSON 문자열) 읽기
@@ -1138,7 +1335,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let lines: [String] = arr.map { row in
             var parts: [String] = []
 
-            // 값이 있는 항목만 순서대로 추가
             if let name = row["Name"], !name.isEmpty { parts.append(name) }
             if let role = row["Role"], !role.isEmpty { parts.append("Role=\(role)") }
             if let rank = row["PostingRank"], !rank.isEmpty { parts.append("Rank=\(rank)") }
