@@ -49,10 +49,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     func formattedMonth(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: date)
     }
 
-    // MARK: - 고유 ID 생성 함수 (날짜와 Activity 값을 조합)
+    // MARK: - 고유 ID 생성 함수 (날짜와 Activity 값을 조합
     func generateUniqueID(for schedule: [String: String]) -> String {
         let date = schedule["Date"] ?? ""
         let activity = schedule["Activity"] ?? ""
@@ -440,7 +441,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let hex = webSafeOceanHex()
         let src = """
         (function(){
-          const OCEAN = '\\(hex)';
+          const OCEAN = '\(hex)';
           function paint(el){
             try{
               el.style.setProperty('background-color', OCEAN, 'important');
@@ -521,7 +522,72 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    // MARK: - 스케줄 파싱 및 가져오기 (HTML 파싱, SwiftSoup 활용)
+    // MARK: - 새 레이아웃(Flight/Activity, STD, STA) → dd-MMM-yyyy & HH:mm 분리
+    private func splitISODateTime(_ dt: String) -> (dateStr: String, timeStr: String)? {
+        let s = dt.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 허용: "yyyy-MM-dd HH:mm" , "dd-MMM-yyyy HH:mm"
+        let f1 = DateFormatter()
+        f1.locale = Locale(identifier: "en_US_POSIX")
+        f1.dateFormat = "yyyy-MM-dd HH:mm"
+        let f2 = DateFormatter()
+        f2.locale = Locale(identifier: "en_US_POSIX")
+        f2.dateFormat = "dd-MMM-yyyy HH:mm"
+
+        let outDate = DateFormatter()
+        outDate.locale = Locale(identifier: "en_US_POSIX")
+        outDate.dateFormat = "dd-MMM-yyyy"
+
+        let outTime = DateFormatter()
+        outTime.locale = Locale(identifier: "en_US_POSIX")
+        outTime.dateFormat = "HH:mm"
+
+        var d: Date? = f1.date(from: s)
+        if d == nil { d = f2.date(from: s) }
+        guard let date = d else { return nil }
+        return (outDate.string(from: date), outTime.string(from: date))
+    }
+
+    // MARK: - Crew 병합(중복시 필드 보강) 유틸
+    private func mergeCrewRow(_ row: [String:String], into entry: inout [String:String]) {
+        let hasValue = row.values.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if !hasValue { return }
+        // 현재 리스트 로드
+        var list: [[String:String]] = []
+        if let json = entry["CrewList"], let data = json.data(using: .utf8),
+           let arr = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [[String:String]] {
+            list = arr
+        }
+
+        func merge(into base: inout [String:String], with add: [String:String]) {
+            for (k, v) in add {
+                let vv = v.trimmingCharacters(in: .whitespacesAndNewlines)
+                if vv.isEmpty { continue }
+                if (base[k]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) {
+                    base[k] = vv
+                }
+            }
+        }
+
+        // 중복 탐지: CrewID 우선, 없으면 Name
+        if let id = row["CrewID"], !id.isEmpty, let idx = list.firstIndex(where: { ($0["CrewID"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == id }) {
+            var base = list[idx]
+            merge(into: &base, with: row)
+            list[idx] = base
+        } else if let nm = row["Name"], !nm.isEmpty, let idx = list.firstIndex(where: { ($0["Name"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == nm }) {
+            var base = list[idx]
+            merge(into: &base, with: row)
+            list[idx] = base
+        } else {
+            list.append(row)
+        }
+
+        if let data = try? JSONSerialization.data(withJSONObject: list, options: []),
+           let json = String(data: data, encoding: .utf8) {
+            entry["CrewList"] = json
+        }
+    }
+
+    // MARK: - 스케줄 파싱 및 가져오기 (새 레이아웃 우선, 실패 시 구형 레이아웃 폴백)
     func importSchedule() {
         guard let airports = loadAirportList() else {
             debugLog("ApList.json 로딩 실패")
@@ -548,6 +614,276 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
             do {
                 let doc: Document = try SwiftSoup.parse(htmlString)
+
+                // ─────────────────────────────────────────────────────────────
+                // 1) 새 레이아웃 시도
+                // ─────────────────────────────────────────────────────────────
+                var newExtracted: [String: [[String: String]]] = [:]  // depDate → [entries]
+                var newDepMonthCount: [String: Int] = [:]
+                var seqCountersByDate: [String: Int] = [:]
+                var indexMap: [String: (dateKey: String, idx: Int)] = [:] // flightKey → 위치
+                var ownerFromNew = ""
+                var hoursFromNew = ""
+                var parsedByNewLayout = false
+
+                // 현재 편 컨텍스트(빈 비행 행이 이어질 때 사용)
+            //  var currentFlightKey: String? = nil
+                var currentPos: (dateKey: String, idx: Int)? = nil
+
+                func flightKey(item: String, depDate: String, depAp: String, depTime: String) -> String {
+                    return "\(depDate)|\(item)|\(depAp)|\(depTime)"
+                }
+
+                do {
+                    // 상단 Owner/Hours 추정 추출 (새 레이아웃에서 텍스트 블럭 탐색)
+                    for td in try doc.select("td") {
+                        let t = try td.text().trimmingCharacters(in: .whitespacesAndNewlines)
+                        if ownerFromNew.isEmpty, t.contains("|"), t.range(of: #"\d"#, options: .regularExpression) != nil, t.count < 100 {
+                            ownerFromNew = t
+                        }
+                        if hoursFromNew.isEmpty, t.hasPrefix("FLY "), t.contains("TVL ") {
+                            hoursFromNew = t
+                        }
+                        if !ownerFromNew.isEmpty, !hoursFromNew.isEmpty { break }
+                    }
+
+                    // 본문 테이블 탐색
+                    let allRows = try doc.select("tr")
+                    var readMode = false
+
+                    for row in allRows {
+                        let tds = try row.select("td")
+                        if tds.isEmpty { continue }
+
+                        // 헤더 감지
+                        let headerTexts = try tds.array().map { try $0.text().trimmingCharacters(in: .whitespacesAndNewlines) }
+                        if headerTexts.contains("Flight/Activity") && headerTexts.contains("STD") && headerTexts.contains("STA") {
+                            readMode = true
+                            parsedByNewLayout = true
+                            continue
+                        }
+                        if !readMode { continue }
+
+                        func cell(_ i: Int) -> String { tds.getOrNil(i) }
+
+
+                        // 예상 매핑(양 끝 공백셀 포함 15열)
+                        // 0:'', 1:Flight/Activity, 2:From, 3:STD, 4:To, 5:STA, 6:A/C, 7:Acting rank,
+                        // 8:Duty, 9:PIC code, 10:Crew ID, 11:Name, 12:Comment, 13:Special Duty Code, 14:''
+                        let item = cell(1)
+                        let depAp = cell(2)
+                        let stdRaw = cell(3)
+                        let arrAp = cell(4)
+                        let staRaw = cell(5)
+                        let ac = cell(6)
+                        let actingRank = cell(7)
+                        let duty = cell(8)
+                        let picCode = cell(9)
+                        let crewID = cell(10)
+                        let crewName = cell(11)
+                        let comment = cell(12)
+                        let sdcPerCrew = cell(13)
+
+                        // 크루 칼럼 중 하나라도 값이 있으면 "크루 내용 있음"
+                        let hasCrew = [actingRank, duty, picCode, crewID, crewName, comment, sdcPerCrew]
+                            .contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+                        // 새 비행편 시작 행인지 판별
+                        let isNewFlightRow: Bool = {
+                            // 아이템/공항/시간 5요소 중 3개 이상 있으면 새 편으로 간주
+                            let bits = [item, depAp, stdRaw, arrAp, staRaw].map { !$0.isEmpty }
+                            return bits.filter { $0 }.count >= 3
+                        }()
+
+                        if isNewFlightRow {
+                            // 시간 파싱
+                            guard let dep = self.splitISODateTime(stdRaw),
+                                  let arr = self.splitISODateTime(staRaw) else {
+                                self.debugLog("STD/STA 파싱 실패: \(stdRaw) / \(staRaw)")
+                                continue
+                            }
+                            let depDate = dep.dateStr
+                            let depTime = dep.timeStr
+                            let arrDate = arr.dateStr
+                            let arrTime = arr.timeStr
+
+                            // UTC 문자열
+                            let depUTC = self.convertLocalTimeToUTCTime(dateString: depDate, timeString: depTime, airportCode: depAp, airports: airports)
+                            let arrUTC = self.convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrTime, airportCode: arrAp, airports: airports)
+
+                            // 월 카운트
+                            let ddf = DateFormatter()
+                            ddf.locale = Locale(identifier: "en_US_POSIX")
+                            ddf.dateFormat = "dd-MMM-yyyy"
+                            if let d = ddf.date(from: depDate) {
+                                let mKey = self.formattedMonth(for: d)
+                                newDepMonthCount[mKey, default: 0] += 1
+                            }
+
+                            // 편 키/포지션
+                            let fKey = flightKey(item: item, depDate: depDate, depAp: depAp, depTime: depTime)
+
+                            // 신규/기존 분기
+                            if let existingPos = indexMap[fKey] {                                // 이미 만든 편이 있으면 대표 필드만 보강하고 이어서 크루 병합
+                                var arrForDate = newExtracted[existingPos.dateKey] ?? []
+                                var entry = arrForDate[existingPos.idx]
+                                if entry["AC"]?.isEmpty ?? true, !ac.isEmpty { entry["AC"] = ac }
+                                if entry["ActingRank"]?.isEmpty ?? true, !actingRank.isEmpty { entry["ActingRank"] = actingRank }
+                                if entry["WorkType"]?.isEmpty ?? true, !duty.isEmpty { entry["WorkType"] = duty }
+                                if hasCrew {
+                                    let crewRow: [String:String] = [
+                                        "ActingRank": actingRank,
+                                        "Duty": duty,
+                                        "PICCode": picCode,
+                                        "CrewID": crewID,
+                                        "Name": crewName,
+                                        "Comment": comment,
+                                        "SDC": sdcPerCrew
+                                    ]
+                                    self.mergeCrewRow(crewRow, into: &entry)
+                                }
+                                arrForDate[existingPos.idx] = entry
+                                newExtracted[existingPos.dateKey] = arrForDate
+
+                              //currentFlightKey = fKey
+                                currentPos = existingPos
+                            } else {
+                                let seq = (seqCountersByDate[depDate] ?? 0) + 1
+                                seqCountersByDate[depDate] = seq
+
+                                var entry: [String:String] = [
+                                    "Seq": "\(seq)",
+                                    "Activity": item,
+                                    "Item": item,
+                                    "WorkType": duty.isEmpty ? "FLY" : duty,
+                                    "DutyReport": "",
+                                    "DepAp": depAp,
+                                    "DepStnTime": depTime,
+                                    "DepStnTimeOpt": "",
+                                    "DepDate": depDate,
+                                    "ArrAp": arrAp,
+                                    "ArrStnTime": arrTime,
+                                    "ArrStnTimeOpt": "",
+                                    "ArrDate": arrDate,
+                                    "DutyDebrief": "",
+                                    "DutyDebriefTime": "",
+                                    "DutyDebriefDate": arrDate,
+                                    "FlyingHours": "",
+                                    "DutyHours": "",
+                                    "SDC": "", // 편 수준 SDC는 없을 수 있음
+                                    "Hotel": "",
+                                    "DepStnTimeUTC": depUTC,
+                                    "ArrStnTimeUTC": arrUTC,
+                                    "Date": depDate
+                                ]
+                                if !ac.isEmpty        { entry["AC"] = ac }
+                                if !actingRank.isEmpty { entry["ActingRank"] = actingRank }
+
+                                if hasCrew {
+                                    let crewRow: [String:String] = [
+                                        "ActingRank": actingRank,
+                                        "Duty": duty,
+                                        "PICCode": picCode,
+                                        "CrewID": crewID,
+                                        "Name": crewName,
+                                        "Comment": comment,
+                                        "SDC": sdcPerCrew
+                                    ]
+                                    self.mergeCrewRow(crewRow, into: &entry)
+                                }
+
+                                var arrForDate = newExtracted[depDate] ?? []
+                                arrForDate.append(entry)
+                                newExtracted[depDate] = arrForDate
+                                let pos = (dateKey: depDate, idx: arrForDate.count - 1)
+                                indexMap[fKey] = pos
+
+                                //currentFlightKey = fKey
+                                currentPos = pos
+                                self.debugLog("추출 스케줄(새 형식 신규): \(entry)")
+                            }
+                            continue
+                        }
+
+                        // 여기부터는 "새 비행 정보 없이 크루만 있는 연속 행" 처리
+                        if hasCrew, let pos = currentPos {
+                            var arrForDate = newExtracted[pos.dateKey] ?? []
+                            guard pos.idx >= 0 && pos.idx < arrForDate.count else {
+                                self.debugLog("currentPos out of range. resetting context.")
+                                currentPos = nil
+                                continue
+                            }
+
+                            var entry = arrForDate[pos.idx]
+
+                            // 대표 필드 보강(빈 값만 채움)
+                            if (entry["AC"]?.isEmpty ?? true), !ac.isEmpty { entry["AC"] = ac }
+                            if (entry["ActingRank"]?.isEmpty ?? true), !actingRank.isEmpty { entry["ActingRank"] = actingRank }
+                            if (entry["WorkType"]?.isEmpty ?? true), !duty.isEmpty { entry["WorkType"] = duty }
+
+                            // 크루 병합
+                            let crewRow: [String:String] = [
+                                "ActingRank": actingRank,
+                                "Duty": duty,
+                                "PICCode": picCode,
+                                "CrewID": crewID,
+                                "Name": crewName,
+                                "Comment": comment,
+                                "SDC": sdcPerCrew
+                            ]
+                            self.mergeCrewRow(crewRow, into: &entry)
+
+                            arrForDate[pos.idx] = entry
+                            newExtracted[pos.dateKey] = arrForDate
+                            continue
+                        }
+
+                        // 내용 없는 빈 행은 스킵
+                    }
+                }
+
+                if parsedByNewLayout, !newExtracted.isEmpty {
+                    // 새 레이아웃 성공: 저장/병합
+                    DispatchQueue.main.async {
+                        if !ownerFromNew.isEmpty { self.ownerInfo = ownerFromNew }
+                        if !hoursFromNew.isEmpty { self.totalHours = hoursFromNew }
+                        UserDefaults.standard.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
+
+                        if let maxEntry = newDepMonthCount.max(by: { $0.value < $1.value }) {
+                            let majorityMonthKey = maxEntry.key
+                            self.debugLog("출발 스케줄이 가장 많은 달(새 형식): \(majorityMonthKey)")
+                            var monthlyStd = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
+                            monthlyStd[majorityMonthKey] = self.totalHours
+                            UserDefaults.standard.set(monthlyStd, forKey: self.totalHoursByMonthUserDefaultsKey)
+                            self.totalHours = monthlyStd[majorityMonthKey] ?? self.totalHours
+
+                            // 해당 월의 기존 스케줄 삭제
+                            let df = DateFormatter()
+                            df.locale = Locale(identifier: "en_US_POSIX")
+                            df.dateFormat = "dd-MMM-yyyy"
+                            let keysToRemove = self.schedules.keys.filter { key in
+                                if let dateObj = df.date(from: key) {
+                                    return self.formattedMonth(for: dateObj) == majorityMonthKey
+                                }
+                                return false
+                            }
+                            for key in keysToRemove { self.schedules.removeValue(forKey: key) }
+                        }
+
+                        // 새 데이터 병합
+                        for (k, v) in newExtracted { self.schedules[k] = v }
+
+                        self.saveSchedules()
+                        self.printSchedulesToConsole()
+                        self.showAlert(title: "Import Complete", message: "The schedule was successfully imported (new layout + full crew).")
+                    }
+                    return
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // 2) 구형 레이아웃 폴백 (기존 파서)
+                // ─────────────────────────────────────────────────────────────
+
                 let rows: Elements = try doc.select("tr")
                 var extractedSchedules: [String: [[String: String]]] = [:]
 
@@ -604,7 +940,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     return result
                 }
 
-                // 소유자 정보 추출
+                // 소유자 정보 추출(구형)
                 do {
                     if let ownerElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(4) > p > span").first() {
                         let fullOwnerText = try ownerElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -613,31 +949,31 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         } else {
                             self.ownerInfo = fullOwnerText
                         }
-                        self.debugLog("소유자 정보 추출 성공: \(self.ownerInfo)")
+                        self.debugLog("소유자 정보 추출 성공(구형): \(self.ownerInfo)")
                     } else {
-                        self.debugLog("소유자 정보를 찾을 수 없습니다.")
+                        self.debugLog("소유자 정보를 찾을 수 없습니다.(구형)")
                     }
                 } catch {
-                    self.debugLog("소유자 정보 추출 중 오류 발생: \(error)")
+                    self.debugLog("소유자 정보 추출 중 오류 발생(구형): \(error)")
                 }
 
-                // 총 시간 정보 추출
+                // 총 시간 정보 추출(구형)
                 do {
                     if let hoursElement = try doc.select("body > table > tbody > tr > td:nth-child(2) > table:nth-child(2) > tbody > tr:nth-child(3) > td:nth-child(5) > p > span").first() {
                         self.totalHours = try hoursElement.text().trimmingCharacters(in: .whitespacesAndNewlines)
-                        self.debugLog("총 시간 정보 추출 성공: \(self.totalHours)")
+                        self.debugLog("총 시간 정보 추출 성공(구형): \(self.totalHours)")
                     } else {
-                        self.debugLog("총 시간 정보를 찾을 수 없습니다.")
+                        self.debugLog("총 시간 정보를 찾을 수 없습니다.(구형)")
                     }
                 } catch {
-                    self.debugLog("총 시간 정보 추출 중 오류 발생: \(error)")
+                    self.debugLog("총 시간 정보 추출 중 오류 발생(구형): \(error)")
                 }
 
                 UserDefaults.standard.set(self.ownerInfo, forKey: self.ownerUserDefaultsKey)
 
                 var depMonthCount: [String: Int] = [:]
 
-                // 스케줄 파싱
+                // 스케줄 파싱(구형)
                 for (_, row) in rows.enumerated() {
                     let columns: Elements = try row.select("td")
 
@@ -745,7 +1081,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                         ]
 
                         extractedSchedules[date, default: []].append(scheduleEntry)
-                        self.debugLog("추출된 스케줄 추가: \(scheduleEntry)")
+                        self.debugLog("추출된 스케줄(구형): \(scheduleEntry)")
 
                         if let depDateObj = dateFormatter.date(from: depDate) {
                             let monthKey = self.formattedMonth(for: depDateObj)
@@ -761,19 +1097,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     return
                 }
 
-                // ★ 덮어쓰기 방식: 기존 스케줄 데이터를 임포트된 데이터에 해당하는 날짜만 업데이트 (다른 달의 데이터는 그대로 보존) ★
+                // ★ 덮어쓰기 방식: 기존 스케줄 데이터를 임포트된 데이터에 해당하는 날짜만 업데이트
                 DispatchQueue.main.async {
-                    // ★ 해당 월의 기존 스케줄 삭제 코드 삽입 시작 ★
                     if let maxEntry = depMonthCount.max(by: { $0.value < $1.value }) {
                         let majorityMonthKey = maxEntry.key
-                        self.debugLog("출발 스케줄이 가장 많은 달: \(majorityMonthKey)")
-                        var monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
-                        monthlyHours[majorityMonthKey] = self.totalHours
-                        UserDefaults.standard.set(monthlyHours, forKey: self.totalHoursByMonthUserDefaultsKey)
-                        self.totalHours = monthlyHours[majorityMonthKey] ?? ""
+                        self.debugLog("출발 스케줄이 가장 많은 달(구형): \(majorityMonthKey)")
+                        var monthlyStd = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] ?? [:]
+                        monthlyStd[majorityMonthKey] = self.totalHours
+                        UserDefaults.standard.set(monthlyStd, forKey: self.totalHoursByMonthUserDefaultsKey)
+                        self.totalHours = monthlyStd[majorityMonthKey] ?? ""
 
                         let dateFormatterForKey = DateFormatter()
                         dateFormatterForKey.dateFormat = "dd-MMM-yyyy"
+                        dateFormatterForKey.locale = Locale(identifier: "en_US_POSIX")
                         let keysToRemove = self.schedules.keys.filter { key in
                             if let dateObj = dateFormatterForKey.date(from: key) {
                                 return self.formattedMonth(for: dateObj) == majorityMonthKey
@@ -784,16 +1120,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             self.schedules.removeValue(forKey: key)
                         }
                     }
-                    // ★ 해당 월의 기존 스케줄 삭제 코드 삽입 끝 ★
 
-                    // 새로 파싱된 스케줄 데이터 병합
                     for (date, newEntries) in extractedSchedules {
                         self.schedules[date] = newEntries
                     }
 
-                    self.saveSchedules()     // App Group 저장 + KVS 동기 저장
+                    self.saveSchedules()
                     self.printSchedulesToConsole()
-                    self.showAlert(title: "Import Complete", message: "The schedule was successfully imported.")
+                    self.showAlert(title: "Import Complete", message: "The schedule was successfully imported (legacy layout).")
                 }
 
             } catch {
@@ -805,7 +1139,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    // ✅ 새로 추가
+    // ✅ 유지: 팝업 방식 크루리스트 임포트
     private func extractIATAs(from route: String) -> (String?, String?) {
         // 예) "ICN-LAX", "ICN → LAX", "ICN / LAX"
         let pattern = #"([A-Z]{3})\s*[-→/>\s]+\s*([A-Z]{3})"#
@@ -820,7 +1154,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         return (nil, nil)
     }
 
-    // MARK: - ✅ 크루리스트: 편명 숫자 + 날짜(DepDate 우선, Date 폴백) + 출발지(있으면) 매칭
+    // MARK: - ✅ 크루리스트: 편명 숫자 + 날짜(DepDate 우선, Date 폴백) + 출발지(있으면) 매칭 (팝업 버전 유지)
     func importCrewList() {
         let targetWebView: WKWebView = self.webView
 
@@ -1362,13 +1696,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             var parts: [String] = []
 
             if let name = row["Name"], !name.isEmpty { parts.append(name) }
-            if let role = row["Role"], !role.isEmpty { parts.append("Role=\(role)") }
+            if let duty = row["Duty"], !duty.isEmpty { parts.append("Duty=\(duty)") }
+            if let act = row["ActingRank"], !act.isEmpty { parts.append("ActingRank=\(act)") }
             if let rank = row["PostingRank"], !rank.isEmpty { parts.append("Rank=\(rank)") }
             if let pic = row["PICCode"], !pic.isEmpty { parts.append("Code=\(pic)") }
             if let crewID = row["CrewID"], !crewID.isEmpty { parts.append("ID=\(crewID)") }
-            if let workType = row["WorkType"], !workType.isEmpty { parts.append("Type=\(workType)") }
             if let contact = row["Contact"], !contact.isEmpty { parts.append("Contact=\(contact)") }
             if let sdc = row["SDC"], !sdc.isEmpty { parts.append("SDC=\(sdc)") }
+            if let cmt = row["Comment"], !cmt.isEmpty { parts.append("Comment=\(cmt)") }
 
             return parts.isEmpty ? "• (정보 없음)" : "• " + parts.joined(separator: " • ")
         }
