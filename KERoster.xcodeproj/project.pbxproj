@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2FBB7C372EA459AD00B1EC1B /* PersonFlightsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBB7C362EA459AD00B1EC1B /* PersonFlightsViewController.swift */; };
 		2FF801C42E9A013C0039F7A6 /* CrewListByMonthViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */; };
 		2FF801C62E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */; };
 		2FF801C82E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */; };
@@ -65,6 +66,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2FBB7C362EA459AD00B1EC1B /* PersonFlightsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonFlightsViewController.swift; sourceTree = "<group>"; };
 		2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListByMonthViewController.swift; sourceTree = "<group>"; };
 		2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListMonthDetailViewController.swift; sourceTree = "<group>"; };
 		2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewListFlightDetailViewController.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 				38E192C92D4109B5006BDDDF /* Info.plist */,
 				38E192C12D4109B3006BDDDF /* KERoster.xcdatamodeld */,
 				2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */,
+				2FBB7C362EA459AD00B1EC1B /* PersonFlightsViewController.swift */,
 				2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */,
 				2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */,
 			);
@@ -315,6 +318,7 @@
 				384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */,
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
 				38EC9C592E53064B0093DBB1 /* PopupWebViewController.swift in Sources */,
+				2FBB7C372EA459AD00B1EC1B /* PersonFlightsViewController.swift in Sources */,
 				2FF801C42E9A013C0039F7A6 /* CrewListByMonthViewController.swift in Sources */,
 				38CD98532D84E47B00F98373 /* ZoomableCalendarContainerViewController.swift in Sources */,
 				2FF801C82E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift in Sources */,
@@ -364,7 +368,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERosterWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
@@ -374,7 +378,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -391,7 +395,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERosterWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
@@ -401,7 +405,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -542,7 +546,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERoster;
@@ -558,7 +562,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -576,7 +580,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERoster;
@@ -592,7 +596,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

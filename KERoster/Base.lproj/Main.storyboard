@@ -226,10 +226,10 @@
             </objects>
             <point key="canvasLocation" x="2682" y="1374"/>
         </scene>
-        <!--Crew List Month Detail View Controller-->
+        <!--Person Flights View Controller-->
         <scene sceneID="LzQ-kA-Su2">
             <objects>
-                <viewController storyboardIdentifier="CrewListMonthDetailViewController" id="L37-W0-ei8" customClass="CrewListMonthDetailViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="PersonFlightsViewController" id="L37-W0-ei8" customClass="PersonFlightsViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="08N-xs-Ta6">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -249,7 +249,7 @@
                         </constraints>
                     </view>
                     <connections>
-                        <outlet property="tableView" destination="ZSV-IN-Xi9" id="uB3-Zt-W43"/>
+                        <outlet property="tableView" destination="ZSV-IN-Xi9" id="FgM-hK-UxR"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="rjz-i6-i4X" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
