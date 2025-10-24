@@ -6,42 +6,78 @@
 //
 
 import UIKit
-import CoreData
 import Foundation
+import CoreData
+import CloudKit
+
+// 화면 쪽에서 pull 트리거 받을 알림
+// (프로젝트 내 중복 선언 주의)
+extension Notification.Name {
+    static let cloudKitUpdated = Notification.Name("CloudKitUpdated")
+}
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-         sleep(1)
 
+        // ✅ KVS 동기화/옵저버 전량 제거 (CloudKit로 대체)
+        // NSUbiquitousKeyValueStore.default.synchronize()  // 삭제
+        // didChangeExternallyNotification 옵저버           // 삭제
 
-        // iCloud KVS: 앱 시작 시 동기화
-        NSUbiquitousKeyValueStore.default.synchronize()
+        // ✅ CloudKit DB 변경 → 사일런트 푸시 구독(최초 1회 생성)
+        CloudKitManager.shared.subscribeIfNeeded()
 
-        // 외부(iCloud) 변경 → 앱 내부로 브로드캐스트
-        NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default,
-            queue: .main
-        ) { note in
-            // (선택) 어떤 키가 바뀌었는지 로그
-            if let keys = note.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String] {
-                print("[KVS] changed keys: \(keys)")
-            }
-            NotificationCenter.default.post(name: Notification.Name("KVSUpdated"), object: nil)
+        // ✅ 원격 푸시 등록 (Background Modes → Remote notifications 체크 필수)
+        application.registerForRemoteNotifications()
+
+        // (선택) CloudKit 계정 상태 로깅
+        CKContainer.default().accountStatus { status, error in
+            #if DEBUG
+            if let error = error { print("iCloud account status error: \(error)") }
+            else { print("iCloud account status: \(status.rawValue)") }
+            #endif
         }
 
         return true
     }
 
-    // 포그라운드 복귀 시 동기화 한 번 더 (다른 기기에서 바뀐 값 당겨오기)
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        NSUbiquitousKeyValueStore.default.synchronize()
+    // MARK: - Remote Notifications (silent push from CloudKit)
+
+    // APNs 등록 성공/실패(선택) – 사일런트 푸시에 꼭 필요하진 않지만 디버그에 유용
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        #if DEBUG
+        print("✅ Registered for remote notifications. token length=\(deviceToken.count)")
+        #endif
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("❌ Failed to register for remote notifications: \(error)")
+    }
+
+    // CloudKit DB 구독 푸시 수신 → 화면 쪽 동기화 트리거
+    func application(_ application: UIApplication,
+                     didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+
+        // CloudKit 푸시 파싱
+        let ckNotification = CKNotification(fromRemoteNotificationDictionary: userInfo)
+
+        // CloudKitManager.subscribeIfNeeded()에서 사용한 구독 ID와 동일해야 함
+        if ckNotification?.subscriptionID == "KERosterDBSub" {
+            // 앱 어느 화면에서든 이 알림을 받아 pull() 호출하도록 처리
+            NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
+            completionHandler(.newData)
+        } else {
+            completionHandler(.noData)
+        }
     }
 
     // MARK: UISceneSession Lifecycle
+
     func application(_ application: UIApplication,
                      configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -52,6 +88,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {}
 
     // MARK: - Core Data stack (미사용이면 전부 삭제 가능)
+
     lazy var persistentContainer: NSPersistentContainer = {
         let container = NSPersistentContainer(name: "KERoster")
         container.loadPersistentStores { _, error in
@@ -74,5 +111,3 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 }
-
-
