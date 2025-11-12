@@ -2017,27 +2017,25 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                     
                     if let idx = indexByKey[k] {
                         var old = merged[idx]
-                        
                         if wt == "FLY" || wt == "TVL" {
-                            // ✈️ 비행 듀티: 특정 필드만 덮어쓰기, CrewList는 그대로 둠
+                            // ✈️ 비행 듀티: 지정 필드만 업데이트, CrewList는 그대로 둠
                             func assign(_ key: String) {
                                 if let v = e[key]?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
                                     old[key] = v
                                 }
                             }
-                            assign("DutyReport")        // Report
-                            assign("DutyDebrief")       // Debrief(문자)
-                            assign("DutyDebriefTime")   // Debrief(시간)
-                            assign("FlyingHours")       // FH
-                            assign("DutyHours")         // DH
-                            assign("Hotel")             // Hotel
-                            // CrewList는 건드리지 않음
+                            assign("DutyReport")
+                            assign("DutyDebrief")
+                            assign("DutyDebriefTime")
+                            assign("FlyingHours")
+                            assign("DutyHours")
+                            assign("Hotel")
                             merged[idx] = old
-                            
+
                         } else {
-                            // 🧱 지상 듀티: 값 있는 항목만 덮어쓰기, CrewList는 비어있을 때만 채움
+                            // 🧱 지상 듀티: 값 있는 항목만 업데이트(CrewList 보호)
                             for (kk, vv) in e {
-                                if kk == "CrewList" { continue } // 기존 CrewList 보호
+                                if kk == "CrewList" { continue }
                                 let v = vv.trimmingCharacters(in: .whitespacesAndNewlines)
                                 if !v.isEmpty { old[kk] = v }
                             }
@@ -2046,11 +2044,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                             }
                             merged[idx] = old
                         }
-                        
+
                     } else {
-                        // 기존에 없는 스케줄은 새로 추가 (FLY/TVL 포함)
+                        // ✅ 업로드 모드: FLY/TVL은 “업데이트 전용” → 신규 추가 금지
+                        if wt == "FLY" || wt == "TVL" {
+                            debugLog("✋ XLSX Upload: NEW FLY/TVL 발견 → 추가하지 않음 (update-only) | key=\(k)")
+                            continue
+                        }
+                        // Ground duty만 신규 추가 허용
                         merged.append(e)
-                        indexByKey[makeKey(e)] = merged.count - 1
+                        indexByKey[k] = merged.count - 1
                     }
                 }
                 
