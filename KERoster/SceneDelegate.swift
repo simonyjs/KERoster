@@ -11,47 +11,40 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
+    func scene(_ scene: UIScene,
+               willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+        // 스토리보드(Main)를 사용하는 경우, 기본 설정 그대로
         guard let _ = (scene as? UIWindowScene) else { return }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
-        // Called as the scene is being released by the system.
-        // This occurs shortly after the scene enters the background, or when its session is discarded.
-        // Release any resources associated with this scene that can be re-created the next time the scene connects.
-        // The scene may re-connect later, as its session was not necessarily discarded (see `application:didDiscardSceneSessions` instead).
+        // 백그라운드로 간 뒤 다시 연결되지 않을 수도 있을 때 호출
+        // 여기서는 따로 처리할 내용 없음
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
-        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+        // 인바운드 전화, 알림 등으로 inactive였다가 다시 active 될 때
+        // 필요하면 여기서 타이머 재시작 등 처리
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        // Called when the scene will move from an active state to an inactive state.
-        // This may occur due to temporary interruptions (ex. an incoming phone call).
-    NSUbiquitousKeyValueStore.default.synchronize()
-    NotificationCenter.default.post(name: Notification.Name("KVSUpdated"), object: nil)
+        // active → inactive로 갈 때 (전화 수신 등)
+        // 예전 KVS 관련 코드는 전부 삭제
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        NSUbiquitousKeyValueStore.default.synchronize()
+        // background → foreground로 올라올 때
+        // 잠금 로직은 ViewController.viewDidAppear + AppLockManager에서 처리하므로 여기선 할 일 없음
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        // Called as the scene transitions from the foreground to the background.
-        // Use this method to save data, release shared resources, and store enough scene-specific state information
-        // to restore the scene back to its current state.
+        // foreground → background로 내려갈 때 호출
 
-        // Save changes in the application's managed object context when the application transitions to the background.
+        // CoreData 등 저장
         (UIApplication.shared.delegate as? AppDelegate)?.saveContext()
+
+        // 다음에 다시 올라올 때는 다시 인증 받도록 세션 리셋
+        AppLockManager.shared.resetSession()
     }
-
-    
-
 }
-

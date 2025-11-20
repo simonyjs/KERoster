@@ -23,8 +23,8 @@ extension Elements {
     }
 }
 
-class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
-
+class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, LoginViewControllerDelegate {
+    
     // 🔁 CloudKit 푸시 적용 중 재업로드 방지 플래그 (KVS → Cloud 대체)
     private var isApplyingCloudPush = false   // ⬅️ 변경 (isApplyingKVS → isApplyingCloudPush)
 
@@ -54,6 +54,63 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     // MARK: - 디버그 로그 함수
     func debugLog(_ message: String) {
         print("[DEBUG] \(message)")
+    }
+    
+    // MARK: - 잠금 커버 뷰
+    private let lockCoverView: UIView = {
+        let v = UIView()
+        v.backgroundColor = .systemBackground    // 전체를 가리는 배경색
+        v.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = "KERoster Locked \n Unlock with Face ID / Touch ID / passcode."
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        v.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: v.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: v.centerYAnchor)
+        ])
+
+        return v
+    }()
+    // MARK: - LoginViewControllerDelegate
+    func loginInfoDidSave() {
+        // 로그인 정보 저장되면 → 첫 화면(로그인 페이지) 다시 로드
+        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
+    }
+    
+    // MARK: - 화면 가리기 헬퍼
+    private func requireAppUnlockIfNeeded() {
+        // 일단 화면은 가려둔 상태에서 시작
+        lockCoverView.isHidden = false
+
+        AppLockManager.shared.authenticateIfNeeded { [weak self] success in
+            guard let self = self else { return }
+
+            if success {
+                // ✅ 인증 성공 → 커버 제거 + 첫 화면 로드
+                self.lockCoverView.isHidden = true
+                self.loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
+
+            } else {
+                // ❌ 실패 또는 취소 → 커버 유지 + 안내 후 앱 내리기
+                self.lockCoverView.isHidden = false
+
+                let alert = UIAlertController(
+                    title: "Security authentication failed",
+                    message: "You must complete authentication to use KERoster.",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "Close", style: .default, handler: { _ in
+                    UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+                }))
+                self.present(alert, animated: true)
+            }
+        }
     }
 
     // MARK: - 헬퍼 함수: 날짜 포맷 변환 ("yyyy-MM" 포맷)
@@ -105,6 +162,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: containerView)
         }
 
+        // 🔒 잠금 커버를 화면 전체에 올려두기
+        view.addSubview(lockCoverView)
+        NSLayoutConstraint.activate([
+            lockCoverView.topAnchor.constraint(equalTo: view.topAnchor),
+            lockCoverView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            lockCoverView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            lockCoverView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
+        // 처음에는 잠금 상태라고 가정 → 커버 보이게
+        lockCoverView.isHidden = false
+        
         self.eventStore = EKEventStore()
         self.calendarManager = CalendarManager(eventStore: self.eventStore)
 
@@ -130,7 +199,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         navigationController?.navigationBar.compactAppearance = appearance
         navigationController?.navigationBar.tintColor = .white
         navigationController?.navigationBar.isTranslucent = false
+        
+        //로그인 바 스타일 설정
+        let loginButton = UIBarButtonItem(
+            image: UIImage(systemName: "key.fill"),
+            style: .plain,
+            target: self,
+            action: #selector(showLoginPopup)
+        )
 
+        // 왼쪽에 버전 라벨 이미 쓰고 있으니까, 그 옆에 키 버튼 추가
+        if let existingLeft = navigationItem.leftBarButtonItem {
+            navigationItem.leftBarButtonItems = [existingLeft, loginButton]
+        } else {
+            navigationItem.leftBarButtonItem = loginButton
+        }
+        
         printSchedulesToConsole()
 
         // 오른쪽 네비게이션 바 버튼 (스토리보드 연결이 안되어 있으면 생성)
@@ -282,12 +366,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     // ─────────────────────────────────────────────────────────────────────
 
+    // MARK: - Log In 팝업
+    @objc private func showLoginPopup() {
+        let loginVC = LoginViewController()
+        loginVC.delegate = self
+        let nav = UINavigationController(rootViewController: loginVC)
+        nav.modalPresentationStyle = .formSheet   // iPad에서 팝업 느낌
+        present(nav, animated: true)
+    }
+
     // MARK: - 이하 기존 코드(웹, 달력, 파서, 임포트 등)는 그대로 유지
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // 첫 진입 시 페이지 로드
-        loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
+
+        // 🔐 앱 잠금 인증 + 성공 시 로그인 페이지 로드
+        requireAppUnlockIfNeeded()
     }
+
 
     // WebView, UserDefaults loadSchedules(), importSchedule(), importCrewList(), XLSX/PDF 파서,
     // 캘린더 이벤트 관련 모든 메서드들은 네가 올린 그대로 유지하면 돼.
@@ -435,6 +530,16 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
     
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        debugLog("페이지 로드 완료: \(webView.url?.absoluteString ?? "nil")")
+        
+        // iFlight 로그인 페이지일 때만 자동 채우기 시도
+        if let host = webView.url?.host,
+           host.contains("iflightke.ibsplc.aero") {
+            fillLoginFormIfPossible()
+        }
+    }
+
     // MARK: - 새 레이아웃(Flight/Activity, STD, STA) → dd-MMM-yyyy & HH:mm 분리
     private func splitISODateTime(_ dt: String) -> (dateStr: String, timeStr: String)? {
         let s = dt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1264,6 +1369,45 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             return dateFromLocal(dateString: depDateString, timeString: dutyReport, timeZone: startTimeZone)
         }
     }
+    
+    // MARK: - iFlight 로그인 폼 자동 채우기
+
+    func fillLoginFormIfPossible() {
+        let defaults = UserDefaults.standard
+        guard let username = defaults.string(forKey: "iFlightUsername"),
+              !username.isEmpty,
+              let password = KeychainService.loadPassword(account: username),
+              !password.isEmpty else {
+            debugLog("저장된 로그인 정보 없음")
+            return
+        }
+        
+        // JS 문자열에 안전하게 넣기 위해 특수문자 최소한 이스케이프
+        let escapedUser = username
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+        let escapedPw = password
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+        
+        let js = """
+        (function() {
+          var userField = document.querySelector("input[name='userId'], input[name='userID'], input[name='j_username'], input[type='text']");
+          var passField = document.querySelector("input[type='password']");
+          if (userField) { userField.value = '\(escapedUser)'; }
+          if (passField) { passField.value = '\(escapedPw)'; }
+        })();
+        """
+        
+        webView.evaluateJavaScript(js) { [weak self] result, error in
+            if let error = error {
+                self?.debugLog("로그인 폼 채우기 JS 에러: \(error.localizedDescription)")
+            } else {
+                self?.debugLog("로그인 폼 자동 채우기 완료")
+            }
+        }
+    }
+
     
     // MARK: - 콘솔 출력, 알림, 스케줄 추가 등 기타 함수
     func printSchedulesToConsole() {

@@ -52,5 +52,10 @@
         <string>org.duckdns.cageyjs.KERoster.refresh</string>
         <string>org.duckdns.cageyjs.KERoster.processing</string>
     </array>
+
+    <!-- ✅ Face ID / Touch ID / 기기 암호로 앱 잠금 설명 -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>KERoster uses Face ID to protect your information.</string>
+
 </dict>
 </plist>
