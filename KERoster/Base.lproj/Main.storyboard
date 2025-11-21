@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24128" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Tbz-gH-Bwq">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24412" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Tbz-gH-Bwq">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24063"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24405"/>
         <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
@@ -62,6 +62,13 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <connections>
                                             <action selector="CrewButtonTapped:" destination="BYZ-38-t0r" id="WrY-kU-963"/>
+                                        </connections>
+                                    </barButtonItem>
+                                    <barButtonItem style="plain" systemItem="flexibleSpace" id="aCA-0E-txM"/>
+                                    <barButtonItem title="Airport" image="globe" catalog="system" id="lTe-hy-a6T">
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <connections>
+                                            <action selector="AirportButtonTapped:" destination="BYZ-38-t0r" id="PLm-Uc-Tmp"/>
                                         </connections>
                                     </barButtonItem>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="Qch-OU-YBh"/>
@@ -226,6 +233,42 @@
             </objects>
             <point key="canvasLocation" x="2682" y="1374"/>
         </scene>
+        <!--Airport List View Controller-->
+        <scene sceneID="fCZ-M9-F7W">
+            <objects>
+                <tableViewController storyboardIdentifier="AirportListViewController" id="Qgg-6G-8V2" customClass="AirportListViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" id="pVa-Xg-6KL">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <connections>
+                            <outlet property="dataSource" destination="Qgg-6G-8V2" id="glr-tB-j3g"/>
+                            <outlet property="delegate" destination="Qgg-6G-8V2" id="G1N-c2-xAY"/>
+                        </connections>
+                    </tableView>
+                </tableViewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="7tk-A2-8gt" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2673" y="2030"/>
+        </scene>
+        <!--Airport Flight List View Controller-->
+        <scene sceneID="aLH-6K-Vo4">
+            <objects>
+                <tableViewController storyboardIdentifier="AirportFlightListViewController" id="Ah1-rB-07g" customClass="AirportFlightListViewController" customModule="KERoster" customModuleProvider="target" sceneMemberID="viewController">
+                    <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" id="nFj-UR-5XM">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <connections>
+                            <outlet property="dataSource" destination="Ah1-rB-07g" id="DHH-Um-G8Z"/>
+                            <outlet property="delegate" destination="Ah1-rB-07g" id="gXG-OL-Vfm"/>
+                        </connections>
+                    </tableView>
+                </tableViewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="xNH-zW-gjd" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="3538" y="2030"/>
+        </scene>
         <!--Person Flights View Controller-->
         <scene sceneID="LzQ-kA-Su2">
             <objects>
@@ -282,6 +325,7 @@
     <resources>
         <image name="airplane.departure" catalog="system" width="128" height="84"/>
         <image name="calendar" catalog="system" width="128" height="107"/>
+        <image name="globe" catalog="system" width="128" height="123"/>
         <image name="house.fill" catalog="system" width="128" height="104"/>
         <image name="person.2.fill" catalog="system" width="128" height="86"/>
         <image name="square.and.arrow.up.fill" catalog="system" width="117" height="128"/>

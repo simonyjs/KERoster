@@ -10,6 +10,9 @@
 		2F147A032EAA2952008D5F3E /* CoreXLSX in Frameworks */ = {isa = PBXBuildFile; productRef = 2F147A022EAA2952008D5F3E /* CoreXLSX */; };
 		2F456D602ED0886300CEAF1C /* NotificationName+KERoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F456D5F2ED0885F00CEAF1C /* NotificationName+KERoster.swift */; };
 		2F456D612ED0890900CEAF1C /* NotificationName+KERoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F456D5F2ED0885F00CEAF1C /* NotificationName+KERoster.swift */; };
+		2F456D652ED09B5200CEAF1C /* AirportFlightRef.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F456D642ED09B4D00CEAF1C /* AirportFlightRef.swift */; };
+		2F456D672ED09B7E00CEAF1C /* AirportListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F456D662ED09B7900CEAF1C /* AirportListViewController.swift */; };
+		2F456D692ED09BBB00CEAF1C /* AirportFlightListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F456D682ED09BAE00CEAF1C /* AirportFlightListViewController.swift */; };
 		2F7BDDF32ECF3F3F00EF904C /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7BDDF22ECF3F3C00EF904C /* KeychainService.swift */; };
 		2F7BDDF52ECF3F6000EF904C /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7BDDF42ECF3F5D00EF904C /* LoginViewController.swift */; };
 		2F7BDDF72ECF41DA00EF904C /* SavedAccountsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7BDDF62ECF41D700EF904C /* SavedAccountsViewController.swift */; };
@@ -77,6 +80,9 @@
 
 /* Begin PBXFileReference section */
 		2F456D5F2ED0885F00CEAF1C /* NotificationName+KERoster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotificationName+KERoster.swift"; sourceTree = "<group>"; };
+		2F456D642ED09B4D00CEAF1C /* AirportFlightRef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportFlightRef.swift; sourceTree = "<group>"; };
+		2F456D662ED09B7900CEAF1C /* AirportListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportListViewController.swift; sourceTree = "<group>"; };
+		2F456D682ED09BAE00CEAF1C /* AirportFlightListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportFlightListViewController.swift; sourceTree = "<group>"; };
 		2F7BDDF22ECF3F3C00EF904C /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		2F7BDDF42ECF3F5D00EF904C /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		2F7BDDF62ECF41D700EF904C /* SavedAccountsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAccountsViewController.swift; sourceTree = "<group>"; };
@@ -217,6 +223,9 @@
 				2F7BDDF42ECF3F5D00EF904C /* LoginViewController.swift */,
 				2F7BDDF82ECF47DC00EF904C /* AppLockManager.swift */,
 				2F456D5F2ED0885F00CEAF1C /* NotificationName+KERoster.swift */,
+				2F456D642ED09B4D00CEAF1C /* AirportFlightRef.swift */,
+				2F456D662ED09B7900CEAF1C /* AirportListViewController.swift */,
+				2F456D682ED09BAE00CEAF1C /* AirportFlightListViewController.swift */,
 			);
 			path = KERoster;
 			sourceTree = "<group>";
@@ -344,9 +353,12 @@
 				38E192C32D4109B3006BDDDF /* KERoster.xcdatamodeld in Sources */,
 				381C5CA12D4FA95D00D92F8D /* ScheduleEditViewController.swift in Sources */,
 				2F7BDDF52ECF3F6000EF904C /* LoginViewController.swift in Sources */,
+				2F456D692ED09BBB00CEAF1C /* AirportFlightListViewController.swift in Sources */,
 				38E192BD2D4109B3006BDDDF /* ViewController.swift in Sources */,
 				380FAEC62D5C251200BF2E33 /* ScheduleInputViewController.swift in Sources */,
+				2F456D672ED09B7E00CEAF1C /* AirportListViewController.swift in Sources */,
 				38E192B92D4109B3006BDDDF /* AppDelegate.swift in Sources */,
+				2F456D652ED09B5200CEAF1C /* AirportFlightRef.swift in Sources */,
 				384CAAEC2D4B33AF002E5715 /* ViewListViewController.swift in Sources */,
 				38E192BB2D4109B3006BDDDF /* SceneDelegate.swift in Sources */,
 				38EC9C592E53064B0093DBB1 /* PopupWebViewController.swift in Sources */,
@@ -583,7 +595,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 59;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -600,7 +612,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.1;
+				MARKETING_VERSION = 2.4.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -618,7 +630,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 59;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -635,7 +647,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.1;
+				MARKETING_VERSION = 2.4.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

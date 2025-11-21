@@ -481,6 +481,15 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         }
     }
     
+    @IBAction func AirportButtonTapped(_ sender: UIBarButtonItem) {
+        let sb = UIStoryboard(name: "Main", bundle: nil)
+        if let vc = sb.instantiateViewController(withIdentifier: "AirportListViewController") as? AirportListViewController {
+            vc.schedules = self.schedules   // 전체 스케줄 전달
+            navigationController?.pushViewController(vc, animated: true)
+        }
+    }
+
+    
     @IBAction func saveEventButtonTapped(_ sender: UIButton) {
         calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
             guard let calendar = selectedCalendar else {
