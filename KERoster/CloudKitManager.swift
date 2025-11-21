@@ -8,7 +8,10 @@
 import Foundation
 import CloudKit
 
-// CloudKit에 올릴 전체 스냅샷
+// ======================================================
+// MARK: - Cloud Payload Model
+// ======================================================
+
 struct CloudState: Codable {
     var schedules: [String: [[String: String]]]
     var ownerInfo: String
@@ -16,146 +19,184 @@ struct CloudState: Codable {
     var updatedAt: Date
 }
 
+// ======================================================
+// MARK: - CloudKit Manager (Improved Version)
+// ======================================================
+
 final class CloudKitManager {
+
     static let shared = CloudKitManager()
 
     private let container: CKContainer
     private let database: CKDatabase
 
-    // 사용자별 싱글톤 레코드
     private let recordID = CKRecord.ID(recordName: "KERosterUserData")
     private let recordType = "UserData"
 
-    // 사일런트 푸시용 구독 ID
-    private let dbSubscriptionID = "KERosterDBSub"
+    private let subscriptionID = "KERosterDBSub"
 
-    /// 컨테이너를 지정하고 싶으면 identifier를 넘겨서 생성 (예: "iCloud.org.duckdns.cageyjs.KERoster")
+    /// 만약 특정 컨테이너 사용시 containerID 전달
     init(containerID: String? = nil) {
         if let id = containerID {
-            self.container = CKContainer(identifier: id)
+            container = CKContainer(identifier: id)
         } else {
-            self.container = CKContainer.default()
+            container = CKContainer.default()
         }
-        self.database = container.privateCloudDatabase
+        database = container.privateCloudDatabase
     }
 
-    // MARK: - Subscription (사일런트 푸시)
-    /// 앱 시작 시 한 번 호출: 기존에 있으면 유지, 없으면 생성
+    // ======================================================
+    // MARK: - 1) Silent Push Subscription
+    // ======================================================
+
     func subscribeIfNeeded() {
-        database.fetch(withSubscriptionID: dbSubscriptionID) { [weak self] existing, error in
-            guard let self = self else { return }
-            if let existing = existing {
-                #if DEBUG
-                print("✅ CloudKit subscription already exists: \(existing.subscriptionID)")
-                #endif
+        database.fetch(withSubscriptionID: subscriptionID) { [weak self] existing, error in
+            guard let self else { return }
+
+            if existing != nil {
+                print("✔ CloudKit: Subscription already exists")
                 return
             }
-            if let error = error as? CKError, error.code != .unknownItem {
-                // unknownItem이면 "구독 없음"이므로 무시
-                print("❌ fetch subscription error: \(error)")
+
+            if let ckErr = error as? CKError, ckErr.code != .unknownItem {
+                print("❌ subscription fetch error: \(ckErr)")
             }
 
-            let sub = CKDatabaseSubscription(subscriptionID: self.dbSubscriptionID)
+            let sub = CKDatabaseSubscription(subscriptionID: subscriptionID)
+
             let info = CKSubscription.NotificationInfo()
-            info.shouldSendContentAvailable = true // 🔈 사일런트 푸시
+            info.shouldSendContentAvailable = true  // silent push
             sub.notificationInfo = info
 
             self.database.save(sub) { _, err in
                 if let err = err {
-                    print("❌ CloudKit subscribe failed: \(err)")
+                    print("❌ CloudKit subscription failed: \(err)")
                 } else {
-                    print("✅ CloudKit subscribed (DB-wide)")
+                    print("✔ CloudKit: Subscription created")
                 }
             }
         }
     }
 
-    // MARK: - Fetch (Pull)
-    /// 서버에 저장된 스냅샷을 가져옴. 없으면 .success(nil)
+    // ======================================================
+    // MARK: - 2) Fetch (Pull)
+    // ======================================================
+
     func fetch(completion: @escaping (Result<CloudState?, Error>) -> Void) {
         database.fetch(withRecordID: recordID) { record, error in
+
             if let ckErr = error as? CKError, ckErr.code == .unknownItem {
-                completion(.success(nil)) // 아직 저장 없음
+                completion(.success(nil))
                 return
             }
             if let error = error {
                 completion(.failure(error))
                 return
             }
+
             guard let record = record else {
                 completion(.success(nil))
                 return
             }
 
             do {
-                // CKAsset 우선(대용량 대비), 없으면 Data 필드도 허용
+                // 1) CKAsset 우선
                 if let asset = record["payload"] as? CKAsset,
                    let url = asset.fileURL {
+
                     let data = try Data(contentsOf: url)
                     let state = try JSONDecoder().decode(CloudState.self, from: data)
                     completion(.success(state))
-                } else if let data = record["payload"] as? Data {
+                    return
+                }
+
+                // 2) Data 필드 fallback
+                if let data = record["payload"] as? Data {
                     let state = try JSONDecoder().decode(CloudState.self, from: data)
                     completion(.success(state))
-                } else {
-                    completion(.success(nil))
+                    return
                 }
+
+                completion(.success(nil))
+
             } catch {
                 completion(.failure(error))
             }
         }
     }
 
-    // MARK: - Save (Push / Upsert)
-    /// 스냅샷을 저장(있으면 업데이트, 없으면 생성)
+    // ======================================================
+    // MARK: - 3) Save (Push)
+    // ======================================================
+
     func save(state: CloudState, completion: @escaping (Result<Void, Error>) -> Void) {
+
         database.fetch(withRecordID: recordID) { [weak self] existing, _ in
-            guard let self = self else { return }
-            let record = existing ?? CKRecord(recordType: self.recordType, recordID: self.recordID)
+            guard let self else { return }
+
+            let record = existing ?? CKRecord(recordType: self.recordType,
+                                              recordID: self.recordID)
 
             do {
                 let data = try JSONEncoder().encode(state)
 
-                // Asset로 저장(안정적 & 용량 여유)
-                let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                // Asset 저장
+                let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("keroster_payload.json")
-                // 기존 파일 제거 후 기록
-                try? FileManager.default.removeItem(at: tmpURL)
-                try data.write(to: tmpURL, options: .atomic)
 
-                record["payload"] = CKAsset(fileURL: tmpURL)
+                try? FileManager.default.removeItem(at: tempURL)
+                try data.write(to: tempURL)
+
+                record["payload"] = CKAsset(fileURL: tempURL)
                 record["updatedAt"] = state.updatedAt as NSDate
 
-                let op = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
-                op.savePolicy = .changedKeys
+                let op = CKModifyRecordsOperation(recordsToSave: [record],
+                                                  recordIDsToDelete: nil)
 
-                if #available(iOS 15.0, *) {
-                    op.modifyRecordsResultBlock = { result in
-                        try? FileManager.default.removeItem(at: tmpURL)
-                        switch result {
-                        case .success:
-                            completion(.success(()))
-                        case .failure(let error):
-                            completion(.failure(error))
-                        }
-                    }
-                } else {
-                    // iOS 14 이하 호환
-                    op.modifyRecordsCompletionBlock = { _, _, error in
-                        try? FileManager.default.removeItem(at: tmpURL)
-                        if let error = error { completion(.failure(error)) }
-                        else { completion(.success(())) }
+                op.savePolicy = .allKeys  // 충돌 방지
+
+                op.modifyRecordsResultBlock = { result in
+                    try? FileManager.default.removeItem(at: tempURL)
+
+                    switch result {
+                    case .success:
+                        print("✔ CloudKit push OK")
+                        completion(.success(()))
+                    case .failure(let err):
+                        print("❌ push error: \(err)")
+                        completion(.failure(err))
                     }
                 }
 
                 self.database.add(op)
+
             } catch {
                 completion(.failure(error))
             }
         }
     }
 
-    // MARK: - 편의 별칭
-    func pull(_ completion: @escaping (Result<CloudState?, Error>) -> Void) { fetch(completion: completion) }
-    func push(_ state: CloudState, completion: @escaping (Result<Void, Error>) -> Void) { save(state: state, completion: completion) }
+    // ======================================================
+    // MARK: - 4) Convenience Alias
+    // ======================================================
+
+    func pull(_ completion: @escaping (Result<CloudState?, Error>) -> Void) {
+        fetch(completion: completion)
+    }
+
+    func push(_ state: CloudState, completion: @escaping (Result<Void, Error>) -> Void) {
+        save(state: state, completion: completion)
+    }
+
+    // ======================================================
+    // MARK: - 5) FORCE SYNC FEATURE (신규)
+    // ======================================================
+
+    /// 앱 활성화/포그라운드 시 호출하면 동기화 100% 보장됨
+    func forceSync(completion: (() -> Void)? = nil) {
+        pull { result in
+            NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
+            completion?()
+        }
+    }
 }

@@ -24,8 +24,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // 인바운드 전화, 알림 등으로 inactive였다가 다시 active 될 때
-        // 필요하면 여기서 타이머 재시작 등 처리
+        CloudKitManager.shared.forceSync()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {

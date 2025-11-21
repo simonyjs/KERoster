@@ -138,9 +138,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         // ✅ App Group 저장본 먼저 로드(초기 화면 뼈대)
         if self.schedules.isEmpty { loadSchedules() }
 
-        // ✅ CloudKit에서 최신 스냅샷 로드
-        self.loadFromCloudKit()          // ⬅️ 추가
-        self.startObservingCloudKit()    // ⬅️ 추가 (푸시 구독 + 알림 수신)
+        // ✅ CloudKit 구독 + 알림 수신
+        self.startObservingCloudKit()
+
+        // ✅ 앱 실행 시 CloudKit에서 최신 스냅샷 1회 로드
+        self.loadFromCloudKit()
 
         // Info.plist에서 버전과 빌드 정보 가져오기 (기존 로직 유지)
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
@@ -389,7 +391,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
 
     // 🔁 여기 “saveSchedules”만 CloudKit 반영하도록 수정
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
-    func saveSchedules(mirrorToCloud: Bool = true) {   // ⬅️ 시그니처 변경 (mirrorToKVS → mirrorToCloud)
+    func saveSchedules(mirrorToCloud: Bool = true) {
         if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
             do {
                 let data = try JSONEncoder().encode(schedules)
@@ -397,7 +399,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 sharedDefaults.synchronize()
                 print("스케줄 저장 성공 (App Group)")
 
-                // CloudKit 업로드 (푸시 적용 중에는 재업로드 방지)
+                // 🔹 CloudKit 업로드 (푸시 적용 중에는 재업로드 방지)
                 if mirrorToCloud && !isApplyingCloudPush {
                     self.saveToCloudKit()
                 }
@@ -1831,12 +1833,14 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             let keep = CharacterSet.letters.union(.decimalDigits)
             return folded.unicodeScalars.filter { keep.contains($0) }.map(String.init).joined().lowercased()
         }
+        
         func readText(_ cell: Cell, _ shared: SharedStrings?) -> String {
             if let ss = shared, let s = cell.stringValue(ss) { return s }
             if let v = cell.value { return v }
             if let f = cell.formula?.value { return f }
             return ""
         }
+        
         // "ICN 10:30 (+1)" / "ICN 10:30" / "ICN" / "10:30 (+1)" / "10:30"
         func parseIataTime(_ raw: String) -> (ap: String, time: String, plus: Int) {
             let s = raw.replacingOccurrences(of: "（", with: "(").replacingOccurrences(of: "）", with: ")")
@@ -1863,14 +1867,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             }
             return ("", "", 0)
         }
+        
         func toOpt(_ plus: Int) -> String { plus == 0 ? "" : "(\(plus >= 0 ? "+" : "")\(plus))" }
+        
         func shiftDate(_ ddMMMYYYY: String, plus: Int) -> String {
             guard plus != 0 else { return ddMMMYYYY }
-            let df = DateFormatter(); df.locale = .init(identifier: "en_US_POSIX"); df.dateFormat = "dd-MMM-yyyy"
+            let df = DateFormatter()
+            df.locale = .init(identifier: "en_US_POSIX")
+            df.dateFormat = "dd-MMM-yyyy"
             guard let d = df.date(from: ddMMMYYYY),
                   let nd = Calendar.current.date(byAdding: .day, value: plus, to: d) else { return ddMMMYYYY }
             return df.string(from: nd)
         }
+        
         func parseDateCell(_ raw: String) -> String {
             let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if t.isEmpty { return "" }
@@ -1886,6 +1895,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             }
             return ""
         }
+        
         // MARK: - Excel serial number → Date 변환 (1900/1904 지원, UTC 고정)
         func excelSerialToDate(_ serial: Double, isDate1904: Bool) -> Date? {
             guard serial.isFinite else { return nil }
@@ -1907,6 +1917,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 if serial >= 60 { days -= 1 } // 1900-02-29 건너뛰기
                 return Date(timeInterval: days * secondsPerDay, since: base)
             }
+        }
+        
+        // "HH:mm" → 분 단위 변환 (자정 보정용)
+        func minutes(_ hhmm: String) -> Int? {
+            let parts = hhmm.split(separator: ":")
+            guard parts.count == 2,
+                  let h = Int(parts[0]),
+                  let m = Int(parts[1]) else {
+                return nil
+            }
+            return h * 60 + m
         }
         
         func isFlightCode(_ s: String) -> Bool {
@@ -1949,7 +1970,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             debugLog("🧭 Header@row2 raw: \(headerPairs.map { "\($0.0)=\($0.1)" }.joined(separator: " | "))")
             
             // 빈 헤더 셀 체크
-            let emptyHeaders = headerPairs.filter { $0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.map { $0.0 }
+            let emptyHeaders = headerPairs
+                .filter { $0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .map { $0.0 }
             if !emptyHeaders.isEmpty {
                 debugLog("⚠️ Empty header cells at columns: \(emptyHeaders.joined(separator: ", "))")
             }
@@ -1989,7 +2012,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 debugLog("❌ Missing headers: \(missing.joined(separator: ", "))")
                 showAlert(title: "XLSX Header mismatch",
                           message: "Not found in row 2: \(missing.joined(separator: ", "))")
-                // 계속 진행은 가능하지만, 핵심 필드가 빠졌으면 무용지물이 될 수 있음
             } else {
                 debugLog("✅ Header OK (row 2, strict match)")
             }
@@ -2064,15 +2086,55 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 if workType.isEmpty, isFlightCode(item) { workType = "FLY" }
                 
                 // 날짜 확정
-                let depDate = depTime.isEmpty ? baseDate : shiftDate(baseDate, plus: depPlus)
-                let arrDate = arrTime.isEmpty ? baseDate : shiftDate(baseDate, plus: arrPlus)
+                var depDate = depTime.isEmpty ? baseDate : shiftDate(baseDate, plus: depPlus)
+                var arrDate = arrTime.isEmpty ? baseDate : shiftDate(baseDate, plus: arrPlus)
                 let debDate = debTime.isEmpty ? baseDate : shiftDate(baseDate, plus: debPlus)
                 
-                // UTC 변환
-                let depUTC = (!depTime.isEmpty && !depAp.isEmpty) ? convertLocalTimeToUTCTime(dateString: depDate, timeString: depTime, airportCode: depAp, airports: airports) : "N/A"
-                let arrUTC = (!arrTime.isEmpty && !arrAp.isEmpty) ? convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrTime, airportCode: arrAp, airports: airports) : "N/A"
+                // 🔧 자정 넘어가는 비행 보정 (21:00~03:00 윈도우)
+                if workType == "FLY" || workType == "TVL" {
+                    // 케이스 1: Report 21:xx~23:59, Dep 00:00~03:00, depPlus/arrPlus는 0
+                    if !repTime.isEmpty,
+                       !depTime.isEmpty,
+                       depPlus == 0,
+                       arrPlus == 0,
+                       let repM = minutes(repTime),
+                       let depM = minutes(depTime),
+                       repM >= 21 * 60,   // report ≥ 21:00
+                       depM <= 3 * 60,    // dep ≤ 03:00
+                       depM < repM {
+                        
+                        let oldDepDate = depDate
+                        depDate = shiftDate(baseDate, plus: 1)
+                        arrDate = shiftDate(baseDate, plus: 1)
+                        debugLog("📌 XLSX midnight fix(1) applied: base=\(baseDate) report=\(repTime) dep=\(depTime) \(oldDepDate)→\(depDate)")
+                    }
+                    
+                    // 케이스 2: Report 없음, Dep 00:00~03:00, ACY Deb (+1)
+                    if repTime.isEmpty,
+                       !depTime.isEmpty,
+                       depPlus == 0,
+                       arrPlus == 0,
+                       !debTime.isEmpty,
+                       debPlus == 1,
+                       let depM = minutes(depTime),
+                       depM <= 3 * 60 {
+                        
+                        let oldDepDate = depDate
+                        depDate = shiftDate(baseDate, plus: 1)
+                        arrDate = shiftDate(baseDate, plus: 1)
+                        debugLog("📌 XLSX midnight fix(2) applied: base=\(baseDate) dep=\(depTime) deb=\(debTime) \(oldDepDate)→\(depDate)")
+                    }
+                }
                 
-                // 저장 키: 비행은 DepDate 기준, 지상은 baseDate 기준으로 정렬감을 맞춥니다.
+                // UTC 변환
+                let depUTC = (!depTime.isEmpty && !depAp.isEmpty)
+                    ? convertLocalTimeToUTCTime(dateString: depDate, timeString: depTime, airportCode: depAp, airports: airports)
+                    : "N/A"
+                let arrUTC = (!arrTime.isEmpty && !arrAp.isEmpty)
+                    ? convertLocalTimeToUTCTime(dateString: arrDate, timeString: arrTime, airportCode: arrAp, airports: airports)
+                    : "N/A"
+                
+                // 저장 키: 비행은 DepDate 기준, 지상은 baseDate 기준으로
                 let bucketKey = (workType == "FLY" || workType == "TVL") ? depDate : baseDate
                 let seq = (seqCountersByDate[bucketKey] ?? 0) + 1
                 seqCountersByDate[bucketKey] = seq
@@ -2096,7 +2158,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     "DutyDebriefDate": debDate,
                     "FlyingHours": fh,
                     "DutyHours": dh,
-                    //"SDC": sdc,
+                    //"SDC": sdc,   // Ground에서만 의미 있게 쓸 거라 여기선 일단 유지 안 함
                     "Hotel": hotel,
                     "DepStnTimeUTC": depUTC,
                     "ArrStnTimeUTC": arrUTC,
@@ -2121,12 +2183,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 debugLog("⚠️ parsed rows=0")
                 return
             }
-            
-            // === 기존 코드 제거 ===
-            // for (k, v) in newExtracted { schedules[k] = v }
-            // saveSchedules()
-            // printSchedulesToConsole()
-            // showAlert(...)
             
             // === 병합 저장(FLY/TVL: 특정 필드만 업데이트, CrewList 보존) ===
             func makeKey(_ e: [String:String]) -> String {
@@ -2175,11 +2231,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             assign("DutyHours")
                             assign("Hotel")
                             merged[idx] = old
-
                         } else {
-                            // 🧱 지상 듀티: 값 있는 항목만 업데이트(CrewList 보호)
+                            // 🧱 지상 듀티: 값 있는 항목만 업데이트(CrewList, SDC 보호)
                             for (kk, vv) in e {
-                                if kk == "CrewList" { continue }
+                                if kk == "CrewList" || kk == "SDC" { continue }
                                 let v = vv.trimmingCharacters(in: .whitespacesAndNewlines)
                                 if !v.isEmpty { old[kk] = v }
                             }
@@ -2188,15 +2243,17 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             }
                             merged[idx] = old
                         }
-
+                        
                     } else {
                         // ✅ 업로드 모드: FLY/TVL은 “업데이트 전용” → 신규 추가 금지
                         if wt == "FLY" || wt == "TVL" {
                             debugLog("✋ XLSX Upload: NEW FLY/TVL 발견 → 추가하지 않음 (update-only) | key=\(k)")
                             continue
                         }
-                        // Ground duty만 신규 추가 허용
-                        merged.append(e)
+                        // Ground duty만 신규 추가 허용, SDC는 가져오지 않음
+                        var newE = e
+                        newE["SDC"] = ""
+                        merged.append(newE)
                         indexByKey[k] = merged.count - 1
                     }
                 }
@@ -2213,18 +2270,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 message: "XLSX merged."
             )
             
-            
-            // ▶ 기존 덮어쓰기 블록 제거 후 교체:
-            //mergeImportedSchedules(newExtracted)
-           // return  // (중복 알림 방지용. merge 함수에서 alert 띄웁니다)
-
-            
         } catch {
             debugLog("❌ XLSX parse error: \(error)")
             showAlert(title: "Import Fail", message: error.localizedDescription)
         }
     }
-    
+
     
     
     // ===== PDF 텍스트 라인 파서 (보강본: 키워드 의존 X, 첫 토큰 추출 지원) =====

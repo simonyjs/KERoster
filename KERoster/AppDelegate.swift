@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 import CloudKit
 import BackgroundTasks   // ✅ BGTask 사용
-
+/*
 // 화면 쪽에서 pull 트리거 받을 알림
 // (프로젝트 내 중복 선언 주의)
 extension Notification.Name {
@@ -18,7 +18,7 @@ extension Notification.Name {
     // (선택) 무거운 작업 트리거가 필요하면 별도 알림을 쓸 수도 있음
     static let bgProcessingRequested = Notification.Name("BGProcessingRequested")
 }
-
+*/
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
