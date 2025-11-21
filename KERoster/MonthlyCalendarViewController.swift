@@ -594,36 +594,48 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                 }
                 
                 // 각 스케줄 레이블 생성 (SDC 값은 위에서 한 번만 표시)
+                // 각 스케줄 레이블 생성 (SDC 값은 위에서 한 번만 표시)
                 for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
                     scheduleLabel.font = UIFont.boldSystemFont(ofSize: scheduleFontSize)
                     scheduleLabel.textAlignment = .left
                     scheduleLabel.textColor = scheduleTextColor
                     scheduleLabel.numberOfLines = 0
-                    
+
                     var scheduleText = ""
-                    
-                    if let workType = schedule["WorkType"], workType == "FLY" || workType == "TVL" {
+
+                    // WT 공통 (대문자 정규화)
+                    let workTypeRaw = (schedule["WorkType"] ?? "").uppercased()
+
+                    // ------------------------------------------------
+                    // 1) FLY / TVL → 기존 표시 방식 그대로
+                    // ------------------------------------------------
+                    if workTypeRaw == "FLY" || workTypeRaw == "TVL" {
                         var item = schedule["Item"] ?? ""
-                        if workType == "TVL" {
+                        if workTypeRaw == "TVL" {
                             if item.count >= 2 {
                                 item = "DH" + item.dropFirst(2)
                             } else {
                                 item = "DH"
                             }
                         }
-                        
+
                         let depTime = schedule["DepStnTime"] ?? ""
-                        let depAp = schedule["DepAp"] ?? ""
-                        let arrAp = schedule["ArrAp"] ?? ""
+                        let depAp   = schedule["DepAp"] ?? ""
+                        let arrAp   = schedule["ArrAp"] ?? ""
                         let arrTime = schedule["ArrStnTime"] ?? ""
-                        
-                        guard let depDateStr = schedule["DepDate"],
-                              let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
-                              let depDate = scheduleDateFormatter.date(from: depDateStr),
-                              let arrDate = scheduleDateFormatter.date(from: arrDateStr) else { continue }
+
+                        guard
+                            let depDateStr = schedule["DepDate"],
+                            let arrDateStr = (schedule["ArrDate"] ?? schedule["DutyDebriefDate"]),
+                            let depDate    = scheduleDateFormatter.date(from: depDateStr),
+                            let arrDate    = scheduleDateFormatter.date(from: arrDateStr)
+                        else {
+                            continue
+                        }
 
                         let isOvernight = !calendar.isDate(depDate, inSameDayAs: arrDate)
+
                         if isOvernight {
                             if calendar.isDate(validDisplayDate, inSameDayAs: depDate) {
                                 scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) 23:59"
@@ -635,17 +647,27 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         } else {
                             scheduleText = "\(item) \(depTime) \(depAp) - \(arrAp) \(arrTime)"
                         }
+
+                    // ------------------------------------------------
+                    // 2) 그 외 (지상근무 등) → 기본은 기존 방식
+                    //    단, WT 없음 + 00:00~23:59면 Item만 표시
+                    // ------------------------------------------------
                     } else {
-                        let activity = schedule["Activity"] ?? ""
-                        let dutyReport = schedule["DutyReport"] ?? ""
-                        let rawDutyDebrief = schedule["DutyDebrief"] ?? "N/A"
-                        let pureDutyDebrief = rawDutyDebrief.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? rawDutyDebrief
-                        
-                        let depDateStr = schedule["DepDate"] ?? ""
+                        let activity        = schedule["Activity"] ?? ""
+                        let dutyReport      = schedule["DutyReport"] ?? ""
+                        let rawDutyDebrief  = schedule["DutyDebrief"] ?? "N/A"
+                        let pureDutyDebrief = rawDutyDebrief
+                            .components(separatedBy: "(")
+                            .first?
+                            .trimmingCharacters(in: .whitespacesAndNewlines) ?? rawDutyDebrief
+
+                        let depDateStr         = schedule["DepDate"] ?? ""
                         let dutyDebriefDateStr = schedule["DutyDebriefDate"] ?? ""
-                        
+
+                        // 🔹 기존 로직: 날짜跨 / 동일일 처리
                         if let depDateObj = scheduleDateFormatter.date(from: depDateStr),
                            let dutyDebriefDateObj = scheduleDateFormatter.date(from: dutyDebriefDateStr) {
+
                             if !calendar.isDate(depDateObj, inSameDayAs: dutyDebriefDateObj) {
                                 if calendar.isDate(validDisplayDate, inSameDayAs: depDateObj) {
                                     scheduleText = "\(activity) \(dutyReport) - 23:59"
@@ -660,11 +682,36 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                         } else {
                             scheduleText = "\(activity) \(dutyReport) - \(pureDutyDebrief)"
                         }
+
+                        // 🔸 여기서 "WT 없고 00:00~23:59" 인 경우만 Item으로 덮어쓰기
+                        let isAllDay00To2359 =
+                            workTypeRaw.isEmpty &&
+                            dutyReport.hasPrefix("00:00") &&
+                            pureDutyDebrief.hasPrefix("23:59")
+
+                        if isAllDay00To2359 {
+                            let itemOnly = (schedule["Item"] ?? "")
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                            let activityOnly = activity
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+                            if !itemOnly.isEmpty {
+                                scheduleText = itemOnly
+                            } else if !activityOnly.isEmpty {
+                                scheduleText = activityOnly
+                            }
+                        }
                     }
-                    // SDC 값은 이미 위에서 한 번만 표시했으므로 여기서는 포함하지 않음.
+
+                    // 텍스트 비면 표시 안 함
+                    if scheduleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        continue
+                    }
+
                     scheduleLabel.text = scheduleText
                     cell.scheduleStackView.addArrangedSubview(scheduleLabel)
                 }
+
                 
                 if schedulesForCell.isEmpty, let validDisplayDate = displayDate, self.shouldDisplayLayover(for: validDisplayDate) {
                     let layoverLabel = UILabel()
