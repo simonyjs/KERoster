@@ -233,24 +233,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         let importAction = UIAction(title: "Import Schedule", image: UIImage(systemName: "arrow.down.circle")) { _ in
             self.importSchedule()
         }
-        let uploadXLSXAction = UIAction(title: "XLSX", image: UIImage(systemName: "tablecells")) { _ in
-            let xlsx = UTType(filenameExtension: "xlsx")
-            self.pickDocument(allowedTypes: [xlsx ?? .data]) { url in
-                self.importRosterFromXLSX(url: url)
+        // Upload XLSX 지시
+        let uploadXLSXAction = UIAction(title: "Upload XLSX", image: UIImage(systemName: "doc")) { [weak self] _ in
+            self?.pickDocument(allowedTypes: [.data, .spreadsheet, UTType(filenameExtension: "xlsx")!]) { url in
+                self?.importRosterFromXLSX(url: url)
             }
         }
-        let uploadPDFAction = UIAction(title: "PDF", image: UIImage(systemName: "doc.richtext")) { _ in
-            self.pickDocument(allowedTypes: [UTType.pdf]) { url in
-                self.importRosterFromPDF(url: url)
-            }
-        }
+
+        // 🔻 PDF 업로드 기능 삭제: XLSX만 메뉴에 남김
         let uploadMenu = UIMenu(
             title: "Upload",
             image: UIImage(systemName: "square.and.arrow.up"),
             identifier: nil,
-            options: [],
-            children: [uploadXLSXAction, uploadPDFAction]
+            options: .displayInline,
+            children: [uploadXLSXAction]
         )
+
         let importCrewAction = UIAction(title: "Import Crew List", image: UIImage(systemName: "person.3.sequence")) { _ in
             self.importCrewList()
         }
@@ -1382,39 +1380,35 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     }
     
     // MARK: - iFlight 로그인 폼 자동 채우기
-
     func fillLoginFormIfPossible() {
         let defaults = UserDefaults.standard
         guard let username = defaults.string(forKey: "iFlightUsername"),
               !username.isEmpty,
               let password = KeychainService.loadPassword(account: username),
               !password.isEmpty else {
-            debugLog("저장된 로그인 정보 없음")
+            debugLog("저장된 로그인 정보 없음 - 로그인 팝업 표시")
+            DispatchQueue.main.async { [weak self] in
+                self?.showLoginPopup()
+            }
             return
         }
-        
-        // JS 문자열에 안전하게 넣기 위해 특수문자 최소한 이스케이프
-        let escapedUser = username
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "'", with: "\\'")
-        let escapedPw = password
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "'", with: "\\'")
-        
+
         let js = """
         (function() {
-          var userField = document.querySelector("input[name='userId'], input[name='userID'], input[name='j_username'], input[type='text']");
-          var passField = document.querySelector("input[type='password']");
-          if (userField) { userField.value = '\(escapedUser)'; }
-          if (passField) { passField.value = '\(escapedPw)'; }
+            var idField = document.querySelector('input[name="j_username"], input[name="username"]');
+            var pwField = document.querySelector('input[name="j_password"], input[name="password"]');
+            if (idField && pwField) {
+                idField.value = '\(username)';
+                pwField.value = '\(password)';
+            }
         })();
         """
-        
-        webView.evaluateJavaScript(js) { [weak self] result, error in
+
+        webView.evaluateJavaScript(js) { result, error in
             if let error = error {
-                self?.debugLog("로그인 폼 채우기 JS 에러: \(error.localizedDescription)")
+                self.debugLog("자동 로그인 JS 실행 실패: \(error.localizedDescription)")
             } else {
-                self?.debugLog("로그인 폼 자동 채우기 완료")
+                self.debugLog("자동 로그인 정보 입력 완료")
             }
         }
     }
@@ -1470,18 +1464,83 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     // MARK: - 캘린더 이벤트 추가 함수 (중복 검사 및 노트 업데이트 포함)
     func addEventToCalendar(for scheduleEntry: [String: String], airports: [[String: Any]]?) {
         let koreanTimeZone = TimeZone(identifier: "Asia/Seoul")!
-        let workType = scheduleEntry["WorkType"] ?? ""
-        
+
+        let workTypeRaw = (scheduleEntry["WorkType"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let workType = workTypeRaw.uppercased()
+
         var eventTitle: String = ""
         var startDate: Date?
         var endDate: Date?
         var eventTimeZone: TimeZone = koreanTimeZone
         var noteText: String = ""
-        
+        var isAllDayEvent = false
+
         // 새로 추가하는 스케줄의 고유 ID (Date와 Activity 조합)
         let uniqueID = generateUniqueID(for: scheduleEntry)
-        
-        if workType == "FLY" || workType == "TVL" {
+
+        // ─────────────────────────────────────────────
+        // ① WT 없음 + 00:00~23:59 → 올데이 이벤트 처리
+        //    - DutyReport / DutyDebriefTime 기준
+        //    - 필요시 DepStnTime / ArrStnTime도 같이 체크
+        // ─────────────────────────────────────────────
+        let dutyReport = (scheduleEntry["DutyReport"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let dutyDebriefTime = (scheduleEntry["DutyDebriefTime"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let depStnTimeForCheck = (scheduleEntry["DepStnTime"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let arrStnTimeForCheck = (scheduleEntry["ArrStnTime"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let isAllDayByDuty =
+            workTypeRaw.isEmpty &&
+            dutyReport == "00:00" &&
+            dutyDebriefTime == "23:59"
+
+        let isAllDayByDepArr =
+            workTypeRaw.isEmpty &&
+            depStnTimeForCheck == "00:00" &&
+            arrStnTimeForCheck == "23:59"
+
+        if isAllDayByDuty || isAllDayByDepArr {
+            // 날짜 문자열: DepDate 우선, 없으면 Date 사용
+            guard let baseDateStr = (scheduleEntry["DepDate"] ?? scheduleEntry["Date"]),
+                  !baseDateStr.isEmpty else {
+                self.debugLog("올데이 이벤트 변환 실패 - 날짜 없음: \(scheduleEntry)")
+                return
+            }
+
+            guard let allDayStart = dateFromLocal(dateString: baseDateStr,
+                                                  timeString: "00:00",
+                                                  timeZone: koreanTimeZone) else {
+                self.debugLog("올데이 이벤트 날짜 변환 실패 - baseDate: \(baseDateStr)")
+                return
+            }
+
+            startDate = allDayStart
+            endDate = Calendar.current.date(byAdding: .day, value: 1, to: allDayStart)
+            eventTimeZone = koreanTimeZone
+            isAllDayEvent = true
+
+            let rawItem = (scheduleEntry["Item"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let rawActivity = (scheduleEntry["Activity"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = rawItem.isEmpty ? rawActivity : rawItem   // 👉 “아이템 값만” 사용 (없으면 Activity)
+
+            eventTitle = title
+            noteText = title
+
+            self.debugLog("올데이 이벤트 변환 성공: \(title) \(baseDateStr) (00:00~23:59)")
+
+            // (선택) 같은 날짜 같은 제목 올데이 이벤트가 이미 있으면 노트만 업데이트
+            if let start = startDate,
+               let end = endDate,
+               let selectedCal = calendarManager.selectedCalendar {
+                let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
+                let existingEvents = eventStore.events(matching: predicate)
+                if let dup = existingEvents.first(where: { $0.isAllDay && $0.title == title }) {
+                    self.debugLog("⚠️ 중복 올데이 일정 발견! 기존 이벤트의 노트 업데이트: \(title)")
+                    updateEventNotes(dup, with: scheduleEntry)
+                    return
+                }
+            }
+
+        } else if workType == "FLY" || workType == "TVL" {
             // 비행 듀티 이벤트 처리
             guard let item = scheduleEntry["Item"],
                   let depStnTime = scheduleEntry["DepStnTime"],
@@ -1493,7 +1552,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 self.debugLog("비행 듀티 이벤트 변환 실패 - 필요한 데이터 누락: \(scheduleEntry)")
                 return
             }
-            
+
             var modifiedItem = item
             if workType == "TVL" {
                 if item.count >= 2 {
@@ -1502,7 +1561,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     modifiedItem = "DH" + item
                 }
             }
-            
+
             // 기본 제목 생성 및 타임존, 날짜 변환
             let baseTitle = "\(modifiedItem) \(depStnTime) \(depAp) - \(arrAp) \(arrStnTime)"
             if let airports = airports,
@@ -1518,7 +1577,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 self.debugLog("공항 타임존 변환 실패 for \(depAp) 또는 \(arrAp)")
                 return
             }
-            
+
             // 기본 노트 생성 (TVL인 경우 "Deadhead" 추가)
             let baseNote = generateBaseNote(for: scheduleEntry,
                                             workType: workType,
@@ -1529,7 +1588,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                                             arrStnTime: arrStnTime)
             eventTitle = baseTitle
             noteText = baseNote
-            
+
             // 동일 시간 범위에서 제목이 같은 이벤트를 중복으로 간주
             if let start = startDate, let end = endDate, let selectedCal = calendarManager.selectedCalendar {
                 let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
@@ -1540,11 +1599,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     return
                 }
             }
-            
+
             self.debugLog("최종 noteText (비행 듀티): \(noteText)")
-            
+
         } else {
-            // 그라운드 듀티 이벤트 처리
+            // 그라운드 듀티 이벤트 처리 (일반 케이스)
             guard let dutyReport = scheduleEntry["DutyReport"],
                   let dutyDebriefTime = scheduleEntry["DutyDebriefTime"],
                   let dutyDebriefDate = scheduleEntry["DutyDebriefDate"],
@@ -1571,32 +1630,33 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             endDate = end
             eventTimeZone = startTimeZone
             self.debugLog("그라운드 듀티 이벤트 변환 성공: \(baseTitle)")
-            
+
             var baseNote = baseTitle
             if let sdc = scheduleEntry["SDC"], !sdc.isEmpty {
                 baseNote += "\nSDC: \(sdc)"
             }
             noteText = baseNote
         }
-        
+
         guard let start = startDate, let end = endDate else { return }
-        
+
         let event = EKEvent(eventStore: self.eventStore)
         event.title = eventTitle
-        
+
         // “KEROSTER” 노트에 줄바꿈 추가.
         var finalNotes = "KEROSTER\n" + noteText
-        
+
         // 크루정보가 있으면 분리선 후 추가
         if let crewNote = buildCrewNote(from: scheduleEntry) {
             finalNotes += "\n----\n" + crewNote
         }
-        
+
         event.notes = finalNotes
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
-        
+        event.isAllDay = isAllDayEvent   // ✅ 여기서 올데이 여부 반영
+
         if let calendar = self.calendarManager.selectedCalendar {
             event.calendar = calendar
         } else if let defaultCal = self.eventStore.defaultCalendarForNewEvents {
@@ -1606,11 +1666,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             self.debugLog("캘린더가 설정되어 있지 않습니다.")
             return
         }
-        
+
         self.calendarManager.saveEvent(event: event) { success, error in
             if success {
                 self.savedEventCount += 1
-                self.debugLog("Calendar event saved successfully: \(event.title ?? "No Title")\nSaved Calendar: \(event.calendar?.title ?? "N/A")\nTOTAL EVENT NO: \(self.savedEventCount)")
+                let title = event.title ?? "No Title"
+                self.debugLog("Calendar event saved: \(title)")
+
                 // 이벤트 저장 성공 시, 고유 ID와 이벤트 식별자 매핑 업데이트
                 self.scheduleEventMapping[uniqueID] = event.eventIdentifier
             } else {
