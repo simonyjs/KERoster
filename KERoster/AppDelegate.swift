@@ -10,15 +10,7 @@ import Foundation
 import CoreData
 import CloudKit
 import BackgroundTasks   // ✅ BGTask 사용
-/*
-// 화면 쪽에서 pull 트리거 받을 알림
-// (프로젝트 내 중복 선언 주의)
-extension Notification.Name {
-    static let cloudKitUpdated = Notification.Name("CloudKitUpdated")
-    // (선택) 무거운 작업 트리거가 필요하면 별도 알림을 쓸 수도 있음
-    static let bgProcessingRequested = Notification.Name("BGProcessingRequested")
-}
-*/
+
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -53,9 +45,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self.handleProcessing(task: task as! BGProcessingTask)
         }
 
-        // (선택) 레거시 Background Fetch도 함께 쓸 경우
-        application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
-
         return true
     }
 
@@ -89,18 +78,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         let ckNotification = CKNotification(fromRemoteNotificationDictionary: userInfo)
 
-        if ckNotification?.subscriptionID == "KERosterDBSub" {
-            // 어디서든 pull() 호출하도록 알림 브로드캐스트
-            NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
-            completionHandler(.newData)
-
-            // (선택) 푸시 수신 시 다음 BG 작업도 예약
-            scheduleAppRefresh()
-            scheduleProcessing()
-        } else {
+        guard ckNotification?.subscriptionID == "KERosterDBSub" else {
             completionHandler(.noData)
+            return
+        }
+
+        // ✅ CloudKit에서 최신 상태 받아서 로컬 저장소에 반영
+        CloudKitManager.shared.pull { result in
+            switch result {
+            case .success(let state):
+                guard let state = state else {
+                    print("☁️ CloudKit: no state in pull")
+                    completionHandler(.noData)
+                    return
+                }
+
+                // App Group UserDefaults에 schedules 저장
+                if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
+                    if let data = try? JSONEncoder().encode(state.schedules) {
+                        sharedDefaults.set(data, forKey: "schedules")
+                    }
+                }
+
+                // 일반 UserDefaults에 ownerInfo / totalHoursByMonth 저장
+                UserDefaults.standard.set(state.ownerInfo, forKey: "ownerInfo")
+                UserDefaults.standard.set(state.totalHoursByMonth, forKey: "totalHoursByMonth")
+                UserDefaults.standard.synchronize()
+
+                // ✅ 화면에게 "로컬 데이터 바뀌었다" 알림
+                NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
+
+                // (선택) BG 작업 재예약
+                self.scheduleAppRefresh()
+                self.scheduleProcessing()
+
+                completionHandler(.newData)
+
+            case .failure(let error):
+                print("❌ CloudKit pull error in AppDelegate: \(error)")
+                completionHandler(.failed)
+            }
         }
     }
+
 
     // MARK: - Legacy Background Fetch (옵션)
 

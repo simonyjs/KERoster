@@ -146,6 +146,35 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     var monthControlHeightConstraint: NSLayoutConstraint!
     var collectionViewTopConstraint: NSLayoutConstraint!
     
+    //알림을 받았을 때 실제로 다시 읽고 리로드
+    @objc private func handleCloudKitUpdated(_ notification: Notification) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            print("🔄 cloudKitUpdated in MonthlyCalendarViewController → reload schedules")
+
+            // 1) 최신 스케줄 로드 (App Group)
+            self.loadSchedules()
+
+            // 2) ownerInfo / totalHours 다시 읽기
+            if let savedOwner = UserDefaults.standard.string(forKey: self.ownerUserDefaultsKey) {
+                self.ownerInfo = savedOwner
+                self.ownerLabel.text = savedOwner
+            }
+
+            if let monthlyHours = UserDefaults.standard.dictionary(forKey: self.totalHoursByMonthUserDefaultsKey) as? [String: String] {
+                let currentMonthKey = self.formattedMonth(for: self.currentDate)
+                self.totalHours = monthlyHours[currentMonthKey] ?? ""
+            } else {
+                self.totalHours = ""
+            }
+            self.totalHoursLabel.text = self.totalHours
+
+            // 3) 컬렉션 뷰 리로드
+            self.collectionView.reloadData()
+        }
+    }
+
+    
     // MARK: - View LifeCycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -155,6 +184,12 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(systemTimeZoneDidChange),
                                                name: NSNotification.Name.NSSystemTimeZoneDidChange,
+                                               object: nil)
+        
+        // ✅ CloudKit 동기화 완료 알림 옵저버
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleCloudKitUpdated(_:)),
+                                               name: .cloudKitUpdated,
                                                object: nil)
         
         if schedules.isEmpty {
@@ -227,7 +262,9 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
     
     deinit {
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .cloudKitUpdated, object: nil)
     }
+
     
     @objc func systemTimeZoneDidChange(notification: Notification) {
         print("시스템 시간대 변경 – 내부 재설정")
@@ -593,7 +630,6 @@ class MonthlyCalendarViewController: UIViewController, UICollectionViewDelegate,
                     cell.scheduleStackView.addArrangedSubview(sdcLabel)
                 }
                 
-                // 각 스케줄 레이블 생성 (SDC 값은 위에서 한 번만 표시)
                 // 각 스케줄 레이블 생성 (SDC 값은 위에서 한 번만 표시)
                 for schedule in schedulesForCell {
                     let scheduleLabel = UILabel()
