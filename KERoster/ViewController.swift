@@ -217,7 +217,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             navigationItem.leftBarButtonItem = loginButton
         }
         
-        printSchedulesToConsole()
+        // printSchedulesToConsole()
 
         // 오른쪽 네비게이션 바 버튼 (스토리보드 연결이 안되어 있으면 생성)
         if navigationItem.rightBarButtonItem == nil {
@@ -343,7 +343,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
 
                     self.totalHours = remote.totalHoursByMonth.values.first ?? self.totalHours
                     self.saveSchedules(mirrorToCloud: false) // ⬅️ 로컬 저장만 (재업로드 방지)
-                    self.printSchedulesToConsole()
+                    //self.printSchedulesToConsole()
                     WidgetCenter.shared.reloadAllTimelines()
                     self.isApplyingCloudPush = false
                 }
@@ -903,7 +903,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                         for (k, v) in newExtracted { self.schedules[k] = v }
                         
                         self.saveSchedules()
-                        self.printSchedulesToConsole()
+                        //self.printSchedulesToConsole()
                         self.showAlert(title: "Import Complete", message: "The schedule was successfully imported (new layout + full crew).")
                     }
                     return
@@ -1155,7 +1155,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     }
                     
                     self.saveSchedules()
-                    self.printSchedulesToConsole()
+                    //self.printSchedulesToConsole()
                     self.showAlert(title: "Import Complete", message: "The schedule was successfully imported (legacy layout).")
                 }
                 
@@ -2335,7 +2335,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             }
             
             saveSchedules()
-            printSchedulesToConsole()
+            //printSchedulesToConsole()
             showAlert(
                 title: "Import Complete",
                 message: "XLSX merged."
@@ -2660,7 +2660,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         }
         
         saveSchedules()
-        printSchedulesToConsole()
+        //printSchedulesToConsole()
         showAlert(
             title: "Import Complete",
             message: "Merged (XLSX/PDF)."

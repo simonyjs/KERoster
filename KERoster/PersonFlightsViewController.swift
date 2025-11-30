@@ -43,11 +43,11 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
         title = titleStr
         view.backgroundColor = .systemBackground
 
-        // 날짜 오름차순
+        // 날짜 최근날짜 순
         flights.sort { lhs, rhs in
             guard let d1 = inputFmt.date(from: lhs.dateKey),
                   let d2 = inputFmt.date(from: rhs.dateKey) else { return lhs.dateKey < rhs.dateKey }
-            return d1 < d2
+            return d1 > d2
         }
 
         tableView.dataSource = self
