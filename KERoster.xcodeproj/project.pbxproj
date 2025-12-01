@@ -193,6 +193,11 @@
 			isa = PBXGroup;
 			children = (
 				38E192BC2D4109B3006BDDDF /* ViewController.swift */,
+				384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */,
+				38CD98522D84E47B00F98373 /* ZoomableCalendarContainerViewController.swift */,
+				3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */,
+				2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */,
+				2F456D662ED09B7900CEAF1C /* AirportListViewController.swift */,
 				3871E4D92D73FE9600850BB1 /* KERoster.entitlements */,
 				3872B6032D65366F00154B50 /* ApList.json */,
 				381027932D60DD0E00E67459 /* Airport.swift */,
@@ -206,14 +211,10 @@
 				380FAEC52D5C251200BF2E33 /* ScheduleInputViewController.swift */,
 				382093F32D5DFBC7004CEEB6 /* ScheduleInputCalendarViewController.swift */,
 				382093F52D5DFF64004CEEB6 /* ScheduleInputFormViewController.swift */,
-				384CAAEB2D4B33AF002E5715 /* ViewListViewController.swift */,
-				38CD98522D84E47B00F98373 /* ZoomableCalendarContainerViewController.swift */,
-				3855A92F2D52020A004DCC63 /* MonthlyCalendarViewController.swift */,
 				38E192C42D4109B5006BDDDF /* Assets.xcassets */,
 				38E192C62D4109B5006BDDDF /* LaunchScreen.storyboard */,
 				38E192C92D4109B5006BDDDF /* Info.plist */,
 				38E192C12D4109B3006BDDDF /* KERoster.xcdatamodeld */,
-				2FF801C32E9A013C0039F7A6 /* CrewListByMonthViewController.swift */,
 				2FBB7C362EA459AD00B1EC1B /* PersonFlightsViewController.swift */,
 				2FF801C52E9A056F0039F7A6 /* CrewListMonthDetailViewController.swift */,
 				2FF801C72E9A05D30039F7A6 /* CrewListFlightDetailViewController.swift */,
@@ -224,7 +225,6 @@
 				2F7BDDF82ECF47DC00EF904C /* AppLockManager.swift */,
 				2F456D5F2ED0885F00CEAF1C /* NotificationName+KERoster.swift */,
 				2F456D642ED09B4D00CEAF1C /* AirportFlightRef.swift */,
-				2F456D662ED09B7900CEAF1C /* AirportListViewController.swift */,
 				2F456D682ED09BAE00CEAF1C /* AirportFlightListViewController.swift */,
 			);
 			path = KERoster;
@@ -417,7 +417,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERosterWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
@@ -427,7 +427,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.4.9;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -444,7 +444,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = KERosterWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERosterWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = KERosterWidget;
@@ -454,7 +454,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.4.9;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster.KERosterWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -595,7 +595,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -612,7 +612,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.9;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -630,7 +630,7 @@
 				CODE_SIGN_ENTITLEMENTS = KERoster/KERoster.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = 94X9X7M6N2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KERoster/Info.plist;
@@ -647,7 +647,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.9;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.duckdns.cageyjs.KERoster;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

@@ -28,6 +28,10 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         self.title = "Schedule List By Month(Year)"
         view.backgroundColor = .white
         
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0   // 섹션 헤더 위쪽 기본 패딩 제거
+        }
+        
         // 새로고침 컨트롤 설정 (Pull-to-Refresh)
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
@@ -106,17 +110,56 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
             }
         }
         
-        // 연도 및 월을 날짜순으로 정렬
-        sortedYears = yearMonthSchedules.keys.sorted()
+        // 연도 및 월을 날짜순으로 정렬 (최근 연도 우선)
+        sortedYears = yearMonthSchedules.keys.sorted { y1, y2 in
+            // "Unknown"은 항상 맨 아래로 보내기
+            if y1 == "Unknown" { return false }
+            if y2 == "Unknown" { return true }
+            // 숫자/문자 비교 모두 "큰 연도"가 위로 오도록
+            return y1 > y2
+        }
+
         for year in sortedYears {
             sortedMonthsByYear[year] = yearMonthSchedules[year]?.keys.sorted { (month1, month2) -> Bool in
                 if let date1 = monthFormatter.date(from: month1), let date2 = monthFormatter.date(from: month2) {
-                    return date1 < date2
+                    return date1 > date2
                 }
                 return month1 < month2
             }
         }
     }
+    
+    // MARK: - Year Aggregation Helper
+
+    /// 특정 연도의 전체 FLY 횟수 / 비행시간 / 듀티시간 합산
+    private func aggregateYearTotals(for year: String) -> (flightCount: Int, flyingHours: Double, dutyHours: Double) {
+        guard let months = yearMonthSchedules[year] else {
+            return (0, 0.0, 0.0)
+        }
+        
+        var totalFLYCount = 0
+        var totalFlyingHours = 0.0
+        var totalDutyHours = 0.0
+        
+        for (_, schedulesInMonth) in months {
+            for schedule in schedulesInMonth {
+                if schedule["WorkType"] == "FLY" {
+                    totalFLYCount += 1
+                    if let fhString = schedule["FlyingHours"],
+                       let fh = convertTimeStringToHours(fhString) {
+                        totalFlyingHours += fh
+                    }
+                }
+                if let dhString = schedule["DutyHours"],
+                   let dh = convertTimeStringToHours(dhString) {
+                    totalDutyHours += dh
+                }
+            }
+        }
+        
+        return (totalFLYCount, totalFlyingHours, totalDutyHours)
+    }
+
     
     // MARK: - UITableViewDataSource
     
@@ -137,23 +180,55 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         let headerView = UIView()
         headerView.backgroundColor = .systemGray6
         
+        let year = sortedYears[section]
+        
         let yearLabel = UILabel()
         yearLabel.translatesAutoresizingMaskIntoConstraints = false
-        yearLabel.font = UIFont.boldSystemFont(ofSize: 30)
-        yearLabel.text = sortedYears[section]
+        yearLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        yearLabel.text = year
         
         headerView.addSubview(yearLabel)
         
-        NSLayoutConstraint.activate([
-            yearLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            yearLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
-        ])
+        // "Unknown" 섹션은 합계 표시 생략
+        if year != "Unknown" {
+            let (flightCount, flyingHours, dutyHours) = aggregateYearTotals(for: year)
+            let flyingStr = formatHoursToHHmm(flyingHours)
+            let dutyStr = formatHoursToHHmm(dutyHours)
+            
+            let summaryLabel = UILabel()
+            summaryLabel.translatesAutoresizingMaskIntoConstraints = false
+            summaryLabel.font = UIFont.systemFont(ofSize: 14)
+            summaryLabel.textColor = .darkGray
+            summaryLabel.numberOfLines = 1
+            summaryLabel.text = "\(flightCount) Flights | \(flyingStr) FH  | \(dutyStr) DH"
+            
+            headerView.addSubview(summaryLabel)
+            
+            NSLayoutConstraint.activate([
+                yearLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+                yearLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 6),
+                
+                summaryLabel.leadingAnchor.constraint(equalTo: yearLabel.leadingAnchor),
+                summaryLabel.topAnchor.constraint(equalTo: yearLabel.bottomAnchor, constant: 2),
+                summaryLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -6)
+            ])
+        } else {
+            // Unknown 은 연도만 중앙 정렬 또는 기존 방식
+            NSLayoutConstraint.activate([
+                yearLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+                yearLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
+            ])
+        }
         
         return headerView
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return 50 // 헤더 높이 설정
+        return 60 // 연도 + 합계 두 줄
+    }
+
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 56   // 월 높이 조절
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -186,18 +261,17 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         let totalDutyHoursStr = formatHoursToHHmm(totalDutyHours)
         
         // NSAttributedString을 사용하여 월과 상세 정보를 표시
-        let boldFont = UIFont.boldSystemFont(ofSize: 20)
-        let regularFont = UIFont.systemFont(ofSize: 14)
+        let boldFont = UIFont.boldSystemFont(ofSize: 18)
+        let regularFont = UIFont.systemFont(ofSize: 12)
         
         let attributedText = NSMutableAttributedString(
-            string: "🗓️ \(month)\n",
+            string: "\(month)\n",
             attributes: [.font: boldFont]
         )
         
         let detailsText = """
         \(totalFLYCount) Flight(s)
-        Total Flying Hours = \(totalFlyingHoursStr)
-        Total Duty Hours = \(totalDutyHoursStr)
+        \(totalFlyingHoursStr) Flying Hours | \(totalDutyHoursStr) Duty Hours
         """
         
         attributedText.append(NSAttributedString(string: detailsText, attributes: [.font: regularFont]))
@@ -225,6 +299,10 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         navigationController?.pushViewController(detailVC, animated: true)
     }
     
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        return .leastNormalMagnitude   // 연도 위 공백 제거
+    }
+
     // MARK: - Helper Functions
     
     /// 시간 문자열(예: "02:50")을 Double형 시간(예: 2.83)으로 변환
@@ -239,11 +317,11 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         return Double(trimmed)
     }
     
-    /// Double형 시간 값을 "hh:mm" 형식의 문자열로 변환
+    /// Double형 시간 값을 "hh+mm" 형식의 문자열로 변환
     private func formatHoursToHHmm(_ hours: Double) -> String {
         let wholeHours = Int(hours)
         let minutes = Int(round((hours - Double(wholeHours)) * 60))
-        return String(format: "%02d:%02d", wholeHours, minutes)
+        return String(format: "%02d+%02d", wholeHours, minutes)
     }
     
     // MARK: - 영구 저장소 (UserDefaults) 관련 함수
