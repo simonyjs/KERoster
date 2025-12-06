@@ -31,9 +31,9 @@ class AirportListViewController: UITableViewController {
         title = "Airport Summary"
         tableView.rowHeight = 60
         
-        // 고정 백그라운드 / 컬러 (다크/라이트 무시)
-        view.backgroundColor = .white
-        tableView.backgroundColor = .white
+        // ⬇️ 고정 white 대신 팔레트 사용 (라이트/다크 대응)
+        view.backgroundColor = KERosterPalette.tableBackground
+        tableView.backgroundColor = KERosterPalette.tableBackground
         
         // 기본 separator 제거 (셀 간격은 spacer로)
         tableView.separatorStyle = .none
@@ -45,11 +45,11 @@ class AirportListViewController: UITableViewController {
         tableView.contentInset = .zero
         tableView.scrollIndicatorInsets = .zero
         
-        // 오른쪽 인덱스 바 톤 고정
-        tableView.sectionIndexColor = .darkGray
+        // 오른쪽 인덱스 바 톤을 위젯 팔레트에 맞춤
+        tableView.sectionIndexColor = KERosterPalette.sectionIndex
         tableView.sectionIndexBackgroundColor = .clear
         if #available(iOS 13.0, *) {
-            tableView.sectionIndexTrackingBackgroundColor = UIColor(white: 0.9, alpha: 1.0)
+            tableView.sectionIndexTrackingBackgroundColor = KERosterPalette.sectionIndexTracking
         }
         
         loadAirportNames()
@@ -172,18 +172,18 @@ class AirportListViewController: UITableViewController {
         return airportsInSection[sec]?.count ?? 0
     }
     
-    // 섹션 헤더: A / B / C … (음영 배경, 고정 컬러)
+    // 섹션 헤더: A / B / C … (음영 배경, 위젯 팔레트 컬러)
     override func tableView(_ tableView: UITableView,
                             viewForHeaderInSection section: Int) -> UIView? {
         let title = sectionTitles[section]
         
         let container = UIView()
-        container.backgroundColor = UIColor(white: 0.95, alpha: 1.0)   // 연회색
+        container.backgroundColor = KERosterPalette.headerBackground
         
         let label = UILabel()
         label.text = "  \(title)"     // 왼쪽 여백 조금
         label.font = .boldSystemFont(ofSize: 16)
-        label.textColor = .darkGray   // 고정 다크그레이
+        label.textColor = KERosterPalette.primary
         label.translatesAutoresizingMaskIntoConstraints = false
         
         container.addSubview(label)
@@ -195,7 +195,7 @@ class AirportListViewController: UITableViewController {
         
         // 아래 헤어라인
         let hairline = UIView()
-        hairline.backgroundColor = UIColor(white: 0.8, alpha: 1.0)
+        hairline.backgroundColor = KERosterPalette.headerHairline
         hairline.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(hairline)
         NSLayoutConstraint.activate([
@@ -240,7 +240,7 @@ class AirportListViewController: UITableViewController {
             width: cell.contentView.bounds.width,
             height: 3
         ))
-        spacer.backgroundColor = tableView.backgroundColor ?? .white
+        spacer.backgroundColor = tableView.backgroundColor ?? KERosterPalette.tableBackground
         spacer.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
         spacer.tag = 1001
         cell.contentView.addSubview(spacer)
@@ -270,12 +270,12 @@ class AirportListViewController: UITableViewController {
         }
         cell.textLabel?.font = UIFont.boldSystemFont(ofSize: 17)
         cell.textLabel?.numberOfLines = 1
-        cell.textLabel?.textColor = .black          // 항상 검정
+        cell.textLabel?.textColor = KERosterPalette.textPrimary
         
         // 둘째 줄: 공항 이름만
         cell.detailTextLabel?.text = name
         cell.detailTextLabel?.font = UIFont.systemFont(ofSize: 13)
-        cell.detailTextLabel?.textColor = .darkGray // 고정 다크그레이
+        cell.detailTextLabel?.textColor = KERosterPalette.textSecondary
         cell.detailTextLabel?.numberOfLines = 1
         
         // 기존 왼쪽 bar 제거 (중복 방지)
@@ -283,17 +283,15 @@ class AirportListViewController: UITableViewController {
             .filter { $0.tag == 999 }
             .forEach { $0.removeFromSuperview() }
         
-        // 왼쪽 Bar (다른 리스트와 통일 – LightRed)
+        // 왼쪽 Bar (위젯 primary 색으로 통일)
         let bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
-        let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
-        bar.backgroundColor = lightRed
+        bar.backgroundColor = KERosterPalette.primary
         bar.autoresizingMask = [.flexibleHeight]
         bar.tag = 999
         cell.contentView.addSubview(bar)
         
-        // 셀 배경 라이트 블루 고정
-        let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
-        cell.backgroundColor = lightBlue
+        // 셀 배경: 위젯과 동일 계열의 연한 블루
+        cell.backgroundColor = KERosterPalette.primaryBackground
         
         cell.accessoryType = .disclosureIndicator
         

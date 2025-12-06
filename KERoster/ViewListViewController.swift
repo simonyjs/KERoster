@@ -26,7 +26,10 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         super.viewDidLoad()
         
         self.title = "Schedule List By Month(Year)"
-        view.backgroundColor = .white
+        
+        // ⬇️ 배경색을 공통 팔레트 사용
+        view.backgroundColor = KERosterPalette.tableBackground
+        tableView.backgroundColor = KERosterPalette.tableBackground
         
         if #available(iOS 15.0, *) {
             tableView.sectionHeaderTopPadding = 0   // 섹션 헤더 위쪽 기본 패딩 제거
@@ -36,6 +39,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         // 새로고침 컨트롤 설정 (Pull-to-Refresh)
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
+        // 필요하면 새로고침 인디케이터 색도 맞출 수 있음
+        refreshControl.tintColor = KERosterPalette.primary
         tableView.refreshControl = refreshControl
         
         // iCloud KVS → App Group 폴백
@@ -175,7 +180,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let headerView = UIView()
-        headerView.backgroundColor = .systemGray6
+        // ⬇️ systemGray6 대신 공통 헤더 배경 사용
+        headerView.backgroundColor = KERosterPalette.headerBackground
         
         let year = sortedYears[section]
         
@@ -183,7 +189,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         yearLabel.translatesAutoresizingMaskIntoConstraints = false
         yearLabel.font = UIFont.boldSystemFont(ofSize: 24)
         yearLabel.text = year
-        yearLabel.textColor = .black   // 다크/라이트 모드 상관없이 검정
+        // ⬇️ 헤더 메인 텍스트는 primary 컬러
+        yearLabel.textColor = KERosterPalette.primary
         
         headerView.addSubview(yearLabel)
         
@@ -195,8 +202,8 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
             
             let summaryLabel = UILabel()
             summaryLabel.translatesAutoresizingMaskIntoConstraints = false
-            summaryLabel.font = UIFont.systemFont(ofSize: 14)
-            summaryLabel.textColor = .darkGray   // 고정된 다크그레이
+            summaryLabel.font = UIFont.boldSystemFont(ofSize: 14)
+            summaryLabel.textColor = KERosterPalette.textSecondary   // 고정 다크그레이 대신 팔레트
             summaryLabel.numberOfLines = 1
             summaryLabel.text = "\(flightCount) Flights | \(flyingStr) FH  | \(dutyStr) DH"
             
@@ -211,7 +218,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
                 summaryLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -6)
             ])
         } else {
-            // Unknown 은 연도만 중앙 정렬 또는 기존 방식
+            // Unknown 은 연도만 좌측 정렬
             NSLayoutConstraint.activate([
                 yearLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
                 yearLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
@@ -243,7 +250,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
                                           y: cell.contentView.bounds.height - 1,
                                           width: cell.contentView.bounds.width,
                                           height: 1))
-        spacer.backgroundColor = tableView.backgroundColor ?? .white
+        spacer.backgroundColor = tableView.backgroundColor ?? KERosterPalette.tableBackground
         spacer.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
         spacer.tag = 1001
 
@@ -286,21 +293,19 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         // 기존 bar 제거 (중복 방지)
         cell.contentView.subviews.filter { $0.tag == 999 }.forEach { $0.removeFromSuperview() }
 
-        // 왼쪽 Bar 생성
-        let Bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
-        // 글로벌 색상 정의
-        let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
-        Bar.backgroundColor = lightRed
-        Bar.autoresizingMask = [.flexibleHeight]
-        Bar.tag = 999
+        // 왼쪽 Bar 생성 (위젯 primary 컬러)
+        let bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
+        bar.backgroundColor = KERosterPalette.primary
+        bar.autoresizingMask = [.flexibleHeight]
+        bar.tag = 999
 
-        cell.contentView.addSubview(Bar)
+        cell.contentView.addSubview(bar)
         
         let attributedText = NSMutableAttributedString(
             string: "\(month)\n",
             attributes: [
                 .font: boldFont,
-                .foregroundColor: UIColor.black          // 제목(월) 항상 검정
+                .foregroundColor: KERosterPalette.textPrimary   // 제목(월)
             ]
         )
         
@@ -313,16 +318,15 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
             string: detailsText,
             attributes: [
                 .font: regularFont,
-                .foregroundColor: UIColor.darkGray      // 상세 텍스트 고정 색
+                .foregroundColor: KERosterPalette.textSecondary // 상세 텍스트
             ]))
         
         cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
-        cell.textLabel?.textColor = .black            // 안전차원에서 기본색도 고정
+        cell.textLabel?.textColor = KERosterPalette.textPrimary
         
-        // 글로벌 색상 정의
-        let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
-        cell.backgroundColor = lightBlue
+        // 셀 배경도 공용 연한 블루 사용
+        cell.backgroundColor = KERosterPalette.primaryBackground
         
         return cell
     }

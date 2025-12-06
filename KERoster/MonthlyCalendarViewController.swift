@@ -188,6 +188,8 @@ class MonthlyCalendarViewController: UIViewController,
     let monthControlView: UIView = {
         let v = UIView()
         v.translatesAutoresizingMaskIntoConstraints = false
+        // 상단 컨트롤 뷰 배경도 테이블 배경과 동일하게
+        v.backgroundColor = KERosterPalette.tableBackground
         return v
     }()
 
@@ -196,7 +198,7 @@ class MonthlyCalendarViewController: UIViewController,
         let l = UILabel()
         l.font = .scaledBoldFont(ofSize: 22)
         l.textAlignment = .center
-        l.textColor = .black
+        l.textColor = .ocean
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -205,7 +207,7 @@ class MonthlyCalendarViewController: UIViewController,
     let ownerInfoLabel: UILabel = {
         let l = UILabel()
         l.font = .scaledBoldFont(ofSize: 8)
-        l.textColor = .black
+        l.textColor = KERosterPalette.textSecondary
         l.textAlignment = .left
         l.translatesAutoresizingMaskIntoConstraints = false
         l.numberOfLines = 1
@@ -216,7 +218,7 @@ class MonthlyCalendarViewController: UIViewController,
     let totalHoursLabel: UILabel = {
         let l = UILabel()
         l.font = .scaledBoldFont(ofSize: 8)
-        l.textColor = .black
+        l.textColor = KERosterPalette.textSecondary
         l.textAlignment = .right
         l.translatesAutoresizingMaskIntoConstraints = false
         l.numberOfLines = 1
@@ -229,7 +231,7 @@ class MonthlyCalendarViewController: UIViewController,
             UIImage(systemName: "arrowshape.backward.circle.fill")?.withRenderingMode(.alwaysTemplate),
             for: .normal
         )
-        b.tintColor = UIColor(named: "Ocean")
+        b.tintColor = KERosterPalette.primary
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
     }()
@@ -240,7 +242,7 @@ class MonthlyCalendarViewController: UIViewController,
             UIImage(systemName: "arrowshape.forward.circle.fill")?.withRenderingMode(.alwaysTemplate),
             for: .normal
         )
-        b.tintColor = UIColor(named: "Ocean")
+        b.tintColor = KERosterPalette.primary
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
     }()
@@ -251,7 +253,7 @@ class MonthlyCalendarViewController: UIViewController,
         layout.minimumLineSpacing = 0
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.translatesAutoresizingMaskIntoConstraints = false
-        cv.backgroundColor = .white
+        cv.backgroundColor = KERosterPalette.tableBackground
         return cv
     }()
 
@@ -260,7 +262,7 @@ class MonthlyCalendarViewController: UIViewController,
     // MARK: - viewDidLoad
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = KERosterPalette.tableBackground
 
         setupViews()
         setupConstraints()
@@ -535,6 +537,7 @@ class MonthlyCalendarViewController: UIViewController,
             cell.isHeader = true
             cell.dateLabel.text = daysOfWeek[indexPath.item]
             cell.dateLabel.font = .boldSystemFont(ofSize: (isiPhone && isLand) ? 6 : 10)
+            // 헤더 색상은 updateMode()에서 처리
             return cell
         }
 
@@ -556,7 +559,7 @@ class MonthlyCalendarViewController: UIViewController,
         let monthDays = range.count
 
         var dateForCell: Date?
-        var textColor: UIColor = .black
+        var textColor: UIColor = KERosterPalette.textPrimary
 
         // 이전 달
         if dayNumber < 1 {
@@ -566,8 +569,8 @@ class MonthlyCalendarViewController: UIViewController,
                 var c = calendar.dateComponents([.year, .month], from: prevMonth)
                 c.day = d
                 dateForCell = calendar.date(from: c)
-                cell.contentView.backgroundColor = UIColor(named: "LightGreen")
-                textColor = UIColor(named: "DarkGreen") ?? .green
+                cell.contentView.backgroundColor = KERosterPalette.headerBackground
+                textColor = KERosterPalette.textSecondary
             }
         }
         // 다음 달
@@ -577,8 +580,8 @@ class MonthlyCalendarViewController: UIViewController,
                 var c = calendar.dateComponents([.year, .month], from: nextMonth)
                 c.day = d
                 dateForCell = calendar.date(from: c)
-                cell.contentView.backgroundColor = UIColor(named: "LightGreen")
-                textColor = UIColor(named: "DarkGreen") ?? .green
+                cell.contentView.backgroundColor = KERosterPalette.headerBackground
+                textColor = KERosterPalette.textSecondary
             }
         }
         // 현재 달
@@ -586,8 +589,8 @@ class MonthlyCalendarViewController: UIViewController,
             var c = calendar.dateComponents([.year, .month], from: currentDate)
             c.day = dayNumber
             dateForCell = calendar.date(from: c)
-            cell.contentView.backgroundColor = .white
-            textColor = .black
+            cell.contentView.backgroundColor = KERosterPalette.tableBackground
+            textColor = KERosterPalette.textPrimary
         }
 
         guard let validDate = dateForCell else { return cell }
@@ -597,10 +600,11 @@ class MonthlyCalendarViewController: UIViewController,
         let dateFontSize: CGFloat = (isiPhone && isLand) ? 7 : 10
 
         if calendar.isDate(validDate, inSameDayAs: Date()) {
+            // 오늘: 위젯 스타일과 맞춰 블루 캡슐
             cell.dateLabel.text = dateText
             cell.dateLabel.font = .boldSystemFont(ofSize: dateFontSize)
             cell.dateLabel.textColor = .white
-            cell.dateLabel.backgroundColor = .red
+            cell.dateLabel.backgroundColor = KERosterPalette.primary
             cell.dateLabel.layer.cornerRadius = 4
             cell.dateLabel.clipsToBounds = true
         } else {
@@ -615,8 +619,13 @@ class MonthlyCalendarViewController: UIViewController,
         if let holidayTitle = holidays[holidayKey] {
             cell.contentView.backgroundColor = UIColor(named: "LightYellow")
             cell.dateLabel.text = "\(dateText) [\(holidayTitle)]"
-            cell.dateLabel.textColor = UIColor(named: "DarkYellow") ?? .orange
+            
+            // 날짜 + 스케줄 라벨 공통 색상 다크 옐로우로
+            let holidayColor = UIColor(named: "DarkYellow") ?? .orange
+            cell.dateLabel.textColor = holidayColor
+            textColor = holidayColor   // ⬅️ 아래 스케줄 라벨(label.textColor = textColor)에 적용됨
         }
+
 
         // 날짜별 스케줄 캐시 조회
         buildScheduleCacheIfNeeded()
@@ -837,6 +846,7 @@ class CalendarDayCell: UICollectionViewCell {
     let dateLabel: UILabel = {
         let l = UILabel()
         l.translatesAutoresizingMaskIntoConstraints = false
+        l.textColor = KERosterPalette.textPrimary
         return l
     }()
 
@@ -861,7 +871,8 @@ class CalendarDayCell: UICollectionViewCell {
         super.init(frame: frame)
 
         contentView.layer.borderWidth = 0.2
-        contentView.layer.borderColor = UIColor(named: "Ocean")?.cgColor
+        contentView.layer.borderColor = KERosterPalette.headerHairline.cgColor
+        contentView.backgroundColor = KERosterPalette.tableBackground
 
         contentView.addSubview(dateLabel)
         contentView.addSubview(scheduleStackView)
@@ -890,19 +901,25 @@ class CalendarDayCell: UICollectionViewCell {
             NSLayoutConstraint.activate(headerConstraints)
             scheduleStackView.isHidden = true
             dateLabel.textAlignment = .center
+            contentView.backgroundColor = KERosterPalette.headerBackground
+            dateLabel.textColor = KERosterPalette.primary
+            dateLabel.backgroundColor = .clear
         } else {
             NSLayoutConstraint.deactivate(headerConstraints)
             NSLayoutConstraint.activate(normalConstraints)
             scheduleStackView.isHidden = false
             dateLabel.textAlignment = .left
+            contentView.backgroundColor = KERosterPalette.tableBackground
+            dateLabel.textColor = KERosterPalette.textPrimary
+            dateLabel.backgroundColor = .clear
         }
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        contentView.backgroundColor = .clear
+        contentView.backgroundColor = KERosterPalette.tableBackground
         dateLabel.backgroundColor = .clear
-        dateLabel.textColor = .black
+        dateLabel.textColor = KERosterPalette.textPrimary
         scheduleStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         isHeader = false
     }

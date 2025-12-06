@@ -11,6 +11,35 @@
 
 import UIKit
 
+// MARK: - KERoster 위젯 팔레트 기반 색상 정의 (이 파일 전용)
+/*
+// 나중에 공통 팔레트 파일로 분리 가능
+fileprivate enum KERosterPalette {
+    /// 메인 포인트 컬러 (위젯에서 사용 중인 파란색)
+    static let primary = UIColor.systemBlue
+    /// 메인 포인트의 연한 배경 (Color.blue.opacity(0.2) 느낌)
+    static let primaryBackground = UIColor.systemBlue.withAlphaComponent(0.15)
+
+    /// 섹션 헤더 배경 (살짝 더 연한 블루 톤)
+    static let headerBackground = UIColor.systemBlue.withAlphaComponent(0.08)
+    /// 섹션 헤더 라인 색
+    static let headerHairline = UIColor.systemBlue.withAlphaComponent(0.3)
+
+    /// 전체 배경색
+    static let tableBackground = UIColor.systemBackground
+
+    /// 텍스트
+    static let textPrimary = UIColor.label
+    static let textSecondary = UIColor.secondaryLabel
+
+    /// 인덱스 바 색
+    static let sectionIndex = UIColor.systemBlue
+    static let sectionIndexTracking = UIColor.systemBlue.withAlphaComponent(0.15)
+
+    /// 데이터 없음 표시
+    static let emptyLabel = UIColor.secondaryLabel
+}
+*/
 final class CrewListByMonthViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
     @IBOutlet weak var tableView: UITableView!   // 스토리보드 연결 필수!
@@ -52,8 +81,10 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Crew by Person"
-        view.backgroundColor = .white
-        tableView.backgroundColor = .white
+
+        // ⬇️ 배경 색을 시스템/팔레트 기준으로 변경
+        view.backgroundColor = KERosterPalette.tableBackground
+        tableView.backgroundColor = KERosterPalette.tableBackground
         tableView.separatorStyle = .none    // 기본 separator 제거(셀 간격은 커스텀 spacer로)
 
         // 상단 공백 제거 (iOS 15 이상 섹션 헤더 top padding)
@@ -83,18 +114,18 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
 
-        // 인덱스 바 톤 고정
-        tableView.sectionIndexColor = .darkGray
+        // 인덱스 바 톤을 위젯 팔레트에 맞춤
+        tableView.sectionIndexColor = KERosterPalette.sectionIndex
         tableView.sectionIndexBackgroundColor = .clear
         if #available(iOS 13.0, *) {
-            tableView.sectionIndexTrackingBackgroundColor = UIColor(white: 0.9, alpha: 1.0)
+            tableView.sectionIndexTrackingBackgroundColor = KERosterPalette.sectionIndexTracking
         }
 
         if sections.isEmpty {
             let lbl = UILabel()
             lbl.text = "NO CREW LIST ON SKD!"
             lbl.textAlignment = .center
-            lbl.textColor = .darkGray
+            lbl.textColor = KERosterPalette.emptyLabel
             lbl.numberOfLines = 0
             tableView.backgroundView = lbl
         } else {
@@ -259,12 +290,14 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
     // 커스텀 헤더(음영 처리)
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let v = UIView()
-        v.backgroundColor = UIColor(white: 0.95, alpha: 1.0)   // 고정 연회색 배경
+        // ⬇️ 위젯 팔레트에 맞춘 헤더 배경
+        v.backgroundColor = KERosterPalette.headerBackground
 
         let label = UILabel()
         label.text = "  \(sections[section].key)" // 좌측 약간 들여쓰기
         label.font = UIFont.boldSystemFont(ofSize: 14)
-        label.textColor = .darkGray             // 항상 다크그레이
+        // ⬇️ 헤더 텍스트를 primary 색으로
+        label.textColor = KERosterPalette.primary
         label.translatesAutoresizingMaskIntoConstraints = false
 
         v.addSubview(label)
@@ -277,7 +310,7 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
 
         // 아래 헤어라인
         let hairline = UIView()
-        hairline.backgroundColor = UIColor(white: 0.8, alpha: 1.0)  // 고정 라인색
+        hairline.backgroundColor = KERosterPalette.headerHairline
         hairline.translatesAutoresizingMaskIntoConstraints = false
         v.addSubview(hairline)
         NSLayoutConstraint.activate([
@@ -318,7 +351,7 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
             width: cell.contentView.bounds.width,
             height: 3
         ))
-        spacer.backgroundColor = tableView.backgroundColor ?? .white
+        spacer.backgroundColor = tableView.backgroundColor ?? KERosterPalette.tableBackground
         spacer.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
         spacer.tag = 1001
         cell.contentView.addSubview(spacer)
@@ -341,35 +374,33 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
             string: title + "\n",
             attributes: [
                 .font: bold,
-                .foregroundColor: UIColor.black        // 이름은 항상 검정
+                .foregroundColor: KERosterPalette.textPrimary  // 이름 텍스트
             ]
         )
         att.append(NSAttributedString(
             string: subtitle,
             attributes: [
                 .font: reg,
-                .foregroundColor: UIColor.darkGray     // 서브텍스트 고정 다크그레이
+                .foregroundColor: KERosterPalette.textSecondary // 서브텍스트
             ]
         ))
 
         // 기존 왼쪽 bar 제거 (중복 방지)
         cell.contentView.subviews.filter { $0.tag == 999 }.forEach { $0.removeFromSuperview() }
 
-        // 왼쪽 Bar (ViewList 스타일과 유사)
+        // 왼쪽 Bar (위젯의 primary 색상으로 통일)
         let bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
-        let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
-        bar.backgroundColor = lightRed
+        bar.backgroundColor = KERosterPalette.primary
         bar.autoresizingMask = [.flexibleHeight]
         bar.tag = 999
         cell.contentView.addSubview(bar)
 
         cell.textLabel?.numberOfLines = 0
         cell.textLabel?.attributedText = att
-        cell.textLabel?.textColor = .black      // 안전하게 기본 텍스트도 고정
+        cell.textLabel?.textColor = KERosterPalette.textPrimary
 
-        // 전체 셀 배경(라이트 블루)
-        let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
-        cell.backgroundColor = lightBlue
+        // 전체 셀 배경(위젯과 동일 계열의 연한 블루)
+        cell.backgroundColor = KERosterPalette.primaryBackground
 
         cell.accessoryType = .disclosureIndicator
         return cell

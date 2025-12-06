@@ -232,6 +232,14 @@ func fetchHeaderInfo(for airportCode: String, completion: @escaping (String) -> 
     }
 }
 
+// MARK: - 고정 팔레트 (다크/라이트 무시)
+private enum ScheduleDetailPalette {
+    static let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
+    static let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
+    static let lightYellow = UIColor(red: 1.0, green: 0.98, blue: 0.75, alpha: 1.0)
+    static let ocean = UIColor(red: 0.00, green: 0.48, blue: 0.71, alpha: 1.0)
+}
+
 // MARK: - ScheduleDetailViewController
 class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, ScheduleEditDelegate {
     
@@ -252,7 +260,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         button.setTitle("CLOSE", for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.backgroundColor = .white
-        button.setTitleColor(UIColor(named: "Ocean") ?? .systemBlue, for: .normal)
+        button.setTitleColor(ScheduleDetailPalette.ocean, for: .normal)
         button.layer.cornerRadius = 8
         return button
     }()
@@ -272,8 +280,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let todayButton = UIButton(type: .system)
         var config = UIButton.Configuration.filled()
         config.title = " TODAY "
-        config.baseBackgroundColor = UIColor(named: "LightRed") ?? UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
-        config.baseForegroundColor = UIColor(named: "LightWhite") ?? .white
+        config.baseBackgroundColor = ScheduleDetailPalette.lightRed
+        config.baseForegroundColor = .white
         config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3)
         todayButton.configuration = config
         todayButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
@@ -287,7 +295,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         if self.presentingViewController != nil {
             closeButton.isHidden = false
             navigationController?.setNavigationBarHidden(false, animated: false)
-            navigationController?.navigationBar.barTintColor = UIColor(named: "Ocean")
+            navigationController?.navigationBar.barTintColor = ScheduleDetailPalette.ocean
             navigationController?.navigationBar.isTranslucent = false
             navigationController?.navigationBar.titleTextAttributes = [
                 NSAttributedString.Key.foregroundColor: UIColor.white
@@ -316,13 +324,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         tableView.layoutIfNeeded()
         
-        // 🔹 CLOSE 버튼이 tableView 위에 겹치는 높이 계산
-        // tableView는 safeArea.top에 붙어 있고,
-        // closeButton은 safeArea.top + 10 에 있으니까
-        // 둘 사이 겹치는 영역을 빼주면 됨
+        // CLOSE 버튼이 tableView 위에 겹치는 높이 계산
         let overlapHeight = max(0, closeButton.frame.maxY - tableView.frame.minY)
         
-        // 기본 컨텐츠 높이
         let contentHeight = tableView.contentSize.height
         var additionalHeight: CGFloat = 20   // 아래 여유
         
@@ -330,13 +334,11 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             additionalHeight += 10           // iPad에서 여유 조금 더
         }
         
-        // 🔹 겹쳐 있는 영역만큼 잘라내기
-        // (시트 전체 높이를 그만큼 줄이는 효과)
         let rawHeight = contentHeight + additionalHeight - overlapHeight
         
         let screenH = UIScreen.main.bounds.height
-        let minH = screenH * 0.07            // 너무 작지 않게
-        let maxH = screenH * 0.9            // 너무 크지 않게
+        let minH = screenH * 0.05
+        let maxH = screenH * 0.9
         let finalH = max(minH, min(rawHeight, maxH))
         
         self.preferredContentSize = CGSize(width: self.view.frame.width,
@@ -652,7 +654,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
         
-        let maxContentWidth = self.view?.bounds.width ?? UIScreen.main.bounds.width
+        let maxContentWidth = self.view.bounds.width
         let horizontalPadding: CGFloat = 32
         let limitWidth = max(200, maxContentWidth - horizontalPadding)
         
@@ -702,7 +704,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let depDateFormatted = inputFormatter.date(from: depDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? depDateOriginal
         let arrDateFormatted = inputFormatter.date(from: arrDateOriginal).flatMap { outputFormatter.string(from: $0) } ?? arrDateOriginal
         
-        // 🔹 DepDate vs ArrDate 일(day) 차이 계산 (+1 / -1 표시용)
+        // DepDate vs ArrDate 일(day) 차이 계산 (+1 / -1 표시용)
         var dayOffset: Int = 0
         if let depDate = inputFormatter.date(from: depDateOriginal),
            let arrDate = inputFormatter.date(from: arrDateOriginal) {
@@ -712,8 +714,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         
         let defaultFont = isToday ? UIFont.systemFont(ofSize: 21) : UIFont.systemFont(ofSize: 14)
         let boldFont = isToday ? UIFont.boldSystemFont(ofSize: 30) : UIFont.boldSystemFont(ofSize: 20)
-        let routeBoldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)   // 노선 공항용 볼드
-        let textColor: UIColor = .black   // 다크/라이트 무관 항상 검정
+        let routeBoldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)
+        let textColor: UIColor = .black
         
         let att = NSMutableAttributedString()
         let workType = details["WorkType"] ?? "N/A"
@@ -746,7 +748,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 attributes: [.font: boldFont, .foregroundColor: textColor]
             ))
             
-            // 🔹 도착 날짜가 다르면 도착시간 뒤에 (+1) / (-1) 표시
+            // 도착 날짜가 다르면 도착시간 뒤에 (+1) / (-1) 표시
             var arrTimeWithOffset = arrTimeLocal
             if dayOffset > 0 {
                 arrTimeWithOffset += " (+\(dayOffset))"
@@ -754,7 +756,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                 arrTimeWithOffset += " (\(dayOffset))"
             }
             
-            // 🔹 노선 라인: 출발/도착 공항은 볼드, 시간은 일반
+            // 노선 라인: 출발/도착 공항은 볼드, 시간은 일반
             let routeAttr = NSMutableAttributedString()
             // DEP 공항 (볼드)
             routeAttr.append(NSAttributedString(
@@ -917,7 +919,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                     string: weatherText,
                     attributes: [
                         .font: UIFont.systemFont(ofSize: 12),
-                        .foregroundColor: UIColor.black   // 다크/라이트 관계없이 검정
+                        .foregroundColor: UIColor.black
                     ])
                 
                 combined.append(weatherAttr)
@@ -957,8 +959,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         }()
         
         // 배경색 (오늘: LightYellow, 나머지: LightBlue)
-        let lightBlue = UIColor(named: "LightBlue") ?? UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
-        let lightYellow = UIColor(named: "LightYellow") ?? UIColor(red: 1.0, green: 0.98, blue: 0.75, alpha: 1.0)
+        let lightBlue = ScheduleDetailPalette.lightBlue
+        let lightYellow = ScheduleDetailPalette.lightYellow
         cell.backgroundColor = isToday ? lightYellow : lightBlue
         
         // 기본 텍스트 설정
@@ -984,9 +986,9 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         bar.tag = 999
         
         if workType == "FLY" || workType == "TVL" {
-            bar.backgroundColor = UIColor(named: "LightRed") ?? UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
+            bar.backgroundColor = ScheduleDetailPalette.lightRed
         } else {
-            bar.backgroundColor = UIColor(named: "Ocean") ?? UIColor.systemTeal
+            bar.backgroundColor = ScheduleDetailPalette.ocean
         }
         cell.contentView.addSubview(bar)
         
