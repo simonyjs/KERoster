@@ -52,7 +52,16 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Crew by Person"
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .white
+        tableView.backgroundColor = .white
+        tableView.separatorStyle = .none    // 기본 separator 제거(셀 간격은 커스텀 spacer로)
+
+        // 상단 공백 제거 (iOS 15 이상 섹션 헤더 top padding)
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
+        tableView.contentInset = .zero
+        tableView.scrollIndicatorInsets = .zero
 
         // 데이터 로드
         if schedules.isEmpty {
@@ -74,18 +83,18 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
 
-        // 인덱스 바 톤 조절
-        tableView.sectionIndexColor = .secondaryLabel
+        // 인덱스 바 톤 고정
+        tableView.sectionIndexColor = .darkGray
         tableView.sectionIndexBackgroundColor = .clear
         if #available(iOS 13.0, *) {
-            tableView.sectionIndexTrackingBackgroundColor = .tertiarySystemBackground
+            tableView.sectionIndexTrackingBackgroundColor = UIColor(white: 0.9, alpha: 1.0)
         }
 
         if sections.isEmpty {
             let lbl = UILabel()
             lbl.text = "NO CREW LIST ON SKD!"
             lbl.textAlignment = .center
-            lbl.textColor = .secondaryLabel
+            lbl.textColor = .darkGray
             lbl.numberOfLines = 0
             tableView.backgroundView = lbl
         } else {
@@ -203,7 +212,11 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
                 return v.trimmingCharacters(in: .whitespacesAndNewlines)
             }
             // 키 정규화(공백/대소문자)
-            if let alt = dict.first(where: { $0.key.replacingOccurrences(of: " ", with: "").caseInsensitiveCompare(k.replacingOccurrences(of: " ", with: "")) == .orderedSame })?.value,
+            if let alt = dict.first(where: {
+                $0.key.replacingOccurrences(of: " ", with: "").caseInsensitiveCompare(
+                    k.replacingOccurrences(of: " ", with: "")
+                ) == .orderedSame
+            })?.value,
                !alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 return alt.trimmingCharacters(in: .whitespacesAndNewlines)
             }
@@ -246,12 +259,12 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
     // 커스텀 헤더(음영 처리)
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let v = UIView()
-        v.backgroundColor = .secondarySystemBackground
+        v.backgroundColor = UIColor(white: 0.95, alpha: 1.0)   // 고정 연회색 배경
 
         let label = UILabel()
         label.text = "  \(sections[section].key)" // 좌측 약간 들여쓰기
         label.font = UIFont.boldSystemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .darkGray             // 항상 다크그레이
         label.translatesAutoresizingMaskIntoConstraints = false
 
         v.addSubview(label)
@@ -264,7 +277,7 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
 
         // 아래 헤어라인
         let hairline = UIView()
-        hairline.backgroundColor = .separator
+        hairline.backgroundColor = UIColor(white: 0.8, alpha: 1.0)  // 고정 라인색
         hairline.translatesAutoresizingMaskIntoConstraints = false
         v.addSubview(hairline)
         NSLayoutConstraint.activate([
@@ -291,22 +304,73 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
         return sectionIndexMap[title] ?? index
     }
 
+    // 셀 간 3pt 간격(커스텀 spacer)
+    func tableView(_ tableView: UITableView,
+                   willDisplay cell: UITableViewCell,
+                   forRowAt indexPath: IndexPath) {
+
+        // 기존 spacer 제거
+        cell.contentView.subviews.filter { $0.tag == 1001 }.forEach { $0.removeFromSuperview() }
+
+        let spacer = UIView(frame: CGRect(
+            x: 0,
+            y: cell.contentView.bounds.height - 3,
+            width: cell.contentView.bounds.width,
+            height: 3
+        ))
+        spacer.backgroundColor = tableView.backgroundColor ?? .white
+        spacer.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
+        spacer.tag = 1001
+        cell.contentView.addSubview(spacer)
+    }
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let p = sections[indexPath.section].people[indexPath.row]
         let flights = flightsByPerson[p] ?? []
 
         let title = "\(p.name)"
-        let subtitle = p.id == "—" ? "\(flights.count) flight(s)" : "[\(p.id)]  •  \(flights.count) flight(s)"
+        let subtitle = p.id == "—"
+            ? "\(flights.count) flight(s)"
+            : "[\(p.id)]  •  \(flights.count) flight(s)"
 
         let bold = UIFont.boldSystemFont(ofSize: 18)
         let reg  = UIFont.systemFont(ofSize: 14)
 
-        let att = NSMutableAttributedString(string: title + "\n", attributes: [.font: bold])
-        att.append(NSAttributedString(string: subtitle, attributes: [.font: reg]))
+        let att = NSMutableAttributedString(
+            string: title + "\n",
+            attributes: [
+                .font: bold,
+                .foregroundColor: UIColor.black        // 이름은 항상 검정
+            ]
+        )
+        att.append(NSAttributedString(
+            string: subtitle,
+            attributes: [
+                .font: reg,
+                .foregroundColor: UIColor.darkGray     // 서브텍스트 고정 다크그레이
+            ]
+        ))
+
+        // 기존 왼쪽 bar 제거 (중복 방지)
+        cell.contentView.subviews.filter { $0.tag == 999 }.forEach { $0.removeFromSuperview() }
+
+        // 왼쪽 Bar (ViewList 스타일과 유사)
+        let bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
+        let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
+        bar.backgroundColor = lightRed
+        bar.autoresizingMask = [.flexibleHeight]
+        bar.tag = 999
+        cell.contentView.addSubview(bar)
 
         cell.textLabel?.numberOfLines = 0
         cell.textLabel?.attributedText = att
+        cell.textLabel?.textColor = .black      // 안전하게 기본 텍스트도 고정
+
+        // 전체 셀 배경(라이트 블루)
+        let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
+        cell.backgroundColor = lightBlue
+
         cell.accessoryType = .disclosureIndicator
         return cell
     }
@@ -327,7 +391,11 @@ final class CrewListByMonthViewController: UIViewController, UITableViewDataSour
             // 아웃렛 확인(미연결 방지)
             _ = vc.view
             if vc.tableView == nil {
-                let ac = UIAlertController(title: "Outlet 미연결", message: "PersonFlightsViewController의 tableView 아웃렛을 연결하세요.", preferredStyle: .alert)
+                let ac = UIAlertController(
+                    title: "Outlet 미연결",
+                    message: "PersonFlightsViewController의 tableView 아웃렛을 연결하세요.",
+                    preferredStyle: .alert
+                )
                 ac.addAction(UIAlertAction(title: "확인", style: .default))
                 present(ac, animated: true)
                 return

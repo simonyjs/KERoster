@@ -31,16 +31,13 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         if #available(iOS 15.0, *) {
             tableView.sectionHeaderTopPadding = 0   // 섹션 헤더 위쪽 기본 패딩 제거
         }
+        tableView.separatorStyle = .none   // ← 검은색 기본 separator 제거
         
         // 새로고침 컨트롤 설정 (Pull-to-Refresh)
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshData(_:)), for: .valueChanged)
         tableView.refreshControl = refreshControl
         
-        // 만약 schedules가 외부에서 전달되지 않았다면, 영구 저장소에서 불러옵니다.
-//        if schedules.isEmpty {
-//            loadSchedules()
-//        }
         // iCloud KVS → App Group 폴백
         NSUbiquitousKeyValueStore.default.synchronize()
         if let json = NSUbiquitousKeyValueStore.default.string(forKey: "schedules_json"),
@@ -186,6 +183,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         yearLabel.translatesAutoresizingMaskIntoConstraints = false
         yearLabel.font = UIFont.boldSystemFont(ofSize: 24)
         yearLabel.text = year
+        yearLabel.textColor = .black   // 다크/라이트 모드 상관없이 검정
         
         headerView.addSubview(yearLabel)
         
@@ -198,7 +196,7 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
             let summaryLabel = UILabel()
             summaryLabel.translatesAutoresizingMaskIntoConstraints = false
             summaryLabel.font = UIFont.systemFont(ofSize: 14)
-            summaryLabel.textColor = .darkGray
+            summaryLabel.textColor = .darkGray   // 고정된 다크그레이
             summaryLabel.numberOfLines = 1
             summaryLabel.text = "\(flightCount) Flights | \(flyingStr) FH  | \(dutyStr) DH"
             
@@ -227,10 +225,31 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         return 60 // 연도 + 합계 두 줄
     }
 
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        return 0.001 // 섹션 간 간격 없애기
+    }
+    
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 56   // 월 높이 조절
     }
     
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+
+        // 중복 멤버 제거
+        cell.contentView.subviews.filter { $0.tag == 1001 }.forEach { $0.removeFromSuperview() }
+
+        // 1pt spacing bar (월 셀 간 간격)
+        let spacer = UIView(frame: CGRect(x: 0,
+                                          y: cell.contentView.bounds.height - 1,
+                                          width: cell.contentView.bounds.width,
+                                          height: 1))
+        spacer.backgroundColor = tableView.backgroundColor ?? .white
+        spacer.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
+        spacer.tag = 1001
+
+        cell.contentView.addSubview(spacer)
+    }
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
@@ -264,9 +283,25 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         let boldFont = UIFont.boldSystemFont(ofSize: 18)
         let regularFont = UIFont.systemFont(ofSize: 12)
         
+        // 기존 bar 제거 (중복 방지)
+        cell.contentView.subviews.filter { $0.tag == 999 }.forEach { $0.removeFromSuperview() }
+
+        // 왼쪽 Bar 생성
+        let Bar = UIView(frame: CGRect(x: 3, y: 0, width: 5, height: cell.contentView.bounds.height))
+        // 글로벌 색상 정의
+        let lightRed = UIColor(red: 0.98, green: 0.68, blue: 0.68, alpha: 1.0)
+        Bar.backgroundColor = lightRed
+        Bar.autoresizingMask = [.flexibleHeight]
+        Bar.tag = 999
+
+        cell.contentView.addSubview(Bar)
+        
         let attributedText = NSMutableAttributedString(
             string: "\(month)\n",
-            attributes: [.font: boldFont]
+            attributes: [
+                .font: boldFont,
+                .foregroundColor: UIColor.black          // 제목(월) 항상 검정
+            ]
         )
         
         let detailsText = """
@@ -274,11 +309,20 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         \(totalFlyingHoursStr) Flying Hours | \(totalDutyHoursStr) Duty Hours
         """
         
-        attributedText.append(NSAttributedString(string: detailsText, attributes: [.font: regularFont]))
+        attributedText.append(NSAttributedString(
+            string: detailsText,
+            attributes: [
+                .font: regularFont,
+                .foregroundColor: UIColor.darkGray      // 상세 텍스트 고정 색
+            ]))
         
         cell.textLabel?.attributedText = attributedText
         cell.textLabel?.numberOfLines = 0
-        cell.accessoryType = .disclosureIndicator
+        cell.textLabel?.textColor = .black            // 안전차원에서 기본색도 고정
+        
+        // 글로벌 색상 정의
+        let lightBlue = UIColor(red: 0.88, green: 0.95, blue: 0.98, alpha: 1.0)
+        cell.backgroundColor = lightBlue
         
         return cell
     }
@@ -299,10 +343,6 @@ class ViewListViewController: UIViewController, UITableViewDataSource, UITableVi
         navigationController?.pushViewController(detailVC, animated: true)
     }
     
-    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
-        return .leastNormalMagnitude   // 연도 위 공백 제거
-    }
-
     // MARK: - Helper Functions
     
     /// 시간 문자열(예: "02:50")을 Double형 시간(예: 2.83)으로 변환

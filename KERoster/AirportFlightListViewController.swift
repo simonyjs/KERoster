@@ -43,7 +43,7 @@ class AirportFlightListViewController: UITableViewController {
         let screenWidth = UIScreen.main.bounds.width - 32   // 좌우 여백 고려
         let count = Int(screenWidth / charWidth)
         
-        return String(repeating: "─", count: max(count, 5))
+        return String(repeating: "─", count: max(count, 1))
     }
 
     override func viewDidLoad() {
@@ -59,8 +59,20 @@ class AirportFlightListViewController: UITableViewController {
         tableView.separatorStyle = .none
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 140
-        tableView.backgroundColor = .systemBackground
+
+        // iOS 15 이상 헤더 top padding 제거 (혹시 모를 여백 방지)
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
+
+        // 네비게이션 바 때문에 추가되는 자동 inset 최소화
+        if #available(iOS 11.0, *) {
+            tableView.contentInsetAdjustmentBehavior = .never
+        }
+        tableView.contentInset = .zero
+        tableView.scrollIndicatorInsets = .zero
     }
+
     
     // MARK: - TableView
     
