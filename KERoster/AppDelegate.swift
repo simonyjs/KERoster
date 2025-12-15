@@ -9,12 +9,12 @@ import UIKit
 import Foundation
 import CoreData
 import CloudKit
-import BackgroundTasks   // ✅ BGTask 사용
+import BackgroundTasks   // BGTask 사용
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    // ✅ Info.plist의 BGTaskSchedulerPermittedIdentifiers와 반드시 동일해야 함
+    // Info.plist의 BGTaskSchedulerPermittedIdentifiers와 반드시 동일해야 함
     private let refreshTaskID    = "org.duckdns.cageyjs.KERoster.refresh"
     private let processingTaskID = "org.duckdns.cageyjs.KERoster.processing"
 
@@ -24,50 +24,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         #if DEBUG
-        print("🚀 [AppDelegate] didFinishLaunching started")
+        print("[AppDelegate] didFinishLaunching started")
         #endif
 
-        // ✅ CloudKit DB 변경 → 사일런트 푸시 구독(최초 1회 생성)
+        // CloudKit DB 변경 → 사일런트 푸시 구독(최초 1회 생성)
         CloudKitManager.shared.subscribeIfNeeded()
         #if DEBUG
-        print("☁️ [AppDelegate] CloudKit subscription requested (subscribeIfNeeded)")
+        print("[AppDelegate] CloudKit subscription requested (subscribeIfNeeded)")
         #endif
 
-        // ✅ 원격 푸시 등록 (Background Modes → Remote notifications 체크 필수)
+        // 원격 푸시 등록 (Background Modes → Remote notifications 체크 필수)
         application.registerForRemoteNotifications()
         #if DEBUG
-        print("📡 [AppDelegate] registerForRemoteNotifications() called")
+        print("[AppDelegate] registerForRemoteNotifications() called")
         #endif
 
         // (선택) CloudKit 계정 상태 로깅
         CKContainer.default().accountStatus { status, error in
             #if DEBUG
             if let error = error {
-                print("⚠️ [AppDelegate] iCloud account status error: \(error)")
+                print("[AppDelegate] iCloud account status error: \(error)")
             } else {
-                print("ℹ️ [AppDelegate] iCloud account status: \(status.rawValue)")
+                print("[AppDelegate] iCloud account status: \(status.rawValue)")
             }
             #endif
         }
 
-        // ✅ BGTask 핸들러 등록 (앱/백그라운드 런치 모두 대비)
+        // BGTask 핸들러 등록 (앱/백그라운드 런치 모두 대비)
         BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshTaskID, using: nil) { task in
             #if DEBUG
-            print("🕒 [AppDelegate] BGAppRefreshTask fired")
+            print("[AppDelegate] BGAppRefreshTask fired")
             #endif
             self.handleAppRefresh(task: task as! BGAppRefreshTask)
         }
 
         BGTaskScheduler.shared.register(forTaskWithIdentifier: processingTaskID, using: nil) { task in
             #if DEBUG
-            print("🛠 [AppDelegate] BGProcessingTask fired")
+            print("[AppDelegate] BGProcessingTask fired")
             #endif
             self.handleProcessing(task: task as! BGProcessingTask)
         }
 
         #if DEBUG
-        print("✅ [AppDelegate] BGTask handlers registered")
-        print("✅ [AppDelegate] didFinishLaunching completed")
+        print("[AppDelegate] BGTask handlers registered")
+        print("[AppDelegate] didFinishLaunching completed")
         #endif
 
         return true
@@ -77,10 +77,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidEnterBackground(_ application: UIApplication) {
         #if DEBUG
-        print("🌙 [AppDelegate] applicationDidEnterBackground")
+        print("[AppDelegate] applicationDidEnterBackground")
         #endif
 
-        // ✅ 백그라운드 진입 시 다음 기회 스케줄
+        // 백그라운드 진입 시 다음 기회 스케줄
         scheduleAppRefresh()
         scheduleProcessing()
     }
@@ -92,15 +92,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         #if DEBUG
         let tokenHex = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("✅ [AppDelegate] Registered for remote notifications. token length = \(deviceToken.count)")
-        print("🔑 [AppDelegate] APNs device token (hex): \(tokenHex)")
+        print("[AppDelegate] Registered for remote notifications. token length = \(deviceToken.count)")
+        print("[AppDelegate] APNs device token (hex): \(tokenHex)")
         #endif
     }
 
     // APNs 등록 실패
     func application(_ application: UIApplication,
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("❌ [AppDelegate] Failed to register for remote notifications: \(error)")
+        print("[AppDelegate] Failed to register for remote notifications: \(error)")
     }
 
     // CloudKit DB 구독 푸시 수신 → 화면 쪽 동기화 트리거
@@ -109,9 +109,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
 
         #if DEBUG
-        print("🔔 [AppDelegate] didReceiveRemoteNotification called")
+        print("[AppDelegate] didReceiveRemoteNotification called")
         if let aps = userInfo["aps"] {
-            print("🔔 [AppDelegate] userInfo[\"aps\"] = \(aps)")
+            print("[AppDelegate] userInfo[\"aps\"] = \(aps)")
         }
         #endif
 
@@ -119,31 +119,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         #if DEBUG
         if let subscriptionID = ckNotification?.subscriptionID {
-            print("🔔 [AppDelegate] CKNotification subscriptionID = \(subscriptionID)")
+            print("[AppDelegate] CKNotification subscriptionID = \(subscriptionID)")
         } else {
-            print("⚠️ [AppDelegate] CKNotification has no subscriptionID")
+            print("[AppDelegate] CKNotification has no subscriptionID")
         }
         #endif
 
         // 우리가 등록한 CloudKit DB Subscription이 아닐 경우 무시
         guard ckNotification?.subscriptionID == "KERosterDBSub" else {
             #if DEBUG
-            print("ℹ️ [AppDelegate] Remote notification is not for KERosterDBSub. Ignoring.")
+            print("[AppDelegate] Remote notification is not for KERosterDBSub. Ignoring.")
             #endif
             completionHandler(.noData)
             return
         }
 
         #if DEBUG
-        print("☁️ [AppDelegate] CloudKit DB change notification received. Start pull()")
+        print("[AppDelegate] CloudKit DB change notification received. Start pull()")
         #endif
 
-        // ✅ CloudKit에서 최신 상태 받아서 로컬 저장소에 반영
+        // CloudKit에서 최신 상태 받아서 로컬 저장소에 반영
         CloudKitManager.shared.pull { result in
             switch result {
             case .success(let state):
                 guard let state = state else {
-                    print("☁️ [AppDelegate] CloudKit pull success but state is nil")
+                    print("[AppDelegate] CloudKit pull success but state is nil")
                     completionHandler(.noData)
                     return
                 }
@@ -153,16 +153,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     if let data = try? JSONEncoder().encode(state.schedules) {
                         sharedDefaults.set(data, forKey: "schedules")
                         #if DEBUG
-                        print("📦 [AppDelegate] Schedules saved to App Group UserDefaults")
+                        print("[AppDelegate] Schedules saved to App Group UserDefaults")
                         #endif
                     } else {
                         #if DEBUG
-                        print("⚠️ [AppDelegate] Failed to encode schedules for App Group")
+                        print("[AppDelegate] Failed to encode schedules for App Group")
                         #endif
                     }
                 } else {
                     #if DEBUG
-                    print("⚠️ [AppDelegate] Failed to get App Group UserDefaults")
+                    print("[AppDelegate] Failed to get App Group UserDefaults")
                     #endif
                 }
 
@@ -171,13 +171,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 UserDefaults.standard.set(state.totalHoursByMonth, forKey: "totalHoursByMonth")
                 UserDefaults.standard.synchronize()
                 #if DEBUG
-                print("💾 [AppDelegate] ownerInfo & totalHoursByMonth saved to UserDefaults")
+                print("[AppDelegate] ownerInfo & totalHoursByMonth saved to UserDefaults")
                 #endif
 
-                // ✅ 화면에게 "로컬 데이터 바뀌었다" 알림
+                // 화면에게 "로컬 데이터 바뀌었다" 알림
                 NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
                 #if DEBUG
-                print("📣 [AppDelegate] Notification .cloudKitUpdated posted")
+                print("[AppDelegate] Notification .cloudKitUpdated posted")
                 #endif
 
                 // (선택) BG 작업 재예약
@@ -187,7 +187,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 completionHandler(.newData)
 
             case .failure(let error):
-                print("❌ [AppDelegate] CloudKit pull error in didReceiveRemoteNotification: \(error)")
+                print("[AppDelegate] CloudKit pull error in didReceiveRemoteNotification: \(error)")
                 completionHandler(.failed)
             }
         }
@@ -199,7 +199,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         // 가벼운 동기화/타임라인 갱신 등
         #if DEBUG
-        print("🕒 [AppDelegate] performFetchWithCompletionHandler called → posting .cloudKitUpdated")
+        print("[AppDelegate] performFetchWithCompletionHandler called → posting .cloudKitUpdated")
         #endif
 
         NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
@@ -215,11 +215,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         do {
             try BGTaskScheduler.shared.submit(req)
             #if DEBUG
-            print("✅ [AppDelegate] BGAppRefresh scheduled (earliest in 15 minutes)")
+            print("[AppDelegate] BGAppRefresh scheduled (earliest in 15 minutes)")
             #endif
         } catch {
             #if DEBUG
-            print("❌ [AppDelegate] BGAppRefresh submit error: \(error)")
+            print("[AppDelegate] BGAppRefresh submit error: \(error)")
             #endif
         }
     }
@@ -232,11 +232,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         do {
             try BGTaskScheduler.shared.submit(req)
             #if DEBUG
-            print("✅ [AppDelegate] BGProcessing scheduled")
+            print("[AppDelegate] BGProcessing scheduled")
             #endif
         } catch {
             #if DEBUG
-            print("❌ [AppDelegate] BGProcessing submit error: \(error)")
+            print("[AppDelegate] BGProcessing submit error: \(error)")
             #endif
         }
     }
@@ -245,7 +245,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private func handleAppRefresh(task: BGAppRefreshTask) {
         #if DEBUG
-        print("🕒 [AppDelegate] handleAppRefresh started")
+        print("[AppDelegate] handleAppRefresh started")
         #endif
 
         // 다음 기회 재스케줄
@@ -254,23 +254,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let queue = OperationQueue()
         task.expirationHandler = {
             #if DEBUG
-            print("⚠️ [AppDelegate] handleAppRefresh expirationHandler called → cancelAllOperations")
+            print("[AppDelegate] handleAppRefresh expirationHandler called → cancelAllOperations")
             #endif
             queue.cancelAllOperations()
         }
 
         let op = BlockOperation {
-            // ✅ 가벼운 작업: METAR/TAF 짧은 호출, 위젯 타임라인 갱신, 캘린더 캐시 리프레시 등
+            // 가벼운 작업: METAR/TAF 짧은 호출, 위젯 타임라인 갱신, 캘린더 캐시 리프레시 등
             NotificationCenter.default.post(name: .cloudKitUpdated, object: nil)
             #if DEBUG
-            print("📣 [AppDelegate] .cloudKitUpdated posted from handleAppRefresh")
+            print("[AppDelegate] .cloudKitUpdated posted from handleAppRefresh")
             #endif
         }
 
         op.completionBlock = {
             let success = !op.isCancelled
             #if DEBUG
-            print("🕒 [AppDelegate] handleAppRefresh completed. success=\(success)")
+            print("[AppDelegate] handleAppRefresh completed. success=\(success)")
             #endif
             task.setTaskCompleted(success: success)
         }
@@ -280,7 +280,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private func handleProcessing(task: BGProcessingTask) {
         #if DEBUG
-        print("🛠 [AppDelegate] handleProcessing started")
+        print("[AppDelegate] handleProcessing started")
         #endif
 
         // 다음 기회 재스케줄
@@ -291,22 +291,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         task.expirationHandler = {
             // 오래 걸리는 처리 취소/정리
             #if DEBUG
-            print("⚠️ [AppDelegate] handleProcessing expirationHandler called")
+            print("[AppDelegate] handleProcessing expirationHandler called")
             #endif
             success = false
         }
 
-        // ✅ 무거운 작업: XLSX/PDF 임포트 큐 소화, CrewList 병합, Report/Debrief/FH 후처리, 캐시 인덱싱 등
+        // 무거운 작업: XLSX/PDF 임포트 큐 소화, CrewList 병합, Report/Debrief/FH 후처리, 캐시 인덱싱 등
         // 화면/모듈과의 연결은 알림으로 트리거
         NotificationCenter.default.post(name: .bgProcessingRequested, object: nil)
         #if DEBUG
-        print("📣 [AppDelegate] .bgProcessingRequested posted from handleProcessing")
+        print("[AppDelegate] .bgProcessingRequested posted from handleProcessing")
         #endif
 
         task.setTaskCompleted(success: success)
 
         #if DEBUG
-        print("🛠 [AppDelegate] handleProcessing completed. success=\(success)")
+        print("[AppDelegate] handleProcessing completed. success=\(success)")
         #endif
     }
 
@@ -323,7 +323,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
         // 필요 시 정리 작업
         #if DEBUG
-        print("🗑 [AppDelegate] didDiscardSceneSessions: \(sceneSessions.count) sessions")
+        print("[AppDelegate] didDiscardSceneSessions: \(sceneSessions.count) sessions")
         #endif
     }
 

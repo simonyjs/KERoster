@@ -268,6 +268,8 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        overrideUserInterfaceStyle = .light
+        view.backgroundColor = .white
         self.modalPresentationStyle = .automatic
         self.title = selectedDate.isEmpty ? "Detail Schedule Info" : "Detail Schedule Info (\(selectedDate))"
         
@@ -675,6 +677,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let renderer = UIGraphicsImageRenderer(size: imageSize, format: UIGraphicsImageRendererFormat.default())
         let image = renderer.image { _ in
             UIColor.systemBackground.setFill()
+            UIColor.white.setFill()   // 핵심 수정
             UIBezierPath(rect: CGRect(origin: .zero, size: imageSize)).fill()
             let drawRect = CGRect(x: 4, y: 4, width: imageSize.width - 8, height: imageSize.height - 8)
             fullAttr.draw(with: drawRect,

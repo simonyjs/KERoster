@@ -25,8 +25,8 @@ extension Elements {
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, LoginViewControllerDelegate {
     
-    // 🔁 CloudKit 푸시 적용 중 재업로드 방지 플래그 (KVS → Cloud 대체)
-    private var isApplyingCloudPush = false   // ⬅️ 변경 (isApplyingKVS → isApplyingCloudPush)
+    // CloudKit 푸시 적용 중 재업로드 방지 플래그 (KVS → Cloud 대체)
+    private var isApplyingCloudPush = false   // 변경 (isApplyingKVS → isApplyingCloudPush)
 
     @IBOutlet weak var webView: WKWebView!
     @IBOutlet weak var scheduleStackView: UIStackView!
@@ -92,12 +92,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             guard let self = self else { return }
 
             if success {
-                // ✅ 인증 성공 → 커버 제거 + 첫 화면 로드
+                // 인증 성공 → 커버 제거 + 첫 화면 로드
                 self.lockCoverView.isHidden = true
                 self.loadURL("https://iflightke.ibsplc.aero/iflight-cwp/web/loginpage")
 
             } else {
-                // ❌ 실패 또는 취소 → 커버 유지 + 안내 후 앱 내리기
+                // 실패 또는 취소 → 커버 유지 + 안내 후 앱 내리기
                 self.lockCoverView.isHidden = false
 
                 let alert = UIAlertController(
@@ -135,13 +135,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         webView.navigationDelegate = self
         webView.uiDelegate = self
 
-        // ✅ App Group 저장본 먼저 로드(초기 화면 뼈대)
+        // App Group 저장본 먼저 로드(초기 화면 뼈대)
         if self.schedules.isEmpty { loadSchedules() }
 
-        // ✅ CloudKit 구독 + 알림 수신
+        // CloudKit 구독 + 알림 수신
         self.startObservingCloudKit()
 
-        // ✅ 앱 실행 시 CloudKit에서 최신 스냅샷 1회 로드
+        // 앱 실행 시 CloudKit에서 최신 스냅샷 1회 로드
         self.loadFromCloudKit()
 
         // Info.plist에서 버전과 빌드 정보 가져오기 (기존 로직 유지)
@@ -164,7 +164,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: containerView)
         }
 
-        // 🔒 잠금 커버를 화면 전체에 올려두기
+        // 잠금 커버를 화면 전체에 올려두기
         view.addSubview(lockCoverView)
         NSLayoutConstraint.activate([
             lockCoverView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -240,7 +240,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             }
         }
 
-        // 🔻 PDF 업로드 기능 삭제: XLSX만 메뉴에 남김
+        // PDF 업로드 기능 삭제: XLSX만 메뉴에 남김
         let uploadMenu = UIMenu(
             title: "Upload",
             image: UIImage(systemName: "square.and.arrow.up"),
@@ -252,30 +252,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         let importCrewAction = UIAction(title: "Import Crew List", image: UIImage(systemName: "person.3.sequence")) { _ in
             self.importCrewList()
         }
+        
+                
         let exportAction = UIAction(title: "Export Calendar", image: UIImage(systemName: "arrow.up.circle")) { _ in
-            self.loadSchedules() // 최신 스케줄 불러오기
-            self.calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
-                guard let calendar = selectedCalendar else {
-                    self.debugLog("캘린더 선택 취소됨")
-                    return
-                }
-                self.calendarManager.selectedCalendar = calendar
-                if let airports = self.loadAirportList() {
-                    self.savedEventCount = 0
-                    // 오늘 이후 스케줄만 캘린더 이벤트로 추가
-                    for (_, scheduleEntries) in self.schedules {
-                        for entry in scheduleEntries {
-                            if let startDate = self.eventStartDate(for: entry, airports: airports),
-                               startDate > Date() {
-                                self.addEventToCalendar(for: entry, airports: airports)
-                            } else {
-                                self.debugLog("스케줄이 오늘 이전이거나 시작 시간이 불명확하여 건너뜀: \(entry)")
-                            }
-                        }
-                    }
-                    let calendarName = calendar.title
-                    self.showAlert(title: "Calendar export complete", message: "Saved Calendar: \(calendarName)\nTOTAL EVENT NO: \(self.savedEventCount)")
-                }
+            self.presentExportStartDatePicker { [weak self] startDate in
+                self?.exportCalendar(from: startDate)
             }
         }
 
@@ -284,13 +265,13 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     }
 
     deinit {
-        // ⛔️ KVS 옵저버 제거 코드 삭제
-        NotificationCenter.default.removeObserver(self, name: .cloudKitUpdated, object: nil) // ⬅️ 추가
+        // KVS 옵저버 제거 코드 삭제
+        NotificationCenter.default.removeObserver(self, name: .cloudKitUpdated, object: nil) // 추가
     }
 
-    // ❌ KVS 키/메서드 전부 삭제 (KVSKeys, saveToICloudKVS, loadFromICloudKVS, startObservingiCloudKVSChanges)
+    // KVS 키/메서드 전부 삭제 (KVSKeys, saveToICloudKVS, loadFromICloudKVS, startObservingiCloudKVSChanges)
     // ─────────────────────────────────────────────────────────────────────
-    // ⬇️ CloudKit 동기화 메서드 추가
+    // CloudKit 동기화 메서드 추가
     // MARK: - CloudKit 저장
     private func saveToCloudKit() {
         // App Group 미러(위젯) 유지
@@ -342,7 +323,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     }
 
                     self.totalHours = remote.totalHoursByMonth.values.first ?? self.totalHours
-                    self.saveSchedules(mirrorToCloud: false) // ⬅️ 로컬 저장만 (재업로드 방지)
+                    self.saveSchedules(mirrorToCloud: false) // 로컬 저장만 (재업로드 방지)
                     //self.printSchedulesToConsole()
                     WidgetCenter.shared.reloadAllTimelines()
                     self.isApplyingCloudPush = false
@@ -379,7 +360,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
-        // 🔐 앱 잠금 인증 + 성공 시 로그인 페이지 로드
+        // 앱 잠금 인증 + 성공 시 로그인 페이지 로드
         requireAppUnlockIfNeeded()
     }
 
@@ -387,7 +368,97 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     // WebView, UserDefaults loadSchedules(), importSchedule(), importCrewList(), XLSX/PDF 파서,
     // 캘린더 이벤트 관련 모든 메서드들은 네가 올린 그대로 유지하면 돼.
 
-    // 🔁 여기 “saveSchedules”만 CloudKit 반영하도록 수정
+    // 여기 “saveSchedules”만 CloudKit 반영하도록 수정
+    
+    // MARK: - Export Start Date Picker (default: today)
+    private func presentExportStartDatePicker(completion: @escaping (Date) -> Void) {
+        let alert = UIAlertController(
+            title: "Export Start Date",
+            message: "\n\n\n\n\n\n",   // UIDatePicker 공간 확보
+            preferredStyle: .actionSheet
+        )
+
+        let picker = UIDatePicker()
+        picker.datePickerMode = .date
+        picker.locale = Locale(identifier: "en_US_POSIX")
+        picker.timeZone = TimeZone(identifier: "Asia/Seoul")   // KST 기준
+        picker.date = Date()                                   // 디폴트: 오늘
+        if #available(iOS 14.0, *) {
+            picker.preferredDatePickerStyle = .wheels
+        }
+        picker.translatesAutoresizingMaskIntoConstraints = false
+
+        alert.view.addSubview(picker)
+
+        NSLayoutConstraint.activate([
+            picker.centerXAnchor.constraint(equalTo: alert.view.centerXAnchor),
+            picker.topAnchor.constraint(equalTo: alert.view.topAnchor, constant: 50),
+            picker.widthAnchor.constraint(equalTo: alert.view.widthAnchor, multiplier: 0.9),
+            picker.heightAnchor.constraint(equalToConstant: 160)
+        ])
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: "Export", style: .default, handler: { [weak self] _ in
+            guard let self = self else { return }
+
+            // 선택 날짜의 "00:00"부터 내보내기 (KST 기준 startOfDay)
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+            let start = cal.startOfDay(for: picker.date)
+
+            completion(start)
+        }))
+
+        // iPad actionSheet 크래시 방지
+        if let pop = alert.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            pop.permittedArrowDirections = []
+        }
+
+        present(alert, animated: true)
+    }
+    
+    // MARK: - Export Calendar from selected date
+    private func exportCalendar(from startDate: Date) {
+        self.loadSchedules()
+
+        guard let airports = self.loadAirportList() else {
+            self.showAlert(title: "Export Fail", message: "Failed to load airport information.")
+            return
+        }
+
+        self.calendarManager.presentCalendarSelection(from: self) { selectedCalendar in
+            guard let calendar = selectedCalendar else {
+                self.debugLog("캘린더 선택 취소됨")
+                return
+            }
+
+            self.calendarManager.selectedCalendar = calendar
+            self.savedEventCount = 0
+
+            for (_, scheduleEntries) in self.schedules {
+                for entry in scheduleEntries {
+                    if let evStart = self.eventStartDate(for: entry, airports: airports),
+                       evStart >= startDate {                      // 선택 날짜부터
+                        self.addEventToCalendar(for: entry, airports: airports)
+                    }
+                }
+            }
+
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "en_US_POSIX")
+            df.timeZone = TimeZone(identifier: "Asia/Seoul")
+            df.dateFormat = "yyyy-MM-dd"
+
+            self.showAlert(
+                title: "Calendar export complete",
+                message: "From: \(df.string(from: startDate))\nSaved Calendar: \(calendar.title)\nTOTAL EVENT NO: \(self.savedEventCount)"
+            )
+        }
+    }
+
+    
     // MARK: - UserDefaults 관련 (스케줄 저장/불러오기)
     func saveSchedules(mirrorToCloud: Bool = true) {
         if let sharedDefaults = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster") {
@@ -397,7 +468,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 sharedDefaults.synchronize()
                 print("스케줄 저장 성공 (App Group)")
 
-                // 🔹 CloudKit 업로드 (푸시 적용 중에는 재업로드 방지)
+                // CloudKit 업로드 (푸시 적용 중에는 재업로드 방지)
                 if mirrorToCloud && !isApplyingCloudPush {
                     self.saveToCloudKit()
                 }
@@ -631,7 +702,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 self.debugLog("JavaScript 실행 에러: \(error)")
             }
             guard let htmlString = html as? String else {
-                self.debugLog("❌ HTML 가져오기 실패")
+                self.debugLog("HTML 가져오기 실패")
                 DispatchQueue.main.async {
                     self.showAlert(title: "Import failed", message: "Failed to retrieve schedule")
                 }
@@ -1168,7 +1239,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         }
     }
     
-    // ✅ 유지: 팝업 방식 크루리스트 임포트
+    // 유지: 팝업 방식 크루리스트 임포트
     private func extractIATAs(from route: String) -> (String?, String?) {
         // 예) "ICN-LAX", "ICN → LAX", "ICN / LAX"
         let pattern = #"([A-Z]{3})\s*[-→/>\s]+\s*([A-Z]{3})"#
@@ -1183,7 +1254,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         return (nil, nil)
     }
     
-    // MARK: - ✅ 크루리스트: 편명 숫자 + 날짜(DepDate 우선, Date 폴백) + 출발지(있으면) 매칭 (팝업 버전 유지)
+    // MARK: - 크루리스트: 편명 숫자 + 날짜(DepDate 우선, Date 폴백) + 출발지(있으면) 매칭 (팝업 버전 유지)
     func importCrewList() {
         let targetWebView: WKWebView = self.webView
         
@@ -1300,7 +1371,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             self.schedules[ref.keyDate]![ref.index] = entry
                             matched = true
                             strictMatched = true
-                            self.debugLog("✅ CrewList STRICT saved to \(itemRaw) | bucket=\(ref.keyDate) DepDate=\(depDateInEntry) == Popup=\(depDateFromPopup)")
+                            self.debugLog("CrewList STRICT saved to \(itemRaw) | bucket=\(ref.keyDate) DepDate=\(depDateInEntry) == Popup=\(depDateFromPopup)")
                         }
                         continue
                     }
@@ -1312,7 +1383,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             entry["CrewList"] = jsonString
                             self.schedules[ref.keyDate]![ref.index] = entry
                             matched = true
-                            self.debugLog("⬇️ CrewList FALLBACK saved to \(itemRaw) | bucket=\(ref.keyDate) entry.Date=\(dateInEntry) == Popup=\(depDateFromPopup), DepDate=\(depDateInEntry)")
+                            self.debugLog("CrewList FALLBACK saved to \(itemRaw) | bucket=\(ref.keyDate) entry.Date=\(dateInEntry) == Popup=\(depDateFromPopup), DepDate=\(depDateInEntry)")
                         }
                     }
                 }
@@ -1520,7 +1591,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
 
             let rawItem = (scheduleEntry["Item"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let rawActivity = (scheduleEntry["Activity"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let title = rawItem.isEmpty ? rawActivity : rawItem   // 👉 “아이템 값만” 사용 (없으면 Activity)
+            let title = rawItem.isEmpty ? rawActivity : rawItem   // “아이템 값만” 사용 (없으면 Activity)
 
             eventTitle = title
             noteText = title
@@ -1534,7 +1605,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
                 let existingEvents = eventStore.events(matching: predicate)
                 if let dup = existingEvents.first(where: { $0.isAllDay && $0.title == title }) {
-                    self.debugLog("⚠️ 중복 올데이 일정 발견! 기존 이벤트의 노트 업데이트: \(title)")
+                    self.debugLog("중복 올데이 일정 발견! 기존 이벤트의 노트 업데이트: \(title)")
                     updateEventNotes(dup, with: scheduleEntry)
                     return
                 }
@@ -1594,7 +1665,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [selectedCal])
                 let existingEvents = eventStore.events(matching: predicate)
                 if let dup = existingEvents.first(where: { $0.title == baseTitle }) {
-                    self.debugLog("⚠️ 중복 일정 발견! 기존 이벤트의 노트 업데이트: \(baseTitle)")
+                    self.debugLog("중복 일정 발견! 기존 이벤트의 노트 업데이트: \(baseTitle)")
                     updateEventNotes(dup, with: scheduleEntry)
                     return
                 }
@@ -1655,7 +1726,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         event.startDate = start
         event.endDate = end
         event.timeZone = eventTimeZone
-        event.isAllDay = isAllDayEvent   // ✅ 여기서 올데이 여부 반영
+        event.isAllDay = isAllDayEvent   // 여기서 올데이 여부 반영
 
         if let calendar = self.calendarManager.selectedCalendar {
             event.calendar = calendar
@@ -1758,9 +1829,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         event.notes = currentNotes
         do {
             try eventStore.save(event, span: .thisEvent)
-            debugLog("✅ 기존 일정의 노트에 변경 사항 업데이트 완료")
+            debugLog("기존 일정의 노트에 변경 사항 업데이트 완료")
         } catch {
-            debugLog("❌ 노트 업데이트 실패: \(error.localizedDescription)")
+            debugLog("노트 업데이트 실패: \(error.localizedDescription)")
         }
     }
     
@@ -1890,10 +1961,10 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
     
     // MARK: - XLSX 임포트 (엄격 헤더: 2번째 줄 고정, 지정 컬럼만 사용, 디버그 강화)
     func importRosterFromXLSX(url: URL) {
-        debugLog("📥 XLSX import start: \(url.lastPathComponent)")
+        debugLog("XLSX import start: \(url.lastPathComponent)")
         guard let file = XLSXFile(filepath: url.path) else {
             showAlert(title: "Import Fail", message: "Can't open XLSX.")
-            debugLog("❌ XLSX open failed")
+            debugLog("XLSX open failed")
             return
         }
         
@@ -2009,22 +2080,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             let sharedStrings = try file.parseSharedStrings()
             guard let wb = try file.parseWorkbooks().first else {
                 showAlert(title: "Import Fail", message: "Workbook not found.")
-                debugLog("❌ workbook not found")
+                debugLog("workbook not found")
                 return
             }
             let sheets = try file.parseWorksheetPathsAndNames(workbook: wb)
             guard let first = sheets.first else {
                 showAlert(title: "Import Fail", message: "No worksheet found.")
-                debugLog("❌ no worksheet")
+                debugLog("no worksheet")
                 return
             }
             let ws = try file.parseWorksheet(at: first.path)
             let rows = ws.data?.rows ?? []
-            debugLog("📄 sheet: \(first.name ?? "(no name)") rows=\(rows.count)")
+            debugLog("sheet: \(first.name ?? "(no name)") rows=\(rows.count)")
             
             guard !rows.isEmpty else {
                 showAlert(title: "Import Fail", message: "Worksheet is empty.")
-                debugLog("❌ worksheet empty")
+                debugLog("worksheet empty")
                 return
             }
             
@@ -2032,20 +2103,20 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             let headerRow: Row? = rows.first(where: { $0.reference == 2 }) ?? (rows.count > 1 ? rows[1] : nil)
             guard let hdr = headerRow else {
                 showAlert(title: "Import Fail", message: "Header row (2) not found.")
-                debugLog("❌ header row #2 not found")
+                debugLog("header row #2 not found")
                 return
             }
             
             // (colLetter, text) 배열
             let headerPairs: [(String, String)] = hdr.cells.map { (String(describing: $0.reference.column), readText($0, sharedStrings)) }
-            debugLog("🧭 Header@row2 raw: \(headerPairs.map { "\($0.0)=\($0.1)" }.joined(separator: " | "))")
+            debugLog("Header@row2 raw: \(headerPairs.map { "\($0.0)=\($0.1)" }.joined(separator: " | "))")
             
             // 빈 헤더 셀 체크
             let emptyHeaders = headerPairs
                 .filter { $0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                 .map { $0.0 }
             if !emptyHeaders.isEmpty {
-                debugLog("⚠️ Empty header cells at columns: \(emptyHeaders.joined(separator: ", "))")
+                debugLog("Empty header cells at columns: \(emptyHeaders.joined(separator: ", "))")
             }
             
             // 기대 헤더(정확한 항목)
@@ -2080,11 +2151,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             // 누락 헤더 디버그
             let missing = expected.filter { colByCanon[$0.canon] == nil }.map { $0.label }
             if !missing.isEmpty {
-                debugLog("❌ Missing headers: \(missing.joined(separator: ", "))")
+                debugLog("Missing headers: \(missing.joined(separator: ", "))")
                 showAlert(title: "XLSX Header mismatch",
                           message: "Not found in row 2: \(missing.joined(separator: ", "))")
             } else {
-                debugLog("✅ Header OK (row 2, strict match)")
+                debugLog("Header OK (row 2, strict match)")
             }
             
             // 값 얻기 유틸
@@ -2130,7 +2201,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                 
                 let baseDate = parseDateCell(dateRaw)
                 if baseDate.isEmpty {
-                    debugLog("⚠️ skip row@\(row.reference): invalid Date cell '\(dateRaw)'")
+                    debugLog("skip row@\(row.reference): invalid Date cell '\(dateRaw)'")
                     continue
                 }
                 
@@ -2177,7 +2248,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                         let oldDepDate = depDate
                         depDate = shiftDate(baseDate, plus: 1)
                         arrDate = shiftDate(baseDate, plus: 1)
-                        debugLog("📌 XLSX midnight fix(1) applied: base=\(baseDate) report=\(repTime) dep=\(depTime) \(oldDepDate)→\(depDate)")
+                        debugLog("XLSX midnight fix(1) applied: base=\(baseDate) report=\(repTime) dep=\(depTime) \(oldDepDate)→\(depDate)")
                     }
                     
                     // 케이스 2: Report 없음, Dep 00:00~03:00, ACY Deb (+1)
@@ -2251,7 +2322,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             guard rowsParsed > 0, !newExtracted.isEmpty else {
                 showAlert(title: "No sched rows in XLSX",
                           message: "Row 3+ contained no usable data. Check the header row and body formatting.")
-                debugLog("⚠️ parsed rows=0")
+                debugLog("parsed rows=0")
                 return
             }
             
@@ -2289,7 +2360,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     if let idx = indexByKey[k] {
                         var old = merged[idx]
                         if wt == "FLY" || wt == "TVL" {
-                            // ✈️ 비행 듀티: 지정 필드만 업데이트, CrewList는 그대로 둠
+                            // 비행 듀티: 지정 필드만 업데이트, CrewList는 그대로 둠
                             func assign(_ key: String) {
                                 if let v = e[key]?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
                                     old[key] = v
@@ -2303,7 +2374,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             assign("Hotel")
                             merged[idx] = old
                         } else {
-                            // 🧱 지상 듀티: 값 있는 항목만 업데이트(CrewList, SDC 보호)
+                            // 지상 듀티: 값 있는 항목만 업데이트(CrewList, SDC 보호)
                             for (kk, vv) in e {
                                 if kk == "CrewList" || kk == "SDC" { continue }
                                 let v = vv.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2316,9 +2387,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                         }
                         
                     } else {
-                        // ✅ 업로드 모드: FLY/TVL은 “업데이트 전용” → 신규 추가 금지
+                        // 업로드 모드: FLY/TVL은 “업데이트 전용” → 신규 추가 금지
                         if wt == "FLY" || wt == "TVL" {
-                            debugLog("✋ XLSX Upload: NEW FLY/TVL 발견 → 추가하지 않음 (update-only) | key=\(k)")
+                            debugLog("XLSX Upload: NEW FLY/TVL 발견 → 추가하지 않음 (update-only) | key=\(k)")
                             continue
                         }
                         // Ground duty만 신규 추가 허용, SDC는 가져오지 않음
@@ -2342,7 +2413,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
             )
             
         } catch {
-            debugLog("❌ XLSX parse error: \(error)")
+            debugLog("XLSX parse error: \(error)")
             showAlert(title: "Import Fail", message: error.localizedDescription)
         }
     }
@@ -2365,7 +2436,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
         )
         let reACYRep = try! NSRegularExpression(pattern: #"(?i)\bACY\s*Rep\b.*?(\d{2}:\d{2})(?:\s*[\(（]\s*([+\-]?\d+)\s*[\)）])?"#)
         let reACYDeb = try! NSRegularExpression(pattern: #"(?i)\bACY\s*Deb\b.*?(\d{2}:\d{2})(?:\s*[\(（]\s*([+\-]?\d+)\s*[\)）])?"#)
-        // 🔹 지상 듀티 이름을 키워드에 의존하지 않기 위해 "첫 토큰"을 잡는 정규식
+        // 지상 듀티 이름을 키워드에 의존하지 않기 위해 "첫 토큰"을 잡는 정규식
         let reFirstToken = try! NSRegularExpression(pattern: #"^\s*([A-Z][A-Z0-9_]{1,})\b"#)
         
         // --- 헬퍼 ---
@@ -2620,7 +2691,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                     // ── 기존 엔트리 병합 ─────────────────────────────
                     var old = merged[idx]
                     if wt == "FLY" || wt == "TVL" {
-                        // ✈️ 비행: 지정 필드만 업데이트 (CrewList는 절대 건드리지 않음)
+                        // 비행: 지정 필드만 업데이트 (CrewList는 절대 건드리지 않음)
                         let allow = ["DutyReport","DutyDebrief","DutyDebriefTime","FlyingHours","DutyHours","Hotel"]
                         for f in allow {
                             if let v = e[f]?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
@@ -2628,7 +2699,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
                             }
                         }
                     } else {
-                        // 🧱 그라운드: SDC는 무시, CrewList도 덮어쓰지 않음. 값 있는 필드만 업데이트
+                        // 그라운드: SDC는 무시, CrewList도 덮어쓰지 않음. 값 있는 필드만 업데이트
                         for (kk, vv) in e {
                             if kk == "SDC" || kk == "CrewList" { continue }  // SDC 무시 + CrewList 보호
                             let v = vv.trimmingCharacters(in: .whitespacesAndNewlines)
