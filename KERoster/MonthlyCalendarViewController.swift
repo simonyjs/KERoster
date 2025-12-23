@@ -57,7 +57,7 @@ class MonthlyCalendarViewController: UIViewController,
         return f
     }()
 
-    /// ✅ 공휴일 키 포맷터 (로컬 타임존 기준, yyyy-MM-dd)
+    /// 공휴일 키 포맷터 (로컬 타임존 기준, yyyy-MM-dd)
     private lazy var holidayKeyFormatter: DateFormatter = {
         let f = DateFormatter()
         f.timeZone = TimeZone.current
@@ -94,7 +94,7 @@ class MonthlyCalendarViewController: UIViewController,
         layoverCache.removeAll()
         allSchedulesSorted.removeAll()
 
-        // 🔹 currentDate 기준 ±1개월 범위 계산
+        // currentDate 기준 ±1개월 범위 계산
         guard let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: currentDate)) else {
             return
         }
@@ -615,7 +615,7 @@ class MonthlyCalendarViewController: UIViewController,
         }
 
         // 공휴일 처리 (스케줄은 그대로, 라벨만 [타이틀] 추가)
-        let holidayKey = holidayKeyFormatter.string(from: validDate)   // ✅ 로컬 타임존 기준
+        let holidayKey = holidayKeyFormatter.string(from: validDate)   // 로컬 타임존 기준
         if let holidayTitle = holidays[holidayKey] {
             cell.contentView.backgroundColor = UIColor(named: "LightYellow")
             cell.dateLabel.text = "\(dateText) [\(holidayTitle)]"
@@ -623,7 +623,7 @@ class MonthlyCalendarViewController: UIViewController,
             // 날짜 + 스케줄 라벨 공통 색상 다크 옐로우로
             let holidayColor = UIColor(named: "DarkYellow") ?? .orange
             cell.dateLabel.textColor = holidayColor
-            textColor = holidayColor   // ⬅️ 아래 스케줄 라벨(label.textColor = textColor)에 적용됨
+            textColor = holidayColor   // 아래 스케줄 라벨(label.textColor = textColor)에 적용됨
         }
 
 

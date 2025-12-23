@@ -399,7 +399,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, Logi
 
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
         alert.addAction(UIAlertAction(title: "Export", style: .default, handler: { [weak self] _ in
-            guard let self = self else { return }
+            guard self != nil else { return }
 
             // 선택 날짜의 "00:00"부터 내보내기 (KST 기준 startOfDay)
             var cal = Calendar(identifier: .gregorian)

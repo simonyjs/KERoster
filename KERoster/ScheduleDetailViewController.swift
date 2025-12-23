@@ -394,6 +394,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     @objc func refreshData(_ sender: UIRefreshControl) {
         WeatherDataCache.shared.clearCache()
         displayedWeatherKeys.removeAll()
+        expandedCrewKeys.removeAll()
         prefetchWeatherData()
         sortScheduleDetails()
         tableView.reloadData()
@@ -519,16 +520,53 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     // MARK: - Crew List 복원
     private func decodeCrewList(from schedule: [String:String]) -> [[String:String]]? {
+        // 1) 스케줄 자체에 저장된 CrewList 우선
         if let json = schedule["CrewList"]?.data(using: .utf8),
            let arr = try? JSONSerialization.jsonObject(with: json, options: []) as? [[String:String]],
            !arr.isEmpty {
             return arr
         }
+
+        // 2) 폴백은 FLY/TVL에서만 허용 (비행 아닌 WT에는 붙이지 않음)
+        let wt = (schedule["WorkType"] ?? "").uppercased()
+        guard wt == "FLY" || wt == "TVL" else { return nil }
+
         return fetchCrewListFromGlobal(date: schedule["DepDate"] ?? "",
                                        item: schedule["Item"] ?? "",
                                        dep: schedule["DepAp"] ?? "",
                                        arr: schedule["ArrAp"] ?? "")
     }
+
+    // 비행이 아닌 항목용: row 기준으로 유니크 키
+    private func crewKeyNonFlight(for schedule: [String:String], indexPath: IndexPath) -> String {
+        let dateKey = schedule["DepDate"] ?? selectedDate
+        let activity = (schedule["Activity"] ?? schedule["Item"] ?? "NA").uppercased()
+        return "CREW_NF_\(dateKey)_\(activity)_\(indexPath.row)"
+    }
+
+    private func applyCrewBlockIfNeeded(to cell: UITableViewCell,
+                                       schedule: [String:String],
+                                       indexPath: IndexPath,
+                                       baseText: NSAttributedString,
+                                       displayFont: UIFont) {
+
+        guard let crewArray = decodeCrewList(from: schedule) else { return }
+
+        let key = crewKeyNonFlight(for: schedule, indexPath: indexPath)
+        let isExpanded = expandedCrewKeys.contains(key)
+
+        let combined = NSMutableAttributedString(attributedString: baseText)
+        combined.append(NSAttributedString(string: "\n"))
+        combined.append(makeCrewToggleLine(expanded: isExpanded,
+                                           count: crewArray.count,
+                                           font: displayFont))
+        if isExpanded {
+            combined.append(makeCrewListAttributed(crewArray, font: displayFont))
+        }
+
+        cell.textLabel?.attributedText = combined
+    }
+
     
     private func fetchCrewListFromGlobal(date: String, item: String, dep: String, arr: String) -> [[String:String]]? {
         guard let shared = UserDefaults(suiteName: "group.org.duckdns.cageyjs.KERoster"),
@@ -945,7 +983,7 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
     
     func tableView(_ tableView: UITableView,
                    cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
+
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let details = scheduleDetailsList[indexPath.row]
         
@@ -1004,11 +1042,34 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
                                           displayFont: defaultFont,
                                           allowDuplicateUpdate: false)
             }
+        } else {
+            // 비행이 아니어도 CrewList가 있으면 토글/표를 붙여서 보여줌
+            applyCrewBlockIfNeeded(to: cell,
+                                   schedule: details,
+                                   indexPath: indexPath,
+                                   baseText: baseText,
+                                   displayFont: defaultFont)
+
+            // (선택) 탭은 크루 토글로 쓰고, 편집은 i 버튼으로 분리하고 싶다면:
+            if decodeCrewList(from: details) != nil {
+                cell.accessoryType = .detailButton
+            } else {
+                cell.accessoryType = .none
+            }
         }
-        
+
         return cell
     }
     
+    func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
+        let schedule = scheduleDetailsList[indexPath.row]
+        let editVC = ScheduleEditViewController()
+        editVC.schedule = schedule
+        editVC.scheduleIndex = indexPath.row
+        editVC.delegate = self
+        navigationController?.pushViewController(editVC, animated: true)
+    }
+
     // 셀 간격 1pt (흰색)
     func tableView(_ tableView: UITableView,
                    willDisplay cell: UITableViewCell,
@@ -1047,6 +1108,40 @@ class ScheduleDetailViewController: UIViewController, UITableViewDataSource, UIT
         let schedule = scheduleDetailsList[indexPath.row]
         let workType = schedule["WorkType"] ?? "N/A"
         
+        // 비행이 아닌 WT인데 CrewList가 있으면: 탭으로 토글
+        if workType != "FLY" && workType != "TVL",
+           decodeCrewList(from: schedule) != nil {
+
+            let key = crewKeyNonFlight(for: schedule, indexPath: indexPath)
+            if expandedCrewKeys.contains(key) { expandedCrewKeys.remove(key) }
+            else { expandedCrewKeys.insert(key) }
+
+            let isToday2: Bool = {
+                let f = DateFormatter()
+                f.dateFormat = "dd-MMM-yyyy"
+                f.locale = Locale(identifier: "en_US_POSIX")
+                if let depDateStr = schedule["DepDate"], let d = f.date(from: depDateStr) {
+                    return Calendar.current.isDate(d, inSameDayAs: Date())
+                }
+                return false
+            }()
+
+            let displayFont = isToday2 ? UIFont.systemFont(ofSize: 21) : UIFont.systemFont(ofSize: 14)
+            let base = buildBaseText(for: schedule, isToday: isToday2)
+
+            if let cell = tableView.cellForRow(at: indexPath) {
+                applyCrewBlockIfNeeded(to: cell,
+                                       schedule: schedule,
+                                       indexPath: indexPath,
+                                       baseText: base,
+                                       displayFont: displayFont)
+                tableView.beginUpdates()
+                tableView.endUpdates()
+            }
+            return
+        }
+    
+
         // FLY/TVL일 때 크루 토글 우선
         if workType == "FLY" || workType == "TVL" {
             guard let depAp = schedule["DepAp"], let arrAp = schedule["ArrAp"] else {

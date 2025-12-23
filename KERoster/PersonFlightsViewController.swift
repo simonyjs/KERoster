@@ -5,10 +5,12 @@
 //  Created by 윤정섭 on 10/19/25.
 //
 //  선택한 사람의 비행(FLY/TVL) 리스트를 날짜순으로 표시
-//  - 저장 로직(ViewController.importSchedule / importCrewList)에 맞춘 키 사용
+//  - FLY/TVL: 기존 표시 유지
+//  - 그 외: Other(s) 섹션으로 분리
 //  - 플라이트 넘버: Item/Activity 우선 + 정규식 폴백
 //  - 워크타입 배지([FLY]/[TVL]) 표시
-//  - ✅ DH 접두어 제거
+//  - DH 접두어 제거
+//
 
 import UIKit
 
@@ -37,14 +39,51 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
         return f
     }()
 
+    // 분리된 데이터
+    private var flightRefs: [FlightRef] = []     // FLY/TVL
+    private var otherRefs: [FlightRef] = []      // 나머지
+
+    private let flightWT: Set<String> = ["FLY","TVL"]
+    private func normWT(_ entry: [String:String]) -> String {
+        (entry["WorkType"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+    private func isFlightEntry(_ entry: [String:String]) -> Bool {
+        flightWT.contains(normWT(entry))
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // 안전장치 (혹시 inputFmt 주입 누락 시)
+        if inputFmt == nil {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "dd-MMM-yyyy"
+            inputFmt = f
+        }
+
         let titleStr = person.id == "—" ? person.name : "\(person.name) (\(person.id))"
         title = titleStr
         view.backgroundColor = .systemBackground
 
-        // 날짜 최근날짜 순
+        // 날짜 최근날짜 순 정렬 (전체)
         flights.sort { lhs, rhs in
+            guard let d1 = inputFmt.date(from: lhs.dateKey),
+                  let d2 = inputFmt.date(from: rhs.dateKey) else { return lhs.dateKey < rhs.dateKey }
+            return d1 > d2
+        }
+
+        // FLY/TVL vs Other(s) 분리
+        flightRefs = flights.filter { isFlightEntry($0.entry) }
+        otherRefs  = flights.filter { !isFlightEntry($0.entry) }
+
+        // 각 섹션 내부도 날짜 최근순 유지
+        flightRefs.sort { lhs, rhs in
+            guard let d1 = inputFmt.date(from: lhs.dateKey),
+                  let d2 = inputFmt.date(from: rhs.dateKey) else { return lhs.dateKey < rhs.dateKey }
+            return d1 > d2
+        }
+        otherRefs.sort { lhs, rhs in
             guard let d1 = inputFmt.date(from: lhs.dateKey),
                   let d2 = inputFmt.date(from: rhs.dateKey) else { return lhs.dateKey < rhs.dateKey }
             return d1 > d2
@@ -54,7 +93,7 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
 
-        if flights.isEmpty {
+        if flightRefs.isEmpty && otherRefs.isEmpty {
             let lbl = UILabel()
             lbl.text = "NO FLT RECORD."
             lbl.textAlignment = .center
@@ -67,29 +106,57 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
     }
 
     // MARK: - UITableViewDataSource
-    func numberOfSections(in tableView: UITableView) -> Int { 1 }
+    func numberOfSections(in tableView: UITableView) -> Int {
+        // other가 있으면 2섹션, 없으면 Flights만
+        return otherRefs.isEmpty ? 1 : 2
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        if section == 0 { return "Flights" }
+        return "Other(s)"
+    }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        flights.count
+        if section == 0 { return flightRefs.count }
+        return otherRefs.count
+    }
+
+    private func ref(for indexPath: IndexPath) -> FlightRef {
+        if indexPath.section == 0 { return flightRefs[indexPath.row] }
+        return otherRefs[indexPath.row]
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let f = flights[indexPath.row]
+        let refItem = ref(for: indexPath)
+        let e = refItem.entry
 
         let dateStr: String = {
-            if let d = inputFmt.date(from: f.dateKey) { return dateOutFmt.string(from: d) }
-            return f.dateKey
+            if let d = inputFmt.date(from: refItem.dateKey) { return dateOutFmt.string(from: d) }
+            return refItem.dateKey
         }()
 
-        // 표시용 제목: 날짜 • 비행명 • [워크타입]
-        var title = "\(dateStr)  •  \(displayFlightNo(from: f.entry))"
-        if let wt = workTypeTag(from: f.entry) {
-            title += "  [\(wt)]"
+        let isFlight = (indexPath.section == 0)
+
+        // 표시용 제목: 날짜 • (FlightNo or Activity/Item) • [TAG]
+        let mainTitle: String = {
+            if isFlight {
+                return displayFlightNo(from: e)
+            } else {
+                return displayOtherTitle(from: e)
+            }
+        }()
+
+        var title = "\(dateStr)  •  \(mainTitle)"
+
+        if isFlight {
+            if let wt = workTypeTag(from: e) { title += "  [\(wt)]" }   // 기존 유지
+        } else {
+            title += "  [OTHER]"  // Other(s)로 통일
         }
 
         // 표시용 서브타이틀
-        let subtitle = routeTimeSummary(from: f.entry)
+        let subtitle = routeTimeSummary(from: e)
 
         let bold = UIFont.boldSystemFont(ofSize: 16)
         let reg  = UIFont.systemFont(ofSize: 14)
@@ -104,6 +171,17 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
     }
 
     // MARK: - Helpers
+
+    // Other(s) 표시용 타이틀: Activity 우선, 없으면 Item, 없으면 WorkType
+    private func displayOtherTitle(from e: [String:String]) -> String {
+        let candidates = ["Activity", "Item", "WorkType"]
+        for k in candidates {
+            if let v = e[k]?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
+                return v
+            }
+        }
+        return "OTHER"
+    }
 
     // 키 정규화: 영숫자만 남기고 소문자
     private func normalizeKey(_ s: String) -> String {
@@ -138,7 +216,7 @@ final class PersonFlightsViewController: UIViewController, UITableViewDataSource
         return ns.substring(with: m.range(at: 1)).uppercased() + ns.substring(with: m.range(at: 2))
     }
 
-    // “표시용” 플라이트 넘버 (✅ DH 접두 제거)
+    // “표시용” 플라이트 넘버 (DH 접두 제거)
     private func displayFlightNo(from e: [String:String]) -> String {
         // 저장 로직 기준으로 Item/Activity 우선
         let candidateKeys = [
