@@ -462,11 +462,18 @@
       "name": "Manas International Airport"
   },
   {
-      "IATA": "FSZ",
-      "ICAO": "rjns",
-      "utc_offset": 9.0,
+      "IATA": "BSZ",
+      "ICAO": "UCFM",
+      "utc_offset": 6.0,
       "dst": false,
-      "name": "Mount Fuji"
+      "name": "Manas International Airport"
+  },
+  {
+    "IATA": "FSZ",
+    "ICAO": "RJNS",
+    "utc_offset": 9.0,
+    "dst": false,
+    "name": "Mount Fuji"
   },
   {
       "IATA": "FUK",
@@ -742,18 +749,25 @@
       "name": "Kagoshima Airport"
   },
   {
-      "IATA": "KPO",
-      "ICAO": "RKTH",
-      "utc_offset": 9.0,
-      "dst": false,
-      "name": "Pohang Airport"
+    "IATA": "KPO",
+    "ICAO": "RKTH",
+    "utc_offset": 9.0,
+    "dst": false,
+    "name": "Pohang Airport"
   },
   {
-      "IATA": "KTM",
-      "ICAO": "VNKT",
-      "utc_offset": 5.75,
-      "dst": false,
-      "name": "Tribhuvan International Airport"
+    "IATA": "KTI",
+    "ICAO": "VDTI",
+    "utc_offset": 7.0,
+    "dst": false,
+    "name": "Techo International Airport"
+  },
+  {
+    "IATA": "KTM",
+    "ICAO": "VNKT",
+    "utc_offset": 5.75,
+    "dst": false,
+    "name": "Tribhuvan International Airport"
   },
   {
       "IATA": "KTN",
@@ -910,18 +924,25 @@
       "name": "Miami International Airport"
   },
   {
-      "IATA": "MLE",
-      "ICAO": "VRMM",
-      "utc_offset": 5.0,
-      "dst": false,
-      "name": "Velana International Airport"
+    "IATA": "MLE",
+    "ICAO": "VRMM",
+    "utc_offset": 5.0,
+    "dst": false,
+    "name": "Velana International Airport"
   },
   {
-      "IATA": "MMB",
-      "ICAO": "RJCM",
-      "utc_offset": 9.0,
-      "dst": false,
-      "name": "Memanbetsu Airport"
+    "IATA": "MLH",
+    "ICAO": "LFSB",
+    "utc_offset": 1.0,
+    "dst": true,
+    "name": "EuroAirport Basel Mulhouse Freiburg"
+  },
+  {
+    "IATA": "MMB",
+    "ICAO": "RJCM",
+    "utc_offset": 9.0,
+    "dst": false,
+    "name": "Memanbetsu Airport"
   },
   {
       "IATA": "MMJ",
@@ -1162,18 +1183,25 @@
       "name": "Yangon International Airport"
   },
   {
-      "IATA": "RIX",
-      "ICAO": "EVRA",
-      "utc_offset": 2.0,
-      "dst": true,
-      "name": "Riga International Airport"
+    "IATA": "RIX",
+    "ICAO": "EVRA",
+    "utc_offset": 2.0,
+    "dst": true,
+    "name": "Riga International Airport"
   },
   {
-      "IATA": "RMQ",
-      "ICAO": "RCMQ",
-      "utc_offset": 8.0,
-      "dst": false,
-      "name": "Cingcyuangang"
+    "IATA": "RJCJ",
+    "ICAO": "RJCJ",
+    "utc_offset": 9.0,
+    "dst": false,
+    "name": "Chitose Air Base"
+  },
+  {
+    "IATA": "RMQ",
+    "ICAO": "RCMQ",
+    "utc_offset": 8.0,
+    "dst": false,
+    "name": "Cingcyuangang"
   },
   {
       "IATA": "ROR",
@@ -1379,18 +1407,25 @@
       "name": "Taiwan Taoyuan International Airport"
   },
   {
-      "IATA": "TSN",
-      "ICAO": "ZBTJ",
-      "utc_offset": 8.0,
-      "dst": false,
-      "name": "Binhai International Airport"
+    "IATA": "TSN",
+    "ICAO": "ZBTJ",
+    "utc_offset": 8.0,
+    "dst": false,
+    "name": "Binhai International Airport"
   },
   {
-      "IATA": "TYN",
-      "ICAO": "ZBYN",
-      "utc_offset": 8.0,
-      "dst": false,
-      "name": "Wusu International Airport"
+    "IATA": "TXN",
+    "ICAO": "ZSTX",
+    "utc_offset": 8.0,
+    "dst": false,
+    "name": "Huangshan Tunxi International Airport"
+  },
+  {
+    "IATA": "TYN",
+    "ICAO": "ZBYN",
+    "utc_offset": 8.0,
+    "dst": false,
+    "name": "Wusu International Airport"
   },
   {
       "IATA": "UBN",
